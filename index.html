@@ -293,6 +293,8 @@
 </div>
 ```
 
+  </div>
+
   <!-- Weekmenu -->
 
   <div id="view-menu" style="display:none">
@@ -536,36 +538,32 @@ async function vergelijkPrijzen() {
 
   const artikelen = todoItems.map(i => `${i.qty > 1 ? i.qty + 'x ' : ''}${i.name}`).join(', ');
 
+  const prompt = `Geef indicatieve Nederlandse supermarktprijzen (2024-2025) voor: ${artikelen}.
+Reageer ALLEEN met geldige JSON zonder uitleg of markdown:
+{"artikelen":[{"naam":"artikel","ah":0.00,"jumbo":0.00,"lidl":0.00}],"totaal":{"ah":0.00,"jumbo":0.00,"lidl":0.00},"advies":"winkelnaame","besparing":"Je bespaart X euro","tip":"korte tip"}`;
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
-        system: `Je bent een Nederlandse prijsvergelijker voor supermarkten. Geef altijd een schatting van gangbare prijzen bij Albert Heijn, Jumbo en Lidl in Nederland. Reageer ALLEEN met geldige JSON, geen uitleg, geen markdown. Gebruik dit exacte formaat:
-{
-  "artikelen": [
-    {"naam": "melk", "ah": 1.19, "jumbo": 1.09, "lidl": 0.99}
-  ],
-  "totaal": {"ah": 0.00, "jumbo": 0.00, "lidl": 0.00},
-  "advies": "Naam van goedkoopste winkel",
-  "besparing": "Je bespaart X euro ten opzichte van de duurste optie",
-  "tip": "Korte praktische tip"
-}`,
-        messages: [{
-          role: 'user',
-          content: `Geef indicatieve prijzen voor deze boodschappen bij Nederlandse supermarkten: ${artikelen}. Gebruik gangbare Nederlandse supermarktprijzen van 2024-2025.`
-        }]
+        system: 'Je bent een Nederlandse prijsvergelijker. Reageer ALLEEN met geldige JSON, geen uitleg, geen markdown backticks.',
+        messages: [{ role: 'user', content: prompt }]
       })
     });
 
     const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'API fout');
     const tekst = data.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
     const prijzen = JSON.parse(tekst);
     toonPrijzen(prijzen);
   } catch (e) {
-    resultaat.innerHTML = '<div class="prijs-loading" style="color:var(--red)">❌ Kon geen prijzen ophalen. Probeer opnieuw.</div>';
+    resultaat.innerHTML = `<div class="prijs-loading" style="color:var(--red)">❌ Kon geen prijzen ophalen.<br><small>${e.message}</small></div>`;
   }
 
   btn.disabled = false;
