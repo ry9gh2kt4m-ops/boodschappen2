@@ -162,6 +162,20 @@
   .advies-banner h3 { font-family:"Playfair Display",serif; font-size:1.1rem; margin-bottom:4px; }
   .advies-banner p { font-size:0.82rem; opacity:0.9; line-height:1.5; }
   .bron-link { font-size:0.7rem; color:var(--muted); text-decoration:underline; }
+  /* Personen modal */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
+  .modal-card { background:white; border-radius:20px 20px 0 0; padding:24px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; }
+  .modal-title { font-family:Playfair Display,serif; font-size:1.3rem; color:var(--green); margin-bottom:6px; }
+  .modal-sub { font-size:0.8rem; color:var(--muted); margin-bottom:16px; line-height:1.5; }
+  .persoon-rij { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .persoon-input { flex:1; border:1.5px solid var(--border); border-radius:10px; padding:9px 12px; font-family:DM Sans,sans-serif; font-size:0.9rem; outline:none; }
+  .persoon-input:focus { border-color:var(--green-light); }
+  .persoon-kleur { width:32px; height:32px; border-radius:50%; border:2px solid var(--border); cursor:pointer; flex-shrink:0; }
+  .persoon-verwijder { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1rem; padding:4px; }
+  .persoon-verwijder:hover { color:var(--red); }
+  .btn-persoon-add { width:100%; padding:9px; border-radius:10px; border:1.5px dashed var(--border); background:none; cursor:pointer; font-family:DM Sans,sans-serif; font-size:0.82rem; color:var(--muted); margin:8px 0; }
+  .btn-persoon-save { width:100%; padding:12px; border-radius:12px; border:none; background:var(--green); color:white; font-family:DM Sans,sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; margin-top:8px; }
+
   /* Ideeënbus */
   .idee-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:8px; animation:slide-in 0.25s ease; }
   .idee-card.status-nieuw { border-left:3px solid var(--muted); }
@@ -289,16 +303,10 @@
       </div>
       <div class="mic-status" id="mic-status"></div>
       <div class="no-mic-msg" id="no-mic">Spraakherkenning niet beschikbaar.</div>
-      <div class="person-row">
-        <button class="person-btn active-jij" id="btn-jij" onclick="setPerson('jij')">👤 Jij</button>
-        <button class="person-btn" id="btn-vrouw" onclick="setPerson('vrouw')">👤 Vrouw</button>
-      </div>
+      <div class="person-row" id="person-row"></div>
+      <button onclick="openPersonenInstellingen()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.75rem;color:var(--muted)">⚙️ Personen instellen</button>
     </div>
-    <div class="filter-row">
-      <button class="filter-chip active" onclick="setFilter(this,'alle')">Alle</button>
-      <button class="filter-chip" onclick="setFilter(this,'jij')">👤 Jij</button>
-      <button class="filter-chip" onclick="setFilter(this,'vrouw')">👤 Vrouw</button>
-    </div>
+    <div class="filter-row" id="filter-row"></div>
     <div class="section-label">Te halen</div>
     <div class="list" id="todo-list"></div>
     <button class="done-toggle" onclick="toggleDone()">
@@ -369,8 +377,91 @@
   </div>
 </div>
 
+<!-- Personen modal -->
+
+<div class="modal-overlay" id="personen-modal" style="display:none" onclick="sluitPersonenModal(event)">
+  <div class="modal-card">
+    <div class="modal-title">👥 Personen instellen</div>
+    <div class="modal-sub">Voeg tot 4 personen toe. Namen zijn zichtbaar op alle apparaten van jullie gezin.</div>
+    <div id="personen-invoer"></div>
+    <button class="btn-persoon-add" onclick="voegPersoonToe()">＋ Persoon toevoegen</button>
+    <button class="btn-persoon-save" onclick="slaPersonenOp()">Opslaan ✓</button>
+  </div>
+</div>
+
 <script>
-let items = [], menu = {}, gezinsCode = '', currentPerson = 'jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+let items = [], menu = {}, gezinsCode = '', currentPerson = '', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+
+// ---- Personen ----
+const KLEUREN = ['#3d6b4f','#c4678a','#1a56a0','#c47a2a','#7a4db5','#c4473a'];
+const KLEUR_BG = {'#3d6b4f':'#e8f0ea','#c4678a':'#fce8f0','#1a56a0':'#e8f0fa','#c47a2a':'#fdf0e0','#7a4db5':'#f0e8fa','#c4473a':'#faeae9'};
+let personen = [{naam:'Jij', kleur:'#3d6b4f'},{naam:'Partner', kleur:'#c4678a'}];
+
+function laadPersonen() {
+  const opgeslagen = localStorage.getItem('personen_' + gezinsCode);
+  if (opgeslagen) personen = JSON.parse(opgeslagen);
+  renderPersonenKnoppen();
+}
+
+function slaPersonenLocalOp() {
+  localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
+}
+
+function renderPersonenKnoppen() {
+  // Selecteer eerste persoon als nog geen persoon geselecteerd
+  if (!currentPerson || !personen.find(p => p.naam === currentPerson)) {
+    currentPerson = personen[0]?.naam || '';
+  }
+  // Person row knoppen
+  const row = document.getElementById('person-row');
+  if (row) row.innerHTML = personen.map(p => {
+    const isActief = p.naam === currentPerson;
+    const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+    return `<button onclick="setPerson('${p.naam}')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid ${isActief ? p.kleur : 'var(--border)'};background:${isActief ? bg : 'white'};cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:500;color:${isActief ? p.kleur : 'var(--muted)'};transition:all 0.18s">👤 ${p.naam}</button>`;
+  }).join('');
+  // Filter chips
+  const filterRow = document.getElementById('filter-row');
+  if (filterRow) filterRow.innerHTML = `<button class="filter-chip ${currentFilter==='alle'?'active':''}" onclick="setFilter(this,'alle')">Alle</button>` +
+    personen.map(p => `<button class="filter-chip ${currentFilter===p.naam?'active':''}" onclick="setFilter(this,'${p.naam}')">👤 ${p.naam}</button>`).join('');
+}
+
+function openPersonenInstellingen() {
+  const el = document.getElementById('personen-invoer');
+  el.innerHTML = personen.map((p, i) => `
+    <div class="persoon-rij" id="persoon-rij-${i}">
+      <input class="persoon-input" value="${p.naam}" placeholder="Naam" maxlength="20" id="persoon-naam-${i}" />
+      <input type="color" value="${p.kleur}" class="persoon-kleur" id="persoon-kleur-${i}" />
+      ${personen.length > 1 ? `<button class="persoon-verwijder" onclick="verwijderPersoon(${i})">✕</button>` : ''}
+    </div>`).join('');
+  document.getElementById('personen-modal').style.display = 'flex';
+}
+
+function sluitPersonenModal(e) {
+  if (e.target.id === 'personen-modal') document.getElementById('personen-modal').style.display = 'none';
+}
+
+function voegPersoonToe() {
+  if (personen.length >= 4) { alert('Maximum 4 personen.'); return; }
+  personen.push({naam: 'Persoon ' + (personen.length+1), kleur: KLEUREN[personen.length] || '#3d6b4f'});
+  openPersonenInstellingen();
+}
+
+function verwijderPersoon(i) {
+  if (personen.length <= 1) return;
+  personen.splice(i, 1);
+  openPersonenInstellingen();
+}
+
+function slaPersonenOp() {
+  personen = personen.map((p, i) => ({
+    naam: document.getElementById('persoon-naam-'+i)?.value.trim() || p.naam,
+    kleur: document.getElementById('persoon-kleur-'+i)?.value || p.kleur
+  })).filter(p => p.naam);
+  slaPersonenLocalOp();
+  renderPersonenKnoppen();
+  document.getElementById('personen-modal').style.display = 'none';
+  render();
+}
 let autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
 let unsubItems = null, unsubMenu = null;
 const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
@@ -427,6 +518,7 @@ function fbListen() {
 function initApp() {
   document.getElementById('gezin-naam').textContent = gezinsCode;
   document.getElementById('main-app').style.display = 'block';
+  laadPersonen();
   fbListen();
   isBeheerder = localStorage.getItem('beheerder') === '1';
   if (isBeheerder) { const f = document.getElementById('beheer-unlock-form'); if(f) f.style.display='none'; }
@@ -461,8 +553,7 @@ function switchTab(tab) {
 // ---- Boodschappen ----
 function setPerson(p) {
   currentPerson = p;
-  document.getElementById('btn-jij').className = 'person-btn' + (p==='jij' ? ' active-jij' : '');
-  document.getElementById('btn-vrouw').className = 'person-btn' + (p==='vrouw' ? ' active-vrouw' : '');
+  renderPersonenKnoppen();
 }
 
 function setFilter(el, f) {
@@ -519,12 +610,16 @@ function render() {
 function renderList(id, list, isDone) {
   const el = document.getElementById(id);
   if (!list.length && !isDone) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>'; return; }
-  el.innerHTML = list.map(item => `
-    <div class="item ${item.done?'done':''} person-${item.person}">
+  el.innerHTML = list.map(item => {
+    const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f'};
+    const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+    const borderStyle = !item.done ? `border-left:3px solid ${p.kleur}` : '';
+    return `
+    <div class="item ${item.done?'done':''}" style="${borderStyle}">
       <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
       <div class="item-main">
         <div class="item-name">${esc(item.name)}</div>
-        <div style="margin-top:2px"><span class="item-person">${item.person==='jij'?'👤 Jij':'👤 Vrouw'}</span></div>
+        <div style="margin-top:2px"><span class="item-person" style="background:${bg};color:${p.kleur}">👤 ${esc(item.person)}</span></div>
       </div>
       <div class="qty-controls">
         <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
@@ -532,7 +627,8 @@ function renderList(id, list, isDone) {
         <button class="qty-btn" onclick="changeQty(${item.id},+1)">+</button>
       </div>
       <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ---- Weekmenu ----
