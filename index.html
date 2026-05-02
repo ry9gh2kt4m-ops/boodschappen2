@@ -162,6 +162,32 @@
   .advies-banner h3 { font-family:"Playfair Display",serif; font-size:1.1rem; margin-bottom:4px; }
   .advies-banner p { font-size:0.82rem; opacity:0.9; line-height:1.5; }
   .bron-link { font-size:0.7rem; color:var(--muted); text-decoration:underline; }
+  /* Ideeënbus */
+  .idee-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:8px; animation:slide-in 0.25s ease; }
+  .idee-card.status-nieuw { border-left:3px solid var(--muted); }
+  .idee-card.status-behandeling { border-left:3px solid var(--orange, #c47a2a); }
+  .idee-card.status-goedgekeurd { border-left:3px solid var(--green); }
+  .idee-card.status-afgewezen { border-left:3px solid var(--red); opacity:0.6; }
+  .idee-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; gap:8px; }
+  .idee-naam { font-size:0.75rem; font-weight:600; color:var(--muted); }
+  .idee-datum { font-size:0.7rem; color:var(--muted); flex-shrink:0; }
+  .idee-tekst { font-size:0.88rem; color:var(--ink); line-height:1.5; margin-bottom:8px; }
+  .idee-status-badge { font-size:0.68rem; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .badge-nieuw { background:#f0f0f0; color:var(--muted); }
+  .badge-behandeling { background:#fff3e0; color:#c47a2a; }
+  .badge-goedgekeurd { background:var(--green-pale); color:var(--green); }
+  .badge-afgewezen { background:var(--red-pale); color:var(--red); }
+  .idee-acties { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .idee-btn { padding:5px 10px; border-radius:8px; border:1.5px solid var(--border); background:white; cursor:pointer; font-size:0.75rem; font-family:'DM Sans',sans-serif; font-weight:500; }
+  .idee-btn.goedkeuren { border-color:var(--green); color:var(--green); }
+  .idee-btn.afwijzen { border-color:var(--red); color:var(--red); }
+  .idee-btn.behandeling { border-color:#c47a2a; color:#c47a2a; }
+  .idee-btn.verwijder { border-color:var(--border); color:var(--muted); }
+  .beheer-unlock { background:var(--cream); border:1.5px dashed var(--border); border-radius:12px; padding:14px; margin-bottom:16px; text-align:center; }
+  .beheer-unlock input { border:1.5px solid var(--border); border-radius:8px; padding:8px 12px; font-family:'DM Sans',sans-serif; font-size:0.88rem; width:100%; margin:8px 0; outline:none; text-align:center; }
+  .beheer-unlock button { background:var(--green); color:white; border:none; border-radius:8px; padding:8px 20px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.85rem; }
+  .leeg-ideeen { text-align:center; padding:24px; color:var(--muted); font-size:0.85rem; }
+
   /* Weekmenu */
   .week-grid { display:flex; flex-direction:column; gap:10px; }
   .dag-card { background:white; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
@@ -242,6 +268,9 @@
     <button class="tab" id="tab-menu" onclick="switchTab('menu')">
       <span class="tab-icon">🍽️</span> Weekmenu
     </button>
+    <button class="tab" id="tab-ideeen" onclick="switchTab('ideeen')">
+      <span class="tab-icon">💡</span> Ideeën
+    </button>
   </div>
 
   <!-- Boodschappen -->
@@ -302,6 +331,41 @@
       <div style="font-size:0.85rem;color:var(--muted);line-height:1.5">📅 Tik op een dag om het avondeten in te vullen.</div>
     </div>
     <div class="week-grid" id="week-grid"></div>
+  </div>
+
+  <!-- Ideeënbus -->
+
+  <div id="view-ideeen" style="display:none">
+    <div class="input-card" style="margin-bottom:20px">
+      <div style="font-size:0.95rem;font-weight:600;color:var(--ink);margin-bottom:4px">💡 Stuur een idee in</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;line-height:1.5">Heb je een idee om de app te verbeteren? Laat het weten!</div>
+      <input class="input-field" id="idee-naam" type="text" placeholder="Jouw naam (optioneel)" style="margin-bottom:8px;width:100%;display:block" />
+      <textarea class="input-field" id="idee-tekst" placeholder="Beschrijf jouw idee…" rows="3" style="width:100%;display:block;resize:vertical;font-family:'DM Sans',sans-serif;margin-bottom:8px"></textarea>
+      <button class="btn-add" onclick="stuurIdee()" style="width:100%;border-radius:10px;height:auto;padding:11px;font-size:0.95rem;font-weight:600">Idee insturen 💡</button>
+      <div id="idee-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.85rem;margin-top:8px">✅ Bedankt! Je idee is ontvangen.</div>
+    </div>
+
+```
+<!-- Beheerder sectie -->
+<div id="beheer-sectie" style="display:none">
+  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">Ingediende ideeën</div>
+  <div id="ideeen-lijst"></div>
+</div>
+
+<!-- Beheerder ontgrendelen -->
+<div class="beheer-unlock" id="beheer-unlock-form">
+  <div style="font-size:0.8rem;color:var(--muted);margin-bottom:4px">🔐 Beheerder? Voer je code in</div>
+  <input type="password" id="beheer-code-input" placeholder="Beheerderscode" />
+  <button onclick="checkBeheerder()">Inloggen</button>
+</div>
+
+<!-- Niet-beheerder: publieke goedgekeurde ideeën -->
+<div id="publiek-sectie">
+  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">✅ Goedgekeurde ideeën</div>
+  <div id="ideeen-publiek"></div>
+</div>
+```
+
   </div>
 </div>
 
@@ -364,6 +428,9 @@ function initApp() {
   document.getElementById('gezin-naam').textContent = gezinsCode;
   document.getElementById('main-app').style.display = 'block';
   fbListen();
+  isBeheerder = localStorage.getItem('beheerder') === '1';
+  if (isBeheerder) { const f = document.getElementById('beheer-unlock-form'); if(f) f.style.display='none'; }
+  fbListenIdeeen();
   setupMic();
   setSyncStatus(false);
 }
@@ -385,8 +452,10 @@ function setSyncStatus(saving) {
 function switchTab(tab) {
   document.getElementById('view-boodschappen').style.display = tab === 'boodschappen' ? 'block' : 'none';
   document.getElementById('view-menu').style.display = tab === 'menu' ? 'block' : 'none';
+  document.getElementById('view-ideeen').style.display = tab === 'ideeen' ? 'block' : 'none';
   document.getElementById('tab-boodschappen').className = 'tab' + (tab === 'boodschappen' ? ' active' : '');
   document.getElementById('tab-menu').className = 'tab' + (tab === 'menu' ? ' active' : '');
+  document.getElementById('tab-ideeen').className = 'tab' + (tab === 'ideeen' ? ' active' : '');
 }
 
 // ---- Boodschappen ----
@@ -516,6 +585,102 @@ async function saveDag(i) {
 async function clearDag(i) {
   delete menu[getDagKey(i)];
   setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+}
+
+// ---- Ideeënbus ----
+const BEHEER_CODE = 'admin-boodschappen-2025'; // Jouw geheime beheerderscode
+let isBeheerder = false;
+let unsubIdeeen = null;
+
+function fbIdeeRef() { return window._ref(window._db, 'ideeen'); }
+
+function fbListenIdeeen() {
+  if (unsubIdeeen) unsubIdeeen();
+  unsubIdeeen = window._onValue(fbIdeeRef(), snap => {
+    const data = snap.val() || {};
+    const ideeen = Object.values(data).sort((a,b) => b.timestamp - a.timestamp);
+    renderIdeeen(ideeen);
+  });
+}
+
+function renderIdeeen(ideeen) {
+  // Beheerder ziet alles
+  if (isBeheerder) {
+    document.getElementById('beheer-sectie').style.display = 'block';
+    document.getElementById('publiek-sectie').style.display = 'none';
+    const el = document.getElementById('ideeen-lijst');
+    if (!ideeen.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen ideeën ingediend.</div>'; return; }
+    el.innerHTML = ideeen.map(idee => `
+      <div class="idee-card status-${idee.status||'nieuw'}">
+        <div class="idee-header">
+          <div>
+            <span class="idee-naam">👤 ${esc(idee.naam||'Anoniem')}</span>
+            <span class="idee-status-badge badge-${idee.status||'nieuw'}" style="margin-left:6px">${statusLabel(idee.status)}</span>
+          </div>
+          <span class="idee-datum">${new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</span>
+        </div>
+        <div class="idee-tekst">${esc(idee.tekst)}</div>
+        <div class="idee-acties">
+          <button class="idee-btn goedkeuren" onclick="updateIdeeStatus('${idee.id}','goedgekeurd')">✅ Goedkeuren</button>
+          <button class="idee-btn behandeling" onclick="updateIdeeStatus('${idee.id}','behandeling')">🔄 In behandeling</button>
+          <button class="idee-btn afwijzen" onclick="updateIdeeStatus('${idee.id}','afgewezen')">❌ Afwijzen</button>
+          <button class="idee-btn verwijder" onclick="verwijderIdee('${idee.id}')">🗑</button>
+        </div>
+      </div>`).join('');
+  } else {
+    // Gewone gebruiker ziet alleen goedgekeurde ideeën
+    document.getElementById('beheer-sectie').style.display = 'none';
+    document.getElementById('publiek-sectie').style.display = 'block';
+    const goedgekeurd = ideeen.filter(i => i.status === 'goedgekeurd');
+    const el = document.getElementById('ideeen-publiek');
+    if (!goedgekeurd.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>'; return; }
+    el.innerHTML = goedgekeurd.map(idee => `
+      <div class="idee-card status-goedgekeurd">
+        <div class="idee-header">
+          <span class="idee-naam">👤 ${esc(idee.naam||'Anoniem')}</span>
+          <span class="idee-datum">${new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</span>
+        </div>
+        <div class="idee-tekst">${esc(idee.tekst)}</div>
+      </div>`).join('');
+  }
+}
+
+function statusLabel(status) {
+  const labels = { nieuw:'🆕 Nieuw', behandeling:'🔄 In behandeling', goedgekeurd:'✅ Goedgekeurd', afgewezen:'❌ Afgewezen' };
+  return labels[status] || '🆕 Nieuw';
+}
+
+async function stuurIdee() {
+  const naam = document.getElementById('idee-naam').value.trim();
+  const tekst = document.getElementById('idee-tekst').value.trim();
+  if (!tekst) return;
+  const id = 'idee-' + Date.now();
+  await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam: naam||'Anoniem', tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
+  document.getElementById('idee-naam').value = '';
+  document.getElementById('idee-tekst').value = '';
+  document.getElementById('idee-bevestiging').style.display = 'block';
+  setTimeout(() => document.getElementById('idee-bevestiging').style.display = 'none', 3000);
+}
+
+async function updateIdeeStatus(id, status) {
+  await window._set(window._ref(window._db, 'ideeen/' + id + '/status'), status);
+}
+
+async function verwijderIdee(id) {
+  if (!confirm('Idee verwijderen?')) return;
+  await window._remove(window._ref(window._db, 'ideeen/' + id));
+}
+
+function checkBeheerder() {
+  const code = document.getElementById('beheer-code-input')?.value;
+  if (code === BEHEER_CODE) {
+    isBeheerder = true;
+    localStorage.setItem('beheerder', '1');
+    fbListenIdeeen();
+    document.getElementById('beheer-unlock-form').style.display = 'none';
+  } else {
+    alert('Onjuiste code');
+  }
 }
 
 // ---- Prijsvergelijking ----
