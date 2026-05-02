@@ -268,6 +268,7 @@
 
 <script>
 let items = [], menu = {}, gezinsCode = '', currentPerson = 'jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+let autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
 let unsubItems = null, unsubMenu = null;
 const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
@@ -482,21 +483,71 @@ function setupMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
   recognition = new SR(); recognition.lang='nl-NL'; recognition.continuous=false; recognition.interimResults=true;
-  recognition.onstart = () => { isListening=true; document.getElementById('mic-btn').classList.add('listening'); document.getElementById('mic-btn').textContent='🔴'; setMicStatus('Luisteren…','active'); };
-  recognition.onresult = (e) => {
-    let interim='',final='';
-    for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;e.results[i].isFinal?(final+=t):(interim+=t);}
-    document.getElementById('item-input').value=final||interim;
-    if(final)setMicStatus('✓ "'+final.trim()+'"','success'); else setMicStatus('Horen: "'+interim+'"','active');
+
+  recognition.onstart = () => {
+    isListening=true;
+    document.getElementById('mic-btn').classList.add('listening');
+    document.getElementById('mic-btn').textContent='🔴';
+    setMicStatus('Luisteren… spreek nu','active');
   };
-  recognition.onerror=(e)=>{const m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};setMicStatus(m[e.error]||'Fout.','active');stopMic(false);};
-  recognition.onend=()=>stopMic(true);
+
+  recognition.onresult = (e) => {
+    let interim='', final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      e.results[i].isFinal?(final+=t):(interim+=t);
+    }
+    document.getElementById('item-input').value = final||interim;
+
+    // Als eindresultaat: start afteller voor automatisch toevoegen
+    if (final) {
+      clearAutoAdd();
+      startCountdown(final.trim());
+    } else {
+      setMicStatus('Horen: "'+interim+'"','active');
+    }
+  };
+
+  recognition.onerror=(e)=>{
+    clearAutoAdd();
+    const m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
+    setMicStatus(m[e.error]||'Fout.','active');
+    stopMic(false);
+  };
+  recognition.onend=()=>{ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
 }
-function stopMic(c){isListening=false;document.getElementById('mic-btn').classList.remove('listening');document.getElementById('mic-btn').textContent='🎙️';if(c)setTimeout(()=>setMicStatus(''),3000);}
+
+function startCountdown(text) {
+  let secs = autoAddSeconds;
+  setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+  countdownTimer = setInterval(() => {
+    secs--;
+    if (secs > 0) {
+      setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+    }
+  }, 1000);
+  autoAddTimer = setTimeout(() => {
+    clearInterval(countdownTimer);
+    addItem();
+    setMicStatus('✅ Toegevoegd!', 'success');
+    setTimeout(()=>setMicStatus(''), 2000);
+  }, autoAddSeconds * 1000);
+}
+
+function clearAutoAdd() {
+  clearTimeout(autoAddTimer);
+  clearInterval(countdownTimer);
+  autoAddTimer = null; countdownTimer = null;
+}
+
+function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(()=>setMicStatus(''),3000); }
 function setMicStatus(m,c=''){const el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
 
 document.getElementById('mic-btn').onclick=async()=>{
-  if(!recognition)return; if(isListening){recognition.stop();return;}
+  if(!recognition)return;
+  // Als afteller bezig: annuleer
+  if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(()=>setMicStatus(''),1500); return; }
+  if(isListening){recognition.stop();return;}
   try{await navigator.mediaDevices.getUserMedia({audio:true});}catch{setMicStatus('🚫 Microfoon geweigerd.','active');return;}
   document.getElementById('item-input').value='';
   try{recognition.start();}catch{setMicStatus('Start mislukt.','active');}
