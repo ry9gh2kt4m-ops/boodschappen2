@@ -240,27 +240,56 @@
 <!-- Gezinscode setup -->
 
 <div id="setup-screen">
-  <div class="setup-card">
+  <!-- Stap 1: Bestaand of nieuw -->
+  <div class="setup-card" id="setup-keuze">
     <div class="setup-logo">🛒</div>
     <h2>Welkom!</h2>
-    <p>Vul een gezinscode in om te beginnen. Gebruik dezelfde code met je partner om de lijst te delen.</p>
+    <p>Ben je al geregistreerd of wil je de app voor het eerst gebruiken?</p>
+    <button class="btn-setup" onclick="toonInloggen()">Inloggen met gezinscode →</button>
+    <button class="btn-setup" onclick="toonRegistreren()" style="background:white;color:var(--green);border:1.5px solid var(--green);margin-top:10px">Nieuw gezin aanmelden ✨</button>
+  </div>
 
-```
-<label class="setup-label">Jouw gezinscode</label>
-<input class="setup-input" id="setup-code" type="text" placeholder="bijv. familie-dejong" autocomplete="off" autocapitalize="none" />
-<div class="setup-hint">Kleine letters, geen spaties. Deel deze code met je partner.</div>
+  <!-- Stap 2a: Inloggen -->
 
-<button class="btn-setup" onclick="startMetCode()">Starten →</button>
-<div class="setup-error" id="setup-error"></div>
+  <div class="setup-card" id="setup-inloggen" style="display:none">
+    <div class="setup-logo">🔑</div>
+    <h2>Inloggen</h2>
+    <p>Vul jullie gezinscode in om verder te gaan.</p>
+    <label class="setup-label">Gezinscode</label>
+    <input class="setup-input" id="setup-code" type="text" placeholder="bijv. familie-…" autocomplete="off" autocapitalize="none" />
+    <div class="setup-hint">Dezelfde code als jullie partner gebruikt.</div>
+    <button class="btn-setup" onclick="startMetCode()">Inloggen →</button>
+    <div class="setup-error" id="setup-error"></div>
+    <button onclick="toonKeuze()" style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-top:12px;width:100%">← Terug</button>
+  </div>
 
-<hr class="setup-divider">
-<div class="setup-info">
-  🔒 Je data is privé — alleen mensen met jouw exacte code kunnen de lijst zien.<br><br>
-  👨‍👩‍👧 Elk gezin heeft zijn eigen code en eigen lijst.<br><br>
-  🔗 Stuur de app-link + jullie gezinscode via WhatsApp naar je partner.
-</div>
-```
+  <!-- Stap 2b: Registreren -->
 
+  <div class="setup-card" id="setup-registreren" style="display:none">
+    <div class="setup-logo">✨</div>
+    <h2>Nieuw gezin</h2>
+    <p>Meld je aan om de app te gebruiken. Na aanmelding word je zo snel mogelijk goedgekeurd.</p>
+    <label class="setup-label">Naam gezin</label>
+    <input class="setup-input" id="reg-naam" type="text" placeholder="bijv. Familie De Jong" autocomplete="off" style="margin-bottom:10px;letter-spacing:0" />
+    <label class="setup-label">E-mailadres</label>
+    <input class="setup-input" id="reg-email" type="email" placeholder="jullie@email.nl" autocomplete="off" style="margin-bottom:10px;letter-spacing:0" />
+    <label class="setup-label">Kies een gezinscode</label>
+    <input class="setup-input" id="reg-code" type="text" placeholder="bijv. familie-dejong" autocomplete="off" autocapitalize="none" />
+    <div class="setup-hint">Kleine letters, geen spaties. Deel met je partner.</div>
+    <button class="btn-setup" onclick="registreerGezin()" style="margin-top:14px">Aanmelden →</button>
+    <div class="setup-error" id="reg-error"></div>
+    <button onclick="toonKeuze()" style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-top:12px;width:100%">← Terug</button>
+  </div>
+
+  <!-- Wachtend op goedkeuring -->
+
+  <div class="setup-card" id="setup-wachten" style="display:none">
+    <div class="setup-logo">⏳</div>
+    <h2>Aanmelding ontvangen!</h2>
+    <p>Je aanmelding is verstuurd. Je ontvangt een bericht zodra je bent goedgekeurd.<br><br>
+    Heb je al een gezinscode? Dan kun je direct inloggen.</p>
+    <button class="btn-setup" onclick="toonInloggen()">Inloggen →</button>
+    <button onclick="toonKeuze()" style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-top:12px;width:100%">← Terug</button>
   </div>
 </div>
 
@@ -361,7 +390,12 @@
 ```
 <!-- Beheerder sectie -->
 <div id="beheer-sectie" style="display:none">
-  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">Ingediende ideeën</div>
+
+  <!-- Gezinnenbeheer -->
+  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:8px">👨‍👩‍👧 Gezinnenbeheer</div>
+  <div id="registraties-lijst"></div>
+
+  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:20px">💡 Ingediende ideeën</div>
   <div id="ideeen-lijst"></div>
 </div>
 
@@ -474,28 +508,139 @@ const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','
 // ---- Gezinscode ----
 function sanitizeCode(code) { return code.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
 
-function startMetCode() {
+// ---- Setup navigatie ----
+function toonKeuze() {
+  document.getElementById('setup-keuze').style.display = 'block';
+  document.getElementById('setup-inloggen').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'none';
+}
+function toonInloggen() {
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-inloggen').style.display = 'block';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'none';
+}
+function toonRegistreren() {
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-inloggen').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'block';
+  document.getElementById('setup-wachten').style.display = 'none';
+}
+
+// ---- Registratie ----
+async function registreerGezin() {
+  const naam = document.getElementById('reg-naam').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const rawCode = document.getElementById('reg-code').value.trim();
+  const code = sanitizeCode(rawCode);
+  const errEl = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+
+  if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
+  if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
+  if (code.length < 3) { errEl.textContent = 'Kies een code van minimaal 3 tekens.'; errEl.style.display = 'block'; return; }
+
+  // Check of code al bestaat
+  const bestaand = await window._ref(window._db, `registraties/${code}`);
+  const snap = await new Promise(res => window._onValue(bestaand, res, {onlyOnce: true}));
+  if (snap.val()) { errEl.textContent = 'Deze code is al in gebruik, kies een andere.'; errEl.style.display = 'block'; return; }
+
+  // Sla registratie op
+  await window._set(window._ref(window._db, `registraties/${code}`), {
+    code, naam, email,
+    status: 'wachtend',
+    aangemeld: Date.now(),
+    goedgekeurd: false
+  });
+
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'block';
+}
+
+// ---- Inloggen ----
+async function startMetCode() {
   const raw = document.getElementById('setup-code').value.trim();
   const code = sanitizeCode(raw);
-  if (code.length < 3) { toonFout('Kies een code van minimaal 3 tekens.'); return; }
+  const errEl = document.getElementById('setup-error');
+  errEl.style.display = 'none';
+  if (code.length < 3) { errEl.textContent = 'Kies een code van minimaal 3 tekens.'; errEl.style.display = 'block'; return; }
+
+  // Beheerder mag altijd inloggen
+  if (code === sanitizeCode('admin-boodschappen-2025') || localStorage.getItem('beheerder') === '1') {
+    localStorage.setItem('gezinscode', code);
+    gezinsCode = code;
+    document.getElementById('setup-screen').style.display = 'none';
+    initApp();
+    return;
+  }
+
+  // Check registratie status
+  errEl.textContent = 'Controleren…';
+  errEl.style.display = 'block';
+  errEl.style.color = 'var(--muted)';
+
+  const snap = await new Promise(res =>
+    window._onValue(window._ref(window._db, `registraties/${code}`), res, {onlyOnce: true})
+  );
+  const reg = snap.val();
+
+  if (!reg) {
+    // Geen registratie gevonden — direct inloggen (bestaande gezinnen)
+    localStorage.setItem('gezinscode', code);
+    gezinsCode = code;
+    document.getElementById('setup-screen').style.display = 'none';
+    errEl.style.display = 'none';
+    initApp();
+    return;
+  }
+
+  if (reg.status === 'wachtend') {
+    errEl.textContent = '⏳ Je aanmelding wacht nog op goedkeuring.';
+    errEl.style.color = 'var(--red)';
+    return;
+  }
+  if (reg.status === 'afgewezen') {
+    errEl.textContent = '❌ Je aanmelding is afgewezen. Neem contact op.';
+    errEl.style.color = 'var(--red)';
+    return;
+  }
+  if (reg.status === 'geblokkeerd') {
+    errEl.textContent = '🔒 Toegang geblokkeerd. Neem contact op.';
+    errEl.style.color = 'var(--red)';
+    return;
+  }
+
+  // Goedgekeurd!
   localStorage.setItem('gezinscode', code);
   gezinsCode = code;
   document.getElementById('setup-screen').style.display = 'none';
+  errEl.style.display = 'none';
   initApp();
 }
 
 function wijzigCode() {
-  if (!confirm('Wil je van gezinscode wisselen? Je huidige lijst blijft bewaard onder de oude code.')) return;
+  if (!confirm('Wil je van gezinscode wisselen?')) return;
   if (unsubItems) unsubItems(); if (unsubMenu) unsubMenu();
   localStorage.removeItem('gezinscode');
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('setup-screen').style.display = 'block';
-  document.getElementById('setup-code').value = '';
+  toonKeuze();
 }
 
-function toonFout(msg) { const el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; }
+function toonFout(msg) { const el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; el.style.color = 'var(--red)'; }
 
-document.getElementById('setup-code').addEventListener('keydown', e => { if (e.key === 'Enter') startMetCode(); });
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('setup-code');
+  if (inp) {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') startMetCode(); });
+    // Vul beheerderscode automatisch in
+    if (localStorage.getItem('beheerder') === '1') {
+      inp.value = 'familie-de-jong'; // jouw gezinscode
+    }
+  }
+});
 
 // ---- Firebase per gezin ----
 function getRef(pad) { return window._ref(window._db, `gezinnen/${gezinsCode}/${pad}`); }
@@ -526,7 +671,10 @@ function initApp() {
   laadPersonen();
   fbListen();
   isBeheerder = localStorage.getItem('beheerder') === '1';
-  if (isBeheerder) { const f = document.getElementById('beheer-unlock-form'); if(f) f.style.display='none'; }
+  if (isBeheerder) {
+    const f = document.getElementById('beheer-unlock-form'); if(f) f.style.display='none';
+    fbListenRegistraties();
+  }
   fbListenIdeeen();
   setupMic();
   setSyncStatus(false);
@@ -688,6 +836,58 @@ async function clearDag(i) {
   setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
 }
 
+// ---- Registratiebeheer ----
+let unsubRegistraties = null;
+
+function fbListenRegistraties() {
+  if (unsubRegistraties) unsubRegistraties();
+  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), snap => {
+    const data = snap.val() || {};
+    const regs = Object.values(data).sort((a,b) => b.aangemeld - a.aangemeld);
+    renderRegistraties(regs);
+  });
+}
+
+function renderRegistraties(regs) {
+  const el = document.getElementById('registraties-lijst');
+  if (!el) return;
+  if (!regs.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen aanmeldingen.</div>'; return; }
+
+  const statusKleur = { wachtend:'#c47a2a', goedgekeurd:'#3d6b4f', afgewezen:'#c4473a', geblokkeerd:'#7a4db5' };
+  const statusLabel = { wachtend:'⏳ Wachtend', goedgekeurd:'✅ Goedgekeurd', afgewezen:'❌ Afgewezen', geblokkeerd:'🔒 Geblokkeerd' };
+
+  el.innerHTML = regs.map(reg => `
+    <div class="idee-card status-${reg.status==='goedgekeurd'?'goedgekeurd':reg.status==='wachtend'?'nieuw':'afgewezen'}" style="margin-bottom:8px">
+      <div class="idee-header">
+        <div>
+          <div style="font-weight:600;font-size:0.9rem">${esc(reg.naam||'Onbekend')}</div>
+          <div style="font-size:0.75rem;color:var(--muted)">${esc(reg.email||'')} · code: <strong>${esc(reg.code)}</strong></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span class="idee-status-badge" style="background:${statusKleur[reg.status]||'#ccc'}20;color:${statusKleur[reg.status]||'#ccc'}">${statusLabel[reg.status]||reg.status}</span>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">${new Date(reg.aangemeld).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</div>
+        </div>
+      </div>
+      <div class="idee-acties">
+        ${reg.status !== 'goedgekeurd' ? `<button class="idee-btn goedkeuren" onclick="updateRegistratieStatus('${reg.code}','goedgekeurd')">✅ Goedkeuren</button>` : ''}
+        ${reg.status === 'goedgekeurd' ? `<button class="idee-btn behandeling" onclick="updateRegistratieStatus('${reg.code}','geblokkeerd')">🔒 Blokkeren</button>` : ''}
+        ${reg.status !== 'afgewezen' && reg.status !== 'goedgekeurd' ? `<button class="idee-btn afwijzen" onclick="updateRegistratieStatus('${reg.code}','afgewezen')">❌ Afwijzen</button>` : ''}
+        ${reg.status === 'geblokkeerd' ? `<button class="idee-btn goedkeuren" onclick="updateRegistratieStatus('${reg.code}','goedgekeurd')">🔓 Deblokkeren</button>` : ''}
+        <button class="idee-btn verwijder" onclick="verwijderRegistratie('${reg.code}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+async function updateRegistratieStatus(code, status) {
+  await window._set(window._ref(window._db, `registraties/${code}/status`), status);
+  await window._set(window._ref(window._db, `registraties/${code}/goedgekeurd`), status === 'goedgekeurd');
+}
+
+async function verwijderRegistratie(code) {
+  if (!confirm(`Aanmelding van ${code} verwijderen?`)) return;
+  await window._remove(window._ref(window._db, `registraties/${code}`));
+}
+
 // ---- Ideeënbus ----
 const BEHEER_CODE = 'admin-boodschappen-2025'; // Jouw geheime beheerderscode
 let isBeheerder = false;
@@ -778,6 +978,7 @@ function checkBeheerder() {
     isBeheerder = true;
     localStorage.setItem('beheerder', '1');
     fbListenIdeeen();
+    fbListenRegistraties();
     document.getElementById('beheer-unlock-form').style.display = 'none';
   } else {
     alert('Onjuiste code');
