@@ -156,6 +156,16 @@
   .winkel-plus { background:#FFF0E8; color:#D45000; }
   .winkel-dirk { background:#FFE8E8; color:#AA0000; }
   .winkel-coop { background:#E8F0FF; color:#003EA6; }
+  .winkel-etos { background:#FFE8F5; color:#C4006A; }
+  .winkel-kruidvat { background:#F3E8FF; color:#6A00C4; }
+  .winkel-da       { background:#FFF3E0; color:#BF6000; }
+  .winkel-plein    { background:#E8F4FF; color:#0060BF; }
+  .winkel-online   { background:#E8FFF3; color:#006040; }
+  .winkel-schoon      { background:#F0F8FF; color:#004080; }
+  .winkel-gall        { background:#FFF0F0; color:#8B0000; }
+  .winkel-mitra       { background:#FFF5E0; color:#7B4000; }
+  .winkel-dirck3      { background:#FFF8E8; color:#5B3A00; }
+  .winkel-deslijterij { background:#F0FFF0; color:#1a5c1a; }
   .winkel-advies { background:var(--green); color:white; }
   .winkel-totaal { margin-left:auto; font-family:"Playfair Display",serif; font-size:1.1rem; }
   .winkel-items { padding:8px 14px 12px; }
@@ -167,6 +177,13 @@
   .advies-banner h3 { font-family:"Playfair Display",serif; font-size:1.1rem; margin-bottom:4px; }
   .advies-banner p { font-size:0.82rem; opacity:0.9; line-height:1.5; }
   .bron-link { font-size:0.7rem; color:var(--muted); text-decoration:underline; }
+  /* Foto avatar */
+  .avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; border:2px solid var(--border); }
+  .avatar-placeholder { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; border:2px solid var(--border); }
+  .foto-upload-label { width:44px; height:44px; border-radius:50%; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.2rem; flex-shrink:0; overflow:hidden; position:relative; background:var(--cream); }
+  .foto-upload-label img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+  .foto-upload-label input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+
   /* Personen modal */
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
   .modal-card { background:white; border-radius:20px 20px 0 0; padding:24px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; }
@@ -456,23 +473,66 @@ function renderPersonenKnoppen() {
   if (row) row.innerHTML = personen.map(p => {
     const isActief = p.naam === currentPerson;
     const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-    return `<button onclick="setPerson('${p.naam}')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid ${isActief ? p.kleur : 'var(--border)'};background:${isActief ? bg : 'white'};cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:500;color:${isActief ? p.kleur : 'var(--muted)'};transition:all 0.18s">👤 ${p.naam}</button>`;
+    const avatar = p.foto
+      ? `<img src="${p.foto}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;margin-right:4px;vertical-align:middle" />`
+      : `<span style="margin-right:3px">👤</span>`;
+    return `<button onclick="setPerson('${p.naam}')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid ${isActief ? p.kleur : 'var(--border)'};background:${isActief ? bg : 'white'};cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:500;color:${isActief ? p.kleur : 'var(--muted)'};transition:all 0.18s;display:flex;align-items:center;justify-content:center">${avatar}${p.naam}</button>`;
   }).join('');
   // Filter chips
   const filterRow = document.getElementById('filter-row');
   if (filterRow) filterRow.innerHTML = `<button class="filter-chip ${currentFilter==='alle'?'active':''}" onclick="setFilter(this,'alle')">Alle</button>` +
-    personen.map(p => `<button class="filter-chip ${currentFilter===p.naam?'active':''}" onclick="setFilter(this,'${p.naam}')">👤 ${p.naam}</button>`).join('');
+    personen.map(p => {
+      const avatar = p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:3px;vertical-align:middle" />` : '👤 ';
+      return `<button class="filter-chip ${currentFilter===p.naam?'active':''}" onclick="setFilter(this,'${p.naam}')">${avatar}${p.naam}</button>`;
+    }).join('');
 }
 
 function openPersonenInstellingen() {
   const el = document.getElementById('personen-invoer');
   el.innerHTML = personen.map((p, i) => `
     <div class="persoon-rij" id="persoon-rij-${i}">
+      <label class="foto-upload-label" title="Foto uploaden" id="foto-label-${i}">
+        ${p.foto ? `<img src="${p.foto}" id="foto-preview-${i}" />` : `<span id="foto-preview-${i}">📷</span>`}
+        <input type="file" accept="image/*" onchange="verwerkFoto(event,${i})" />
+      </label>
       <input class="persoon-input" value="${p.naam}" placeholder="Naam" maxlength="20" id="persoon-naam-${i}" />
       <input type="color" value="${p.kleur}" class="persoon-kleur" id="persoon-kleur-${i}" />
       ${personen.length > 1 ? `<button class="persoon-verwijder" onclick="verwijderPersoon(${i})">✕</button>` : ''}
     </div>`).join('');
   document.getElementById('personen-modal').style.display = 'flex';
+}
+
+function verwerkFoto(event, i) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // Verklein foto naar max 100x100px
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 100;
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      // Sla tijdelijk op
+      if (!personen[i]) return;
+      personen[i].foto = dataUrl;
+      // Update preview
+      const preview = document.getElementById('foto-preview-' + i);
+      if (preview) {
+        const imgEl = document.createElement('img');
+        imgEl.src = dataUrl;
+        preview.replaceWith(imgEl);
+        imgEl.id = 'foto-preview-' + i;
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function sluitPersonenModal(e) {
@@ -494,7 +554,8 @@ function verwijderPersoon(i) {
 function slaPersonenOp() {
   personen = personen.map((p, i) => ({
     naam: document.getElementById('persoon-naam-'+i)?.value.trim() || p.naam,
-    kleur: document.getElementById('persoon-kleur-'+i)?.value || p.kleur
+    kleur: document.getElementById('persoon-kleur-'+i)?.value || p.kleur,
+    foto: p.foto || null
   })).filter(p => p.naam);
   slaPersonenLocalOp();
   renderPersonenKnoppen();
@@ -772,7 +833,7 @@ function renderList(id, list, isDone) {
       <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
       <div class="item-main">
         <div class="item-name">${esc(item.name)}</div>
-        <div style="margin-top:2px"><span class="item-person" style="background:${bg};color:${p.kleur}">👤 ${esc(item.person)}</span></div>
+        <div style="margin-top:2px"><span class="item-person" style="background:${bg};color:${p.kleur};display:inline-flex;align-items:center;gap:3px">${p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />` : '👤'} ${esc(item.person)}</span></div>
       </div>
       <div class="qty-controls">
         <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
@@ -997,11 +1058,21 @@ const WINKELS_DEF = {
   plus:   { naam:'Plus',         logo:'🟠', kleur:'winkel-plus',   link:'https://www.plus.nl/zoekresultaten?SearchTerm=',  osm:'Plus' },
   dirk:   { naam:'Dirk',         logo:'🟥', kleur:'winkel-dirk',   link:'https://www.dirk.nl/boodschappen/?search=',       osm:'Dirk' },
   coop:   { naam:'Coop',         logo:'🔷', kleur:'winkel-coop',   link:'https://www.coop.nl/zoeken?zoekterm=',            osm:'Coop' },
+  etos:   { naam:'Etos',         logo:'🩷', kleur:'winkel-etos',   link:'https://www.etos.nl/zoeken?query=',               osm:'Etos', drogist:true },
+  kruidvat:  { naam:'Kruidvat',        logo:'🟣', kleur:'winkel-kruidvat',  link:'https://www.kruidvat.nl/search?text=',                    osm:'Kruidvat', drogist:true },
+  da:        { naam:'DA',               logo:'🔶', kleur:'winkel-da',         link:'https://www.da.nl/zoeken?query=',                         osm:'DA', drogist:true },
+  plein:     { naam:'Plein.nl',         logo:'🌐', kleur:'winkel-plein',      link:'https://www.plein.nl/search?q=',                          osm:null, drogist:true },
+  online:    { naam:'Online Drogisterij', logo:'💊', kleur:'winkel-online',   link:'https://www.online.nl/search?q=',                         osm:null, drogist:true },
+  schoon:    { naam:'123schoon',        logo:'🧹', kleur:'winkel-schoon',     link:'https://www.123schoon.nl/search?q=',                      osm:null, drogist:true },
+  gall:      { naam:'Gall & Gall',      logo:'🍷', kleur:'winkel-gall',       link:'https://www.gall.nl/assortiment/search?searchTerm=',      osm:'Gall & Gall', slijterij:true },
+  mitra:     { naam:'Mitra',            logo:'🥃', kleur:'winkel-mitra',      link:'https://www.mitra.nl/search?q=',                          osm:'Mitra', slijterij:true },
+  dirck3:    { naam:'Dirck III',        logo:'🍺', kleur:'winkel-dirck3',     link:'https://www.dirck3.nl/search?q=',                         osm:'Dirck III', slijterij:true },
+  deslijterij: { naam:'De Slijterij',  logo:'🌿', kleur:'winkel-deslijterij', link:'https://www.deslijterij.com/search?q=',                   osm:null, slijterij:true },
 };
 
 // Prijsfactoren per winkel t.o.v. AH (basis)
 // AH=1.0, Jumbo=0.95, Lidl=0.82, Aldi=0.78, Picnic=0.91, Plus=0.97, Dirk=0.88, Coop=0.96
-const FACTOR = { ah:1.00, jumbo:0.95, lidl:0.82, aldi:0.78, picnic:0.91, plus:0.97, dirk:0.88, coop:0.96 };
+const FACTOR = { ah:1.00, jumbo:0.95, lidl:0.82, aldi:0.78, picnic:0.91, plus:0.97, dirk:0.88, coop:0.96, etos:1.05, kruidvat:0.95, da:1.02, plein:0.88, online:0.85, schoon:0.82, gall:0.92, mitra:0.90, dirck3:0.88, deslijterij:0.85 };
 
 const PRIJSDB = {
   'melk': {ah:1.19}, 'volle melk': {ah:1.19}, 'halfvolle melk': {ah:1.09},
@@ -1053,6 +1124,46 @@ const PRIJSDB = {
   'noten': {ah:3.49}, 'rozijnen': {ah:1.99},
   'wasmiddel': {ah:7.99}, 'afwasmiddel': {ah:1.99}, 'toiletpapier': {ah:4.99},
   'keukenpapier': {ah:2.49}, 'aluminiumfolie': {ah:1.99}, 'huishoudfolie': {ah:1.79},
+  // Drogisterij
+  'scheermesjes': {ah:8.99}, 'scheerschuim': {ah:3.99}, 'scheermes': {ah:8.99},
+  'tandpasta': {ah:2.49}, 'tandenborstel': {ah:3.99},
+  'shampoo': {ah:3.99}, 'conditioner': {ah:3.99}, 'douchegel': {ah:2.99},
+  'zeep': {ah:1.99}, 'deodorant': {ah:3.49},
+  'lippenstift': {ah:5.99}, 'mascara': {ah:7.99}, 'foundation': {ah:9.99},
+  'zonnebrandcrème': {ah:8.99}, 'zonnebrand': {ah:8.99}, 'aftersun': {ah:6.99},
+  'bodylotion': {ah:4.99}, 'handcrème': {ah:3.99}, 'gezichtscrème': {ah:7.99},
+  'watten': {ah:1.99}, 'wattenstaafjes': {ah:1.99},
+  'maandverband': {ah:3.99}, 'tampons': {ah:3.99},
+  'condoom': {ah:7.99}, 'condooms': {ah:7.99},
+  'ibuprofen': {ah:4.99}, 'paracetamol': {ah:2.99},
+  'vitamine c': {ah:5.99}, 'vitamines': {ah:8.99},
+  'hoestdrank': {ah:6.99}, 'neusdruppels': {ah:5.99}, 'oogdruppels': {ah:6.99},
+  'pleisters': {ah:3.49}, 'verbandgaas': {ah:3.99},
+  'luiers': {ah:14.99}, 'babydoekjes': {ah:3.99}, 'babyolie': {ah:4.99},
+  'haargel': {ah:3.99}, 'haarspray': {ah:4.99}, 'wax': {ah:5.99},
+  'parfum': {ah:29.99}, 'nagellak': {ah:4.99},
+  // Alcoholische dranken
+  'bier': {ah:6.99}, 'biertje': {ah:6.99}, 'sixpack': {ah:6.99},
+  'hertog jan': {ah:7.99}, 'heineken': {ah:7.49}, 'amstel': {ah:6.99},
+  'grolsch': {ah:7.49}, 'jupiler': {ah:6.49}, 'bavaria': {ah:5.99},
+  'corona': {ah:9.99}, 'la trappe': {ah:8.99}, 'duvel': {ah:9.99},
+  'craft beer': {ah:3.49}, 'ipa': {ah:3.49},
+  'wijn': {ah:6.99}, 'rode wijn': {ah:6.99}, 'witte wijn': {ah:6.99},
+  'rosé': {ah:6.99}, 'prosecco': {ah:7.99}, 'cava': {ah:6.99},
+  'champagne': {ah:24.99}, 'port': {ah:8.99}, 'sherry': {ah:7.99},
+  'vodka': {ah:14.99}, 'gin': {ah:16.99}, 'rum': {ah:14.99},
+  'whisky': {ah:19.99}, 'whiskey': {ah:19.99}, 'bourbon': {ah:19.99},
+  'cognac': {ah:24.99}, 'jenever': {ah:12.99}, 'advocaat': {ah:9.99},
+  'baileys': {ah:14.99}, 'tequila': {ah:16.99}, 'aperol': {ah:14.99},
+  'campari': {ah:14.99}, 'pimms': {ah:12.99}, 'limoncello': {ah:11.99},
+  'amaretto': {ah:12.99}, 'sambuca': {ah:11.99},
+
+  // Schoonmaak (ook voor 123schoon)
+  'schoonmaakmiddel': {ah:2.99}, 'allesreiniger': {ah:2.49},
+  'wc-eend': {ah:2.49}, 'bleek': {ah:1.99}, 'soda': {ah:1.99},
+  'schuurmiddel': {ah:1.99}, 'vaatwastabletten': {ah:6.99},
+  'wasverzachter': {ah:4.99}, 'ontkalk': {ah:3.99},
+  'vloeibaar wasmiddel': {ah:8.99}, 'vlekkenverwijderaar': {ah:4.99},
 };
 
 // Bereken prijzen voor alle winkels op basis van AH-prijs * factor
@@ -1137,8 +1248,27 @@ async function vergelijkPrijzen() {
   resultaat.className = 'prijs-resultaat zichtbaar';
   resultaat.innerHTML = '<div class="prijs-loading">📍 Locatie bepalen en winkels zoeken…</div>';
 
-  // Stap 1: Locatie ophalen
-  let actieveWinkels = Object.keys(WINKELS_DEF); // standaard alle winkels
+  // Stap 1: Check of er drogisterijartikelen op de lijst staan
+  const DROGIST_ITEMS = ['scheermesjes','scheermes','scheerschuim','tandpasta','tandenborstel','shampoo','conditioner','douchegel','zeep','deodorant','lippenstift','mascara','foundation','zonnebrand','zonnebrandcrème','aftersun','bodylotion','handcrème','gezichtscrème','watten','wattenstaafjes','maandverband','tampons','condoom','condooms','ibuprofen','paracetamol','vitamine','vitamines','hoestdrank','neusdruppels','oogdruppels','pleisters','luiers','babydoekjes','babyolie','haargel','haarspray','parfum','nagellak','schoonmaakmiddel','allesreiniger','wc-eend','bleek','soda','schuurmiddel','vloeibaar','afwasmiddel','vaatwastabletten','wasverzachter','bier','wijn','vodka','gin','rum','whisky','whiskey','jenever','prosecco','champagne','rosé','witte wijn','rode wijn','heineken','hertog jan','grolsch','amstel','bavaria','jupiler','corona','tequila','cognac','baileys','aperol'];
+  const heeftDrogistItems = todoItems.some(item =>
+    DROGIST_ITEMS.some(d => item.name.toLowerCase().includes(d))
+  );
+  const SLIJTERIJ_ITEMS = ['bier','wijn','vodka','gin','rum','whisky','whiskey','jenever','prosecco','champagne','rosé','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol','biertje','sixpack'];
+  const heeftSlijterijItems = todoItems.some(item =>
+    SLIJTERIJ_ITEMS.some(d => item.name.toLowerCase().includes(d))
+  );
+
+  const alleWinkels = Object.keys(WINKELS_DEF);
+  const supermarkten = alleWinkels.filter(w => !WINKELS_DEF[w].drogist && !WINKELS_DEF[w].slijterij);
+  const drogisten = alleWinkels.filter(w => WINKELS_DEF[w].drogist);
+  const slijterijen = alleWinkels.filter(w => WINKELS_DEF[w].slijterij);
+
+  // Stap 2: Locatie ophalen
+  let actieveWinkels = [
+    ...supermarkten,
+    ...(heeftDrogistItems ? drogisten : []),
+    ...(heeftSlijterijItems ? slijterijen : [])
+  ];
   let locatieLabel = 'Alle winkels';
 
   try {
