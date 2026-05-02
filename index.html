@@ -151,6 +151,11 @@
   .winkel-ah { background:#EFF7EE; color:#007A3D; }
   .winkel-jumbo { background:#FFF8E1; color:#E5A000; }
   .winkel-lidl { background:#EEF2FF; color:#003DA5; }
+  .winkel-aldi { background:#E8F0FF; color:#00005B; }
+  .winkel-picnic { background:#E8F8EE; color:#1a7a3a; }
+  .winkel-plus { background:#FFF0E8; color:#D45000; }
+  .winkel-dirk { background:#FFE8E8; color:#AA0000; }
+  .winkel-coop { background:#E8F0FF; color:#003EA6; }
   .winkel-advies { background:var(--green); color:white; }
   .winkel-totaal { margin-left:auto; font-family:"Playfair Display",serif; font-size:1.1rem; }
   .winkel-items { padding:8px 14px 12px; }
@@ -781,193 +786,137 @@ function checkBeheerder() {
 
 // ---- Prijsvergelijking met statische database ----
 
-const PRIJSDB = {
-  // Zuivel
-  'melk': {ah:1.19, jumbo:1.09, lidl:0.89},
-  'volle melk': {ah:1.19, jumbo:1.09, lidl:0.89},
-  'halfvolle melk': {ah:1.09, jumbo:0.99, lidl:0.85},
-  'magere melk': {ah:1.05, jumbo:0.95, lidl:0.82},
-  'karnemelk': {ah:0.99, jumbo:0.89, lidl:0.79},
-  'boter': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'roomboter': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'margarine': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'kaas': {ah:3.49, jumbo:3.29, lidl:2.79},
-  'jonge kaas': {ah:3.29, jumbo:3.09, lidl:2.69},
-  'oude kaas': {ah:3.99, jumbo:3.79, lidl:3.29},
-  'gouda': {ah:3.49, jumbo:3.29, lidl:2.79},
-  'eieren': {ah:2.99, jumbo:2.79, lidl:2.49},
-  'yoghurt': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'kwark': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'slagroom': {ah:1.39, jumbo:1.29, lidl:1.09},
-  'crème fraîche': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'zure room': {ah:0.99, jumbo:0.89, lidl:0.79},
-  // Brood & bakkerij
-  'brood': {ah:1.89, jumbo:1.79, lidl:1.49},
-  'wit brood': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'bruin brood': {ah:1.79, jumbo:1.69, lidl:1.39},
-  'volkoren brood': {ah:2.09, jumbo:1.99, lidl:1.69},
-  'croissants': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'beschuit': {ah:1.39, jumbo:1.29, lidl:1.09},
-  'crackers': {ah:1.49, jumbo:1.39, lidl:1.19},
-  // Vlees & vis
-  'gehakt': {ah:3.99, jumbo:3.79, lidl:3.29},
-  'rundergehakt': {ah:4.49, jumbo:4.29, lidl:3.79},
-  'kipfilet': {ah:5.99, jumbo:5.79, lidl:4.99},
-  'kip': {ah:4.99, jumbo:4.79, lidl:3.99},
-  'kipschnitzel': {ah:4.49, jumbo:4.29, lidl:3.69},
-  'spek': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'bacon': {ah:2.99, jumbo:2.79, lidl:2.49},
-  'ham': {ah:2.29, jumbo:2.09, lidl:1.89},
-  'salami': {ah:1.99, jumbo:1.89, lidl:1.69},
-  'worst': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'rookworst': {ah:2.99, jumbo:2.79, lidl:2.49},
-  'zalm': {ah:5.99, jumbo:5.79, lidl:4.99},
-  'tonijn': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'vissticks': {ah:2.99, jumbo:2.79, lidl:2.49},
-  // Groenten
-  'tomaten': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'komkommer': {ah:0.89, jumbo:0.79, lidl:0.69},
-  'sla': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'paprika': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'ui': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'uien': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'knoflook': {ah:0.79, jumbo:0.69, lidl:0.59},
-  'wortel': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'wortelen': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'broccoli': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'bloemkool': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'spinazie': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'courgette': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'aubergine': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'champignons': {ah:1.79, jumbo:1.69, lidl:1.39},
-  'aardappelen': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'aardappels': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'ijsbergsla': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'prei': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'selderij': {ah:1.19, jumbo:1.09, lidl:0.89},
-  'maïs': {ah:0.99, jumbo:0.89, lidl:0.79},
-  // Fruit
-  'appels': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'bananen': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'sinaasappels': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'druiven': {ah:2.99, jumbo:2.79, lidl:2.49},
-  'aardbeien': {ah:2.99, jumbo:2.79, lidl:2.49},
-  'mandarijnen': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'mango': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'avocado': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'citroen': {ah:0.49, jumbo:0.45, lidl:0.39},
-  'citroenen': {ah:0.99, jumbo:0.89, lidl:0.79},
-  'peer': {ah:0.79, jumbo:0.69, lidl:0.59},
-  'peren': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'kiwi': {ah:0.49, jumbo:0.45, lidl:0.39},
-  // Pasta, rijst & granen
-  'pasta': {ah:1.29, jumbo:1.19, lidl:0.89},
-  'spaghetti': {ah:1.29, jumbo:1.19, lidl:0.89},
-  'penne': {ah:1.29, jumbo:1.19, lidl:0.89},
-  'fusilli': {ah:1.29, jumbo:1.19, lidl:0.89},
-  'macaroni': {ah:1.29, jumbo:1.19, lidl:0.89},
-  'tagliatelle': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'lasagnebladen': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'rijst': {ah:1.99, jumbo:1.89, lidl:1.49},
-  'basmatirijst': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'zilvervliesrijst': {ah:2.29, jumbo:2.09, lidl:1.79},
-  'couscous': {ah:1.79, jumbo:1.69, lidl:1.39},
-  'quinoa': {ah:3.49, jumbo:3.29, lidl:2.99},
-  'orzo': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'havermout': {ah:1.49, jumbo:1.39, lidl:1.09},
-  // Sauzen & conserven
-  'tomatenpuree': {ah:0.89, jumbo:0.79, lidl:0.69},
-  'passata': {ah:1.09, jumbo:0.99, lidl:0.85},
-  'tomatensaus': {ah:1.49, jumbo:1.39, lidl:1.09},
-  'bolognesesaus': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'pesto': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'ketchup': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'mayonaise': {ah:2.29, jumbo:2.09, lidl:1.79},
-  'mosterd': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'sambal': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'sojasaus': {ah:1.79, jumbo:1.69, lidl:1.39},
-  'ketjap': {ah:1.79, jumbo:1.69, lidl:1.39},
-  'olijfolie': {ah:4.99, jumbo:4.79, lidl:3.99},
-  'zonnebloemolie': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'azijn': {ah:0.99, jumbo:0.89, lidl:0.75},
-  // Blikken & potten
-  'blikje tonijn': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'blikje mais': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'kikkererwten': {ah:1.09, jumbo:0.99, lidl:0.85},
-  'bruine bonen': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'witte bonen': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'linzen': {ah:1.29, jumbo:1.19, lidl:0.99},
-  // Ontbijt
-  'cornflakes': {ah:2.49, jumbo:2.29, lidl:1.79},
-  'muesli': {ah:2.99, jumbo:2.79, lidl:2.29},
-  'granola': {ah:3.49, jumbo:3.29, lidl:2.79},
-  'jam': {ah:2.29, jumbo:2.09, lidl:1.79},
-  'pindakaas': {ah:2.99, jumbo:2.79, lidl:2.49},
-  'nutella': {ah:3.49, jumbo:3.29, lidl:2.99},
-  'hagelslag': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'honing': {ah:3.49, jumbo:3.29, lidl:2.79},
-  // Dranken
-  'water': {ah:0.49, jumbo:0.45, lidl:0.39},
-  'spa blauw': {ah:0.79, jumbo:0.69, lidl:0.59},
-  'cola': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'frisdrank': {ah:1.79, jumbo:1.69, lidl:1.39},
-  'sinaasappelsap': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'appelsap': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'jus': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'koffie': {ah:5.99, jumbo:5.79, lidl:4.99},
-  'thee': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'bier': {ah:6.99, jumbo:6.49, lidl:5.99},
-  'wijn': {ah:6.99, jumbo:6.49, lidl:5.49},
-  // Kruiden & specerijen
-  'zout': {ah:0.79, jumbo:0.69, lidl:0.59},
-  'peper': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'suiker': {ah:1.49, jumbo:1.39, lidl:1.09},
-  'bloem': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'bakpoeder': {ah:0.99, jumbo:0.89, lidl:0.75},
-  'vanillesuiker': {ah:0.79, jumbo:0.69, lidl:0.59},
-  'kaneel': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'paprikapoeder': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'currypoeder': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'oregano': {ah:1.29, jumbo:1.19, lidl:0.99},
-  'basilicum': {ah:1.29, jumbo:1.19, lidl:0.99},
-  // Diepvries
-  'diepvriesgroenten': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'doperwten': {ah:1.49, jumbo:1.39, lidl:1.19},
-  'friet': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'pizza': {ah:3.99, jumbo:3.79, lidl:2.99},
-  'ijsje': {ah:2.99, jumbo:2.79, lidl:2.49},
-  // Snacks
-  'chips': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'koekjes': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'chocolade': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'noten': {ah:3.49, jumbo:3.29, lidl:2.79},
-  'rozijnen': {ah:1.99, jumbo:1.89, lidl:1.59},
-  // Huishoud
-  'wasmiddel': {ah:7.99, jumbo:7.49, lidl:6.49},
-  'afwasmiddel': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'toiletpapier': {ah:4.99, jumbo:4.79, lidl:3.99},
-  'keukenpapier': {ah:2.49, jumbo:2.29, lidl:1.99},
-  'aluminiumfolie': {ah:1.99, jumbo:1.89, lidl:1.59},
-  'huishoudfolie': {ah:1.79, jumbo:1.69, lidl:1.39},
+// ---- Winkeldefinities ----
+const WINKELS_DEF = {
+  ah:     { naam:'Albert Heijn', logo:'🔵', kleur:'winkel-ah',     link:'https://www.ah.nl/zoeken?query=',                osm:'Albert Heijn' },
+  jumbo:  { naam:'Jumbo',        logo:'🟡', kleur:'winkel-jumbo',  link:'https://www.jumbo.com/zoeken?searchTerms=',       osm:'Jumbo' },
+  lidl:   { naam:'Lidl',         logo:'🔴', kleur:'winkel-lidl',   link:'https://www.lidl.nl/p/zoeken?query=',             osm:'Lidl' },
+  aldi:   { naam:'Aldi',         logo:'🟦', kleur:'winkel-aldi',   link:'https://www.aldi.nl/producten.html?q=',           osm:'Aldi' },
+  picnic: { naam:'Picnic',       logo:'🟢', kleur:'winkel-picnic', link:'https://picnic.app/nl/search?search=',            osm:null },
+  plus:   { naam:'Plus',         logo:'🟠', kleur:'winkel-plus',   link:'https://www.plus.nl/zoekresultaten?SearchTerm=',  osm:'Plus' },
+  dirk:   { naam:'Dirk',         logo:'🟥', kleur:'winkel-dirk',   link:'https://www.dirk.nl/boodschappen/?search=',       osm:'Dirk' },
+  coop:   { naam:'Coop',         logo:'🔷', kleur:'winkel-coop',   link:'https://www.coop.nl/zoeken?zoekterm=',            osm:'Coop' },
 };
+
+// Prijsfactoren per winkel t.o.v. AH (basis)
+// AH=1.0, Jumbo=0.95, Lidl=0.82, Aldi=0.78, Picnic=0.91, Plus=0.97, Dirk=0.88, Coop=0.96
+const FACTOR = { ah:1.00, jumbo:0.95, lidl:0.82, aldi:0.78, picnic:0.91, plus:0.97, dirk:0.88, coop:0.96 };
+
+const PRIJSDB = {
+  'melk': {ah:1.19}, 'volle melk': {ah:1.19}, 'halfvolle melk': {ah:1.09},
+  'magere melk': {ah:1.05}, 'karnemelk': {ah:0.99},
+  'boter': {ah:2.49}, 'roomboter': {ah:2.49}, 'margarine': {ah:1.49},
+  'kaas': {ah:3.49}, 'jonge kaas': {ah:3.29}, 'oude kaas': {ah:3.99}, 'gouda': {ah:3.49},
+  'eieren': {ah:2.99}, 'yoghurt': {ah:1.29}, 'kwark': {ah:1.49},
+  'slagroom': {ah:1.39}, 'crème fraîche': {ah:1.49}, 'zure room': {ah:0.99},
+  'brood': {ah:1.89}, 'wit brood': {ah:1.49}, 'bruin brood': {ah:1.79},
+  'volkoren brood': {ah:2.09}, 'croissants': {ah:1.99}, 'beschuit': {ah:1.39}, 'crackers': {ah:1.49},
+  'gehakt': {ah:3.99}, 'rundergehakt': {ah:4.49}, 'kipfilet': {ah:5.99},
+  'kip': {ah:4.99}, 'kipschnitzel': {ah:4.49}, 'spek': {ah:2.49}, 'bacon': {ah:2.99},
+  'ham': {ah:2.29}, 'salami': {ah:1.99}, 'worst': {ah:2.49}, 'rookworst': {ah:2.99},
+  'zalm': {ah:5.99}, 'tonijn': {ah:1.49}, 'vissticks': {ah:2.99},
+  'tomaten': {ah:1.99}, 'komkommer': {ah:0.89}, 'sla': {ah:0.99},
+  'paprika': {ah:1.49}, 'ui': {ah:0.99}, 'uien': {ah:0.99}, 'knoflook': {ah:0.79},
+  'wortel': {ah:0.99}, 'wortelen': {ah:0.99}, 'broccoli': {ah:1.49},
+  'bloemkool': {ah:1.99}, 'spinazie': {ah:1.99}, 'courgette': {ah:1.29},
+  'aubergine': {ah:1.49}, 'champignons': {ah:1.79}, 'aardappelen': {ah:1.99},
+  'aardappels': {ah:1.99}, 'ijsbergsla': {ah:0.99}, 'prei': {ah:1.29},
+  'appels': {ah:1.99}, 'bananen': {ah:1.49}, 'sinaasappels': {ah:2.49},
+  'druiven': {ah:2.99}, 'aardbeien': {ah:2.99}, 'mandarijnen': {ah:2.49},
+  'mango': {ah:1.49}, 'avocado': {ah:1.29}, 'citroen': {ah:0.49},
+  'citroenen': {ah:0.99}, 'peer': {ah:0.79}, 'peren': {ah:1.99}, 'kiwi': {ah:0.49},
+  'pasta': {ah:1.29}, 'spaghetti': {ah:1.29}, 'penne': {ah:1.29},
+  'fusilli': {ah:1.29}, 'macaroni': {ah:1.29}, 'tagliatelle': {ah:1.49},
+  'lasagnebladen': {ah:1.49}, 'rijst': {ah:1.99}, 'basmatirijst': {ah:2.49},
+  'zilvervliesrijst': {ah:2.29}, 'couscous': {ah:1.79}, 'quinoa': {ah:3.49},
+  'orzo': {ah:1.49}, 'havermout': {ah:1.49},
+  'tomatenpuree': {ah:0.89}, 'passata': {ah:1.09}, 'tomatensaus': {ah:1.49},
+  'bolognesesaus': {ah:2.49}, 'pesto': {ah:2.49}, 'ketchup': {ah:1.99},
+  'mayonaise': {ah:2.29}, 'mosterd': {ah:1.29}, 'sambal': {ah:1.99},
+  'sojasaus': {ah:1.79}, 'ketjap': {ah:1.79}, 'olijfolie': {ah:4.99},
+  'zonnebloemolie': {ah:2.49}, 'azijn': {ah:0.99},
+  'blikje tonijn': {ah:1.49}, 'blikje mais': {ah:0.99}, 'kikkererwten': {ah:1.09},
+  'bruine bonen': {ah:0.99}, 'witte bonen': {ah:0.99}, 'linzen': {ah:1.29},
+  'cornflakes': {ah:2.49}, 'muesli': {ah:2.99}, 'granola': {ah:3.49},
+  'jam': {ah:2.29}, 'pindakaas': {ah:2.99}, 'nutella': {ah:3.49},
+  'hagelslag': {ah:1.99}, 'honing': {ah:3.49},
+  'water': {ah:0.49}, 'spa blauw': {ah:0.79}, 'cola': {ah:1.99},
+  'frisdrank': {ah:1.79}, 'sinaasappelsap': {ah:2.49}, 'appelsap': {ah:1.99},
+  'koffie': {ah:5.99}, 'thee': {ah:2.49}, 'bier': {ah:6.99}, 'wijn': {ah:6.99},
+  'zout': {ah:0.79}, 'peper': {ah:1.49}, 'suiker': {ah:1.49}, 'bloem': {ah:0.99},
+  'bakpoeder': {ah:0.99}, 'vanillesuiker': {ah:0.79}, 'kaneel': {ah:1.49},
+  'paprikapoeder': {ah:1.29}, 'currypoeder': {ah:1.49}, 'oregano': {ah:1.29}, 'basilicum': {ah:1.29},
+  'diepvriesgroenten': {ah:1.99}, 'doperwten': {ah:1.49}, 'friet': {ah:2.49},
+  'pizza': {ah:3.99}, 'ijsje': {ah:2.99},
+  'chips': {ah:1.99}, 'koekjes': {ah:1.99}, 'chocolade': {ah:1.99},
+  'noten': {ah:3.49}, 'rozijnen': {ah:1.99},
+  'wasmiddel': {ah:7.99}, 'afwasmiddel': {ah:1.99}, 'toiletpapier': {ah:4.99},
+  'keukenpapier': {ah:2.49}, 'aluminiumfolie': {ah:1.99}, 'huishoudfolie': {ah:1.79},
+};
+
+// Bereken prijzen voor alle winkels op basis van AH-prijs * factor
+function berekenPrijzen(ahPrijs) {
+  const result = {};
+  for (const [w, f] of Object.entries(FACTOR)) {
+    result[w] = +( ahPrijs * f ).toFixed(2);
+  }
+  return result;
+}
 
 function zoekPrijs(naam) {
   const n = naam.toLowerCase().trim();
-  // Exacte match
-  if (PRIJSDB[n]) return { naam, ...PRIJSDB[n] };
-  // Gedeeltelijke match
-  for (const [key, val] of Object.entries(PRIJSDB)) {
-    if (n.includes(key) || key.includes(n)) return { naam, ...val };
-  }
-  // Woordmatch
-  const woorden = n.split(/\s+/);
-  for (const woord of woorden) {
-    if (woord.length < 3) continue;
+  let ahPrijs = null;
+  if (PRIJSDB[n]) { ahPrijs = PRIJSDB[n].ah; }
+  else {
     for (const [key, val] of Object.entries(PRIJSDB)) {
-      if (key.includes(woord) || woord.includes(key)) return { naam, ...val };
+      if (n.includes(key) || key.includes(n)) { ahPrijs = val.ah; break; }
+    }
+    if (!ahPrijs) {
+      const woorden = n.split(/\s+/);
+      for (const woord of woorden) {
+        if (woord.length < 3) continue;
+        for (const [key, val] of Object.entries(PRIJSDB)) {
+          if (key.includes(woord) || woord.includes(key)) { ahPrijs = val.ah; break; }
+        }
+        if (ahPrijs) break;
+      }
     }
   }
-  return null;
+  if (!ahPrijs) return null;
+  return { naam, ...berekenPrijzen(ahPrijs) };
+}
+
+// ---- Locatie & dichtstbijzijnde winkels ----
+let dichtstbijWinkels = null;
+
+async function zoekDichtstbijzijndeWinkels(lat, lon) {
+  const winkelNamen = Object.values(WINKELS_DEF).filter(w => w.osm).map(w => w.osm);
+  const query = `
+    [out:json][timeout:10];
+    (
+      node["shop"="supermarket"](around:5000,${lat},${lon});
+      way["shop"="supermarket"](around:5000,${lat},${lon});
+    );
+    out center 50;
+  `;
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST', body: 'data=' + encodeURIComponent(query)
+    });
+    const data = await res.json();
+    const gevondenWinkels = new Set();
+    data.elements.forEach(el => {
+      const naam = (el.tags?.name || '').toLowerCase();
+      for (const [key, def] of Object.entries(WINKELS_DEF)) {
+        if (def.osm && naam.includes(def.osm.toLowerCase())) {
+          gevondenWinkels.add(key);
+        }
+      }
+    });
+    // Picnic altijd beschikbaar (bezorging)
+    gevondenWinkels.add('picnic');
+    return gevondenWinkels.size >= 2 ? [...gevondenWinkels] : null;
+  } catch(e) { return null; }
 }
 
 function updatePrijsKnop() {
@@ -985,9 +934,32 @@ async function vergelijkPrijzen() {
   btn.disabled = true;
   btn.innerHTML = '⏳ Prijzen zoeken…';
   resultaat.className = 'prijs-resultaat zichtbaar';
-  resultaat.innerHTML = '<div class="prijs-loading">🔍 Prijzen opzoeken…</div>';
+  resultaat.innerHTML = '<div class="prijs-loading">📍 Locatie bepalen en winkels zoeken…</div>';
 
-  // Zoek prijzen voor elk artikel
+  // Stap 1: Locatie ophalen
+  let actieveWinkels = Object.keys(WINKELS_DEF); // standaard alle winkels
+  let locatieLabel = 'Alle winkels';
+
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, {timeout:5000})
+    );
+    const { latitude, longitude } = pos.coords;
+    resultaat.innerHTML = '<div class="prijs-loading">🔍 Winkels in jouw buurt zoeken…</div>';
+    const gevonden = await zoekDichtstbijzijndeWinkels(latitude, longitude);
+    if (gevonden && gevonden.length >= 2) {
+      actieveWinkels = gevonden;
+      locatieLabel = `📍 ${gevonden.length} winkels bij jou in de buurt`;
+    } else {
+      locatieLabel = '🗺️ Geen winkels gevonden — alle winkels getoond';
+    }
+  } catch(e) {
+    locatieLabel = '⚠️ Locatie niet beschikbaar — alle winkels getoond';
+  }
+
+  resultaat.innerHTML = '<div class="prijs-loading">💰 Prijzen berekenen…</div>';
+
+  // Stap 2: Prijzen zoeken
   const gevonden = [];
   const nietGevonden = [];
 
@@ -995,12 +967,9 @@ async function vergelijkPrijzen() {
     const prijs = zoekPrijs(item.name);
     if (prijs) {
       const qty = item.qty || 1;
-      gevonden.push({
-        naam: item.name,
-        ah: +(prijs.ah * qty).toFixed(2),
-        jumbo: +(prijs.jumbo * qty).toFixed(2),
-        lidl: +(prijs.lidl * qty).toFixed(2)
-      });
+      const rij = { naam: item.name };
+      actieveWinkels.forEach(w => { rij[w] = +(prijs[w] * qty).toFixed(2); });
+      gevonden.push(rij);
     } else {
       nietGevonden.push(item.name);
     }
@@ -1008,69 +977,75 @@ async function vergelijkPrijzen() {
 
   if (!gevonden.length) {
     resultaat.innerHTML = `<div class="prijs-loading" style="color:var(--muted)">
-      😕 Geen prijzen gevonden voor de artikelen op je lijst.<br><br>
-      <small>Probeer algemenere namen zoals "melk", "brood", "kaas"</small>
-    </div>`;
-    btn.disabled = false;
-    btn.innerHTML = '🔄 Opnieuw vergelijken';
-    return;
+      😕 Geen prijzen gevonden.<br><small>Probeer namen zoals "melk", "brood", "kaas"</small></div>`;
+    btn.disabled = false; btn.innerHTML = '🔄 Opnieuw vergelijken'; return;
   }
 
-  const totaal = {
-    ah: +gevonden.reduce((s,a) => s+a.ah, 0).toFixed(2),
-    jumbo: +gevonden.reduce((s,a) => s+a.jumbo, 0).toFixed(2),
-    lidl: +gevonden.reduce((s,a) => s+a.lidl, 0).toFixed(2)
-  };
+  // Stap 3: Totalen & sorteren
+  const totaal = {};
+  actieveWinkels.forEach(w => {
+    totaal[w] = +gevonden.reduce((s,a) => s + (a[w]||0), 0).toFixed(2);
+  });
 
-  const winkels = ['ah','jumbo','lidl'];
-  const goedkoopste = winkels.reduce((a,b) => totaal[a] < totaal[b] ? a : b);
-  const duurste = winkels.reduce((a,b) => totaal[a] > totaal[b] ? a : b);
+  const gesorteerd = [...actieveWinkels].sort((a,b) => totaal[a]-totaal[b]);
+  const goedkoopste = gesorteerd[0];
+  const duurste = gesorteerd[gesorteerd.length-1];
   const besparing = (totaal[duurste] - totaal[goedkoopste]).toFixed(2);
-  const namen = {ah:'Albert Heijn', jumbo:'Jumbo', lidl:'Lidl'};
-  const kleuren = {ah:'winkel-ah', jumbo:'winkel-jumbo', lidl:'winkel-lidl'};
-  const logo = {ah:'🔵', jumbo:'🟡', lidl:'🔴'};
-  const links = {
-    ah: 'https://www.ah.nl/zoeken?query=',
-    jumbo: 'https://www.jumbo.com/zoeken?searchTerms=',
-    lidl: 'https://www.lidl.nl/p/zoeken?query='
-  };
+  const top3 = gesorteerd.slice(0, 3);
 
-  const gesorteerd = [...winkels].sort((a,b) => totaal[a]-totaal[b]);
+  // Stap 4: HTML opbouwen
+  let html = `<div style="font-size:0.75rem;color:var(--muted);text-align:center;margin-bottom:10px">${locatieLabel}</div>`;
 
-  let html = `<div class="advies-banner">
-    <h3>🏆 Goedkoopst: ${namen[goedkoopste]}</h3>
-    <p>Je bespaart €${besparing} t.o.v. ${namen[duurste]}</p>
+  html += `<div class="advies-banner">
+    <h3>🏆 Goedkoopst: ${WINKELS_DEF[goedkoopste].naam}</h3>
+    <p>Je bespaart €${besparing} t.o.v. ${WINKELS_DEF[duurste].naam}</p>
+    <p style="font-size:0.75rem;opacity:0.85;margin-top:4px">Hieronder de top 3 goedkoopste opties</p>
   </div>`;
 
-  gesorteerd.forEach(winkel => {
-    const isGoedkoopst = winkel === goedkoopste;
+  top3.forEach((w, rank) => {
+    const def = WINKELS_DEF[w];
+    const isGoedkoopst = rank === 0;
+    const minPerArtikel = (naam, winkel) => {
+      const rij = gevonden.find(g => g.naam === naam);
+      if (!rij) return false;
+      return rij[winkel] === Math.min(...actieveWinkels.map(aw => rij[aw]||Infinity));
+    };
     html += `<div class="winkel-card">
-      <div class="winkel-header ${kleuren[winkel]}">
-        ${logo[winkel]} ${namen[winkel]}
-        <span class="winkel-totaal">€${totaal[winkel].toFixed(2)}</span>
+      <div class="winkel-header ${def.kleur}">
+        ${def.logo} ${def.naam}
+        <span style="font-size:0.72rem;color:var(--muted);margin-left:4px">#${rank+1}</span>
+        <span class="winkel-totaal">€${totaal[w].toFixed(2)}</span>
         ${isGoedkoopst ? '<span style="font-size:0.7rem;background:white;color:var(--green);padding:2px 8px;border-radius:10px;margin-left:6px">✓ Goedkoopst</span>' : ''}
       </div>
       <div class="winkel-items">
-        ${gevonden.map(a => {
-          const prijs = a[winkel];
-          const minPrijs = Math.min(a.ah, a.jumbo, a.lidl);
-          return `<div class="winkel-item-rij">
-            <span><a href="${links[winkel]}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a></span>
-            <span class="${prijs===minPrijs?'prijs-goedkoopst':'prijs-duurder'}">€${prijs.toFixed(2)}</span>
-          </div>`;
-        }).join('')}
+        ${gevonden.map(a => `<div class="winkel-item-rij">
+          <span><a href="${def.link}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a></span>
+          <span class="${minPerArtikel(a.naam,w)?'prijs-goedkoopst':'prijs-duurder'}">€${(a[w]||0).toFixed(2)}</span>
+        </div>`).join('')}
       </div>
     </div>`;
   });
 
+  // Overige winkels compact
+  if (gesorteerd.length > 3) {
+    html += `<div style="margin-top:10px">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px">Overige winkels</div>
+      ${gesorteerd.slice(3).map(w => `
+        <div style="display:flex;justify-content:space-between;padding:7px 12px;background:white;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;font-size:0.85rem">
+          <span>${WINKELS_DEF[w].logo} ${WINKELS_DEF[w].naam}</span>
+          <span style="font-weight:600">€${totaal[w].toFixed(2)}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
   if (nietGevonden.length) {
     html += `<div style="font-size:0.75rem;color:var(--muted);margin-top:8px;padding:10px;background:var(--warm);border-radius:8px">
-      ℹ️ Geen prijs gevonden voor: ${nietGevonden.map(n => `<em>${esc(n)}</em>`).join(', ')}
+      ℹ️ Geen prijs voor: ${nietGevonden.map(n => `<em>${esc(n)}</em>`).join(', ')}
     </div>`;
   }
 
   html += `<div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5">
-    📅 Prijzen bijgewerkt mei 2025 — indicatief.<br>Tik op artikel voor actuele winkelprijs.
+    📅 Indicatieve prijzen mei 2025 · Tik op artikel voor winkelzoekpagina
   </div>`;
 
   resultaat.innerHTML = html;
