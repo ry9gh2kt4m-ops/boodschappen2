@@ -7,15 +7,10 @@
 <title>Onze Boodschappen</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 
-<!-- Firebase -->
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  // ============================================================
-  // STAP 1: Vul hier je Firebase config in (zie instructies onder)
-  // ============================================================
   const firebaseConfig = {
     apiKey: "AIzaSyB-ObpSQXhInjHOturK2VuFxY47AYzzY1k",
     authDomain: "boodschappen-2015d.firebaseapp.com",
@@ -25,331 +20,274 @@
     messagingSenderId: "945152085007",
     appId: "1:945152085007:web:4e6a49f1c8e8f183e9277a"
   };
-  // ============================================================
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   const itemsRef = ref(db, "boodschappen");
+  const menuRef = ref(db, "weekmenu");
 
   window._fbSave = async (items) => {
     const obj = {};
     items.forEach(item => { obj[item.id] = item; });
     await set(itemsRef, obj);
   };
-
-  window._fbDelete = async (id) => {
-    await remove(ref(db, "boodschappen/" + id));
-  };
-
-  window._fbListen = (callback) => {
-    onValue(itemsRef, (snapshot) => {
-      const data = snapshot.val();
-      const arr = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
-      callback(arr);
+  window._fbDelete = async (id) => { await remove(ref(db, "boodschappen/" + id)); };
+  window._fbListen = (cb) => {
+    onValue(itemsRef, (snap) => {
+      const data = snap.val();
+      cb(data ? Object.values(data).sort((a,b) => b.id - a.id) : []);
     });
   };
+  window._fbSaveMenu = async (menu) => { await set(menuRef, menu); };
+  window._fbListenMenu = (cb) => {
+    onValue(menuRef, (snap) => { cb(snap.val() || {}); });
+  };
 
-  // Signal app that Firebase is ready
   window._fbReady = true;
   document.dispatchEvent(new Event("fb-ready"));
 </script>
 
 <style>
   :root {
-    --cream: #faf6ef;
-    --warm: #f0e8d8;
-    --green: #3d6b4f;
-    --green-light: #5a8f6d;
-    --green-pale: #e8f0ea;
-    --red: #c4473a;
-    --red-pale: #faeae9;
-    --ink: #1e2820;
-    --muted: #7a8c7e;
-    --border: #d5cfc4;
-    --shadow: rgba(61,107,79,0.12);
+    --cream: #faf6ef; --warm: #f0e8d8; --green: #3d6b4f; --green-light: #5a8f6d;
+    --green-pale: #e8f0ea; --red: #c4473a; --red-pale: #faeae9;
+    --ink: #1e2820; --muted: #7a8c7e; --border: #d5cfc4; --shadow: rgba(61,107,79,0.12);
+    --orange: #c47a2a; --orange-pale: #fdf0e0;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--cream);
-    min-height: 100vh;
-    color: var(--ink);
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); min-height: 100vh; color: var(--ink); }
+  body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
   .app { max-width: 480px; margin: 0 auto; padding: 24px 16px 48px; position: relative; z-index: 1; }
 
-  /* Loading screen */
-  #loading-screen {
-    position: fixed; inset: 0; background: var(--cream);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 100; gap: 12px;
-  }
-  .spinner {
-    width: 36px; height: 36px; border: 3px solid var(--border);
-    border-top-color: var(--green); border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-screen { position:fixed; inset:0; background:var(--cream); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; gap:12px; }
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
 
-  /* Setup screen */
-  #setup-screen {
-    display: none; position: fixed; inset: 0; background: var(--cream);
-    z-index: 99; overflow-y: auto; padding: 32px 20px;
-  }
-  .setup-card {
-    max-width: 480px; margin: 0 auto; background: white;
-    border: 1px solid var(--border); border-radius: 20px; padding: 28px;
-    box-shadow: 0 4px 24px var(--shadow);
-  }
-  .setup-card h2 { font-family: 'Playfair Display', serif; color: var(--green); font-size: 1.5rem; margin-bottom: 6px; }
-  .setup-card p { font-size: 0.85rem; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
-  .setup-step { background: var(--cream); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
-  .setup-step strong { display: block; font-size: 0.88rem; color: var(--ink); margin-bottom: 4px; }
-  .setup-step span { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
-  .setup-step a { color: var(--green); }
-  .setup-input { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 13px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; margin-top: 8px; outline: none; }
-  .setup-input:focus { border-color: var(--green-light); }
-  .btn-setup { width: 100%; padding: 12px; border-radius: 12px; border: none; background: var(--green); color: white; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; margin-top: 16px; }
-  .btn-setup:hover { background: var(--green-light); }
-
-  header { text-align: center; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid var(--border); }
-  h1 { font-family: 'Playfair Display', serif; font-size: 1.9rem; color: var(--green); line-height: 1.1; }
-  .subtitle { font-size: 0.72rem; color: var(--muted); margin-top: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
-  .sync-status { font-size: 0.7rem; color: var(--muted); margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 5px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; }
-  .dot.saving { background: var(--red); animation: pulse 1s infinite; }
+  header { text-align:center; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid var(--border); }
+  h1 { font-family:'Playfair Display',serif; font-size:1.85rem; color:var(--green); line-height:1.1; }
+  .subtitle { font-size:0.72rem; color:var(--muted); margin-top:4px; letter-spacing:0.5px; text-transform:uppercase; }
+  .sync-status { font-size:0.7rem; color:var(--muted); margin-top:6px; display:flex; align-items:center; justify-content:center; gap:5px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--green); display:inline-block; }
+  .dot.saving { background:var(--red); animation:pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  .stats { display: flex; gap: 10px; margin-bottom: 20px; }
-  .stat { flex: 1; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; text-align: center; }
-  .stat-num { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--green); line-height: 1; }
-  .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+  /* Tab navigation */
+  .tabs { display:flex; gap:8px; margin-bottom:20px; background:white; border:1px solid var(--border); border-radius:14px; padding:5px; }
+  .tab { flex:1; padding:9px; border-radius:10px; border:none; background:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.85rem; font-weight:500; color:var(--muted); transition:all 0.2s; text-align:center; }
+  .tab.active { background:var(--green); color:white; }
+  .tab-icon { display:block; font-size:1.1rem; margin-bottom:2px; }
 
-  .input-card { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 20px; box-shadow: 0 2px 12px var(--shadow); }
-  .input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .input-field { flex: 1; border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--ink); background: var(--cream); outline: none; transition: border-color 0.2s; }
-  .input-field:focus { border-color: var(--green-light); background: white; }
-  .input-field::placeholder { color: var(--muted); }
-  .btn-add { background: var(--green); color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
-  .btn-add:hover { background: var(--green-light); }
-  .btn-mic { background: white; color: var(--green); border: 1.5px solid var(--border); border-radius: 10px; width: 44px; height: 44px; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
-  .btn-mic.listening { background: var(--red); color: white; border-color: var(--red); animation: pulseMic 1.2s ease-in-out infinite; }
+  .stats { display:flex; gap:10px; margin-bottom:20px; }
+  .stat { flex:1; background:white; border:1px solid var(--border); border-radius:12px; padding:10px 14px; text-align:center; }
+  .stat-num { font-family:'Playfair Display',serif; font-size:1.5rem; font-weight:700; color:var(--green); line-height:1; }
+  .stat-label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; margin-top:2px; }
+
+  .input-card { background:white; border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:20px; box-shadow:0 2px 12px var(--shadow); }
+  .input-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .input-field { flex:1; border:1.5px solid var(--border); border-radius:10px; padding:11px 14px; font-family:'DM Sans',sans-serif; font-size:0.95rem; color:var(--ink); background:var(--cream); outline:none; transition:border-color 0.2s; }
+  .input-field:focus { border-color:var(--green-light); background:white; }
+  .input-field::placeholder { color:var(--muted); }
+  .btn-add { background:var(--green); color:white; border:none; border-radius:10px; width:44px; height:44px; font-size:1.3rem; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.2s; }
+  .btn-add:hover { background:var(--green-light); }
+  .btn-mic { background:white; color:var(--green); border:1.5px solid var(--border); border-radius:10px; width:44px; height:44px; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s; }
+  .btn-mic.listening { background:var(--red); color:white; border-color:var(--red); animation:pulseMic 1.2s ease-in-out infinite; }
   @keyframes pulseMic { 0%,100%{box-shadow:0 0 0 0 rgba(196,71,58,0.4)} 50%{box-shadow:0 0 0 8px rgba(196,71,58,0)} }
-  .mic-status { font-size: 0.78rem; color: var(--muted); min-height: 18px; text-align: center; margin-bottom: 8px; }
-  .mic-status.active { color: var(--red); }
-  .mic-status.success { color: var(--green); }
-  .no-mic-msg { font-size: 0.75rem; color: var(--red); text-align: center; display: none; margin-bottom: 8px; }
+  .mic-status { font-size:0.78rem; color:var(--muted); min-height:18px; text-align:center; margin-bottom:8px; }
+  .mic-status.active { color:var(--red); }
+  .mic-status.success { color:var(--green); }
+  .no-mic-msg { font-size:0.75rem; color:var(--red); text-align:center; display:none; margin-bottom:8px; }
+  .person-row { display:flex; gap:8px; }
+  .person-btn { flex:1; padding:7px; border-radius:8px; border:1.5px solid var(--border); background:white; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.82rem; font-weight:500; color:var(--muted); transition:all 0.18s; }
+  .person-btn.active-jij { background:var(--green-pale); border-color:var(--green); color:var(--green); }
+  .person-btn.active-vrouw { background:#fce8f0; border-color:#c4678a; color:#c4678a; }
 
-  .person-row { display: flex; gap: 8px; }
-  .person-btn { flex: 1; padding: 7px; border-radius: 8px; border: 1.5px solid var(--border); background: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; color: var(--muted); transition: all 0.18s; }
-  .person-btn.active-jij { background: var(--green-pale); border-color: var(--green); color: var(--green); }
-  .person-btn.active-vrouw { background: #fce8f0; border-color: #c4678a; color: #c4678a; }
+  .filter-row { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px; scrollbar-width:none; }
+  .filter-row::-webkit-scrollbar { display:none; }
+  .filter-chip { white-space:nowrap; padding:6px 12px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:0.78rem; cursor:pointer; color:var(--muted); font-family:'DM Sans',sans-serif; transition:all 0.18s; }
+  .filter-chip.active { background:var(--green); border-color:var(--green); color:white; }
 
-  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 16px; scrollbar-width: none; }
-  .filter-row::-webkit-scrollbar { display: none; }
-  .filter-chip { white-space: nowrap; padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: white; font-size: 0.78rem; cursor: pointer; color: var(--muted); font-family: 'DM Sans', sans-serif; transition: all 0.18s; }
-  .filter-chip.active { background: var(--green); border-color: var(--green); color: white; }
-
-  .section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; padding-left: 4px; }
-  .list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
-  .item { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; transition: all 0.2s; animation: slide-in 0.25s ease; }
+  .section-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:8px; padding-left:4px; }
+  .list { display:flex; flex-direction:column; gap:6px; margin-bottom:20px; }
+  .item { background:white; border:1px solid var(--border); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; transition:all 0.2s; animation:slide-in 0.25s ease; }
   @keyframes slide-in { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
-  .item.done { opacity: 0.55; background: var(--warm); }
-  .item.done .item-name { text-decoration: line-through; color: var(--muted); }
-  .check-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); background: white; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; transition: all 0.18s; color: transparent; }
-  .item.done .check-btn { background: var(--green); border-color: var(--green); color: white; }
-  .item-main { flex: 1; min-width: 0; }
-  .item-name { font-size: 0.95rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-person { font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
-  .person-jij .item-person { background: var(--green-pale); color: var(--green); }
-  .person-vrouw .item-person { background: #fce8f0; color: #c4678a; }
-  .qty-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .qty-btn { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border); background: white; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; color: var(--muted); padding: 0; transition: all 0.15s; }
-  .qty-btn:hover { border-color: var(--green); color: var(--green); }
-  .qty-num { font-size: 0.82rem; font-weight: 600; min-width: 16px; text-align: center; }
-  .delete-btn { background: none; border: none; cursor: pointer; color: var(--border); font-size: 1rem; padding: 4px; border-radius: 6px; transition: color 0.18s; flex-shrink: 0; }
-  .delete-btn:hover { color: var(--red); }
-  .done-toggle { background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 4px; display: flex; align-items: center; gap: 5px; margin-bottom: 8px; }
-  .empty { text-align: center; padding: 32px 16px; color: var(--muted); }
-  .empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
-  .btn-clear { width: 100%; padding: 10px; border-radius: 10px; border: 1.5px dashed var(--border); background: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--muted); transition: all 0.18s; margin-top: 8px; }
-  .btn-clear:hover { border-color: var(--red); color: var(--red); background: var(--red-pale); }
+  .item.done { opacity:0.55; background:var(--warm); }
+  .item.done .item-name { text-decoration:line-through; color:var(--muted); }
+  .check-btn { width:24px; height:24px; border-radius:50%; border:2px solid var(--border); background:white; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:0.8rem; transition:all 0.18s; color:transparent; }
+  .item.done .check-btn { background:var(--green); border-color:var(--green); color:white; }
+  .item-main { flex:1; min-width:0; }
+  .item-name { font-size:0.95rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-person { font-size:0.7rem; padding:1px 6px; border-radius:10px; font-weight:500; }
+  .person-jij .item-person { background:var(--green-pale); color:var(--green); }
+  .person-vrouw .item-person { background:#fce8f0; color:#c4678a; }
+  .qty-controls { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+  .qty-btn { width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border); background:white; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; color:var(--muted); padding:0; transition:all 0.15s; }
+  .qty-btn:hover { border-color:var(--green); color:var(--green); }
+  .qty-num { font-size:0.82rem; font-weight:600; min-width:16px; text-align:center; }
+  .delete-btn { background:none; border:none; cursor:pointer; color:var(--border); font-size:1rem; padding:4px; border-radius:6px; transition:color 0.18s; flex-shrink:0; }
+  .delete-btn:hover { color:var(--red); }
+  .done-toggle { background:none; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; padding:4px; display:flex; align-items:center; gap:5px; margin-bottom:8px; }
+  .empty { text-align:center; padding:32px 16px; color:var(--muted); }
+  .empty-icon { font-size:2.5rem; margin-bottom:8px; }
+  .btn-clear { width:100%; padding:10px; border-radius:10px; border:1.5px dashed var(--border); background:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.82rem; color:var(--muted); transition:all 0.18s; margin-top:8px; }
+  .btn-clear:hover { border-color:var(--red); color:var(--red); background:var(--red-pale); }
+
+  /* Weekmenu */
+  .week-grid { display:flex; flex-direction:column; gap:10px; }
+  .dag-card { background:white; border:1px solid var(--border); border-radius:14px; overflow:hidden; transition:all 0.2s; }
+  .dag-header { display:flex; align-items:center; padding:12px 14px; gap:10px; cursor:pointer; }
+  .dag-naam { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; color:var(--ink); flex:1; }
+  .dag-datum { font-size:0.72rem; color:var(--muted); }
+  .dag-preview { font-size:0.82rem; color:var(--muted); flex:2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-style:italic; }
+  .dag-preview.gevuld { color:var(--green); font-style:normal; font-weight:500; }
+  .dag-body { padding:0 14px 14px; border-top:1px solid var(--border); display:none; }
+  .dag-body.open { display:block; }
+  .dag-input-row { display:flex; gap:8px; margin-top:12px; align-items:center; }
+  .dag-input { flex:1; border:1.5px solid var(--border); border-radius:10px; padding:9px 12px; font-family:'DM Sans',sans-serif; font-size:0.88rem; color:var(--ink); background:var(--cream); outline:none; }
+  .dag-input:focus { border-color:var(--green-light); background:white; }
+  .dag-save-btn { background:var(--green); color:white; border:none; border-radius:10px; padding:9px 14px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.82rem; font-weight:500; white-space:nowrap; }
+  .dag-clear-btn { background:none; border:1.5px solid var(--border); color:var(--muted); border-radius:10px; padding:9px 10px; cursor:pointer; font-size:0.85rem; }
+  .dag-clear-btn:hover { border-color:var(--red); color:var(--red); }
+  .dag-gerecht { font-size:0.92rem; color:var(--ink); margin-top:10px; line-height:1.4; }
+  .dag-vandaag .dag-header { background:var(--green-pale); }
+  .dag-vandaag .dag-naam { color:var(--green); }
+  .dag-label { font-size:0.65rem; background:var(--green); color:white; padding:2px 6px; border-radius:6px; text-transform:uppercase; letter-spacing:0.5px; }
 </style>
 
 </head>
 <body>
-
-<!-- Loading -->
 
 <div id="loading-screen">
   <div class="spinner"></div>
   <div style="font-size:0.85rem;color:#7a8c7e">Verbinden met lijst…</div>
 </div>
 
-<!-- Setup screen (shown when Firebase not configured) -->
-
-<div id="setup-screen">
-  <div class="setup-card">
-    <h2>🛒 Eenmalige instelling</h2>
-    <p>Om de lijst te delen heb je een gratis Firebase database nodig. Dit duurt 3 minuten en hoef je maar één keer te doen.</p>
-
-```
-<div class="setup-step">
-  <strong>Stap 1 — Maak een gratis Firebase project aan</strong>
-  <span>Ga naar <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a>, log in met een Google-account en klik op <em>Project toevoegen</em>.</span>
-</div>
-<div class="setup-step">
-  <strong>Stap 2 — Activeer Realtime Database</strong>
-  <span>In je project: klik links op <em>Build → Realtime Database → Database aanmaken</em>. Kies <em>Test mode</em> (30 dagen gratis lezen/schrijven).</span>
-</div>
-<div class="setup-step">
-  <strong>Stap 3 — Kopieer je configuratie</strong>
-  <span>Ga naar <em>Projectinstellingen → Jouw apps → Web app (&lt;/&gt;)</em>. Registreer een app en kopieer het <code>firebaseConfig</code> object.</span>
-</div>
-<div class="setup-step">
-  <strong>Stap 4 — Plak de database URL hieronder</strong>
-  <span>Je database URL staat in de config als <code>databaseURL</code> en ziet er zo uit:</span>
-  <input class="setup-input" id="setup-url" type="text" placeholder="https://mijn-project-default-rtdb.firebaseio.com" />
-</div>
-
-<p style="margin-top:12px;font-size:0.75rem;color:#7a8c7e">
-  💡 Tip: vraag Claude om hulp als je vastloopt bij één van deze stappen.
-</p>
-<button class="btn-setup" onclick="saveSetup()">Opslaan & starten</button>
-<div id="setup-error" style="color:#c4473a;font-size:0.8rem;text-align:center;margin-top:10px;display:none"></div>
-```
-
-  </div>
-</div>
-
-<!-- Main app -->
-
 <div class="app" id="main-app" style="display:none">
   <header>
     <span style="font-size:2rem;display:block;margin-bottom:6px">🛒</span>
-    <h1>Onze Boodschappen</h1>
-    <p class="subtitle">Weeklijst voor jullie samen</p>
+    <h1>Onze App</h1>
+    <p class="subtitle">Boodschappen & weekmenu</p>
     <div class="sync-status">
       <span class="dot" id="sync-dot"></span>
       <span id="sync-label">Verbonden</span>
     </div>
   </header>
 
-  <div class="stats">
-    <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Totaal</div></div>
-    <div class="stat"><div class="stat-num" id="stat-todo">0</div><div class="stat-label">Te halen</div></div>
-    <div class="stat"><div class="stat-num" id="stat-done">0</div><div class="stat-label">In mandje</div></div>
+  <!-- Tabs -->
+
+  <div class="tabs">
+    <button class="tab active" id="tab-boodschappen" onclick="switchTab('boodschappen')">
+      <span class="tab-icon">🛒</span> Boodschappen
+    </button>
+    <button class="tab" id="tab-menu" onclick="switchTab('menu')">
+      <span class="tab-icon">🍽️</span> Weekmenu
+    </button>
   </div>
 
-  <div class="input-card">
-    <div class="input-row">
-      <input class="input-field" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
-      <button class="btn-mic" id="mic-btn">🎙️</button>
-      <button class="btn-add" id="add-btn">＋</button>
+  <!-- BOODSCHAPPEN TAB -->
+
+  <div id="view-boodschappen">
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Totaal</div></div>
+      <div class="stat"><div class="stat-num" id="stat-todo">0</div><div class="stat-label">Te halen</div></div>
+      <div class="stat"><div class="stat-num" id="stat-done">0</div><div class="stat-label">In mandje</div></div>
     </div>
-    <div class="mic-status" id="mic-status"></div>
-    <div class="no-mic-msg" id="no-mic">Spraakherkenning niet beschikbaar — gebruik Chrome of Edge.</div>
-    <div class="person-row">
-      <button class="person-btn active-jij" id="btn-jij" onclick="setPerson('jij')">👤 Jij</button>
-      <button class="person-btn" id="btn-vrouw" onclick="setPerson('vrouw')">👤 Vrouw</button>
+
+```
+<div class="input-card">
+  <div class="input-row">
+    <input class="input-field" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
+    <button class="btn-mic" id="mic-btn">🎙️</button>
+    <button class="btn-add" id="add-btn">＋</button>
+  </div>
+  <div class="mic-status" id="mic-status"></div>
+  <div class="no-mic-msg" id="no-mic">Spraakherkenning niet beschikbaar — gebruik Chrome of Edge.</div>
+  <div class="person-row">
+    <button class="person-btn active-jij" id="btn-jij" onclick="setPerson('jij')">👤 Jij</button>
+    <button class="person-btn" id="btn-vrouw" onclick="setPerson('vrouw')">👤 Vrouw</button>
+  </div>
+</div>
+
+<div class="filter-row">
+  <button class="filter-chip active" onclick="setFilter(this,'alle')">Alle</button>
+  <button class="filter-chip" onclick="setFilter(this,'jij')">👤 Jij</button>
+  <button class="filter-chip" onclick="setFilter(this,'vrouw')">👤 Vrouw</button>
+</div>
+
+<div class="section-label">Te halen</div>
+<div class="list" id="todo-list"></div>
+
+<button class="done-toggle" onclick="toggleDone()">
+  <span id="done-arrow">▶</span> In mandje (<span id="done-count">0</span>)
+</button>
+<div id="done-section" style="display:none">
+  <div class="list" id="done-list"></div>
+  <button class="btn-clear" onclick="clearDone()">🗑 Afgevinkte items verwijderen</button>
+</div>
+```
+
+  </div>
+
+  <!-- WEEKMENU TAB -->
+
+  <div id="view-menu" style="display:none">
+    <div class="input-card" style="margin-bottom:20px">
+      <div style="font-size:0.85rem;color:var(--muted);line-height:1.5">
+        📅 Tik op een dag om het avondeten in te vullen. Jullie zien elkaars keuzes direct.
+      </div>
     </div>
-  </div>
-
-  <div class="filter-row">
-    <button class="filter-chip active" onclick="setFilter(this,'alle')">Alle</button>
-    <button class="filter-chip" onclick="setFilter(this,'jij')">👤 Jij</button>
-    <button class="filter-chip" onclick="setFilter(this,'vrouw')">👤 Vrouw</button>
-  </div>
-
-  <div class="section-label">Te halen</div>
-  <div class="list" id="todo-list"></div>
-
-  <button class="done-toggle" onclick="toggleDone()">
-    <span id="done-arrow">▶</span> In mandje (<span id="done-count">0</span>)
-  </button>
-  <div id="done-section" style="display:none">
-    <div class="list" id="done-list"></div>
-    <button class="btn-clear" onclick="clearDone()">🗑 Afgevinkte items verwijderen</button>
+    <div class="week-grid" id="week-grid"></div>
   </div>
 </div>
 
 <script>
 let items = [];
+let menu = {};
 let currentPerson = 'jij';
 let currentFilter = 'alle';
 let doneVisible = false;
+let currentTab = 'boodschappen';
 let recognition = null;
 let isListening = false;
 
-// ---- Setup / config ----
-function getDbUrl() {
-  return localStorage.getItem('fb_db_url') || '';
+const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+
+function getDagKey(dagIndex) {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  const d = new Date(monday);
+  d.setDate(monday.getDate() + dagIndex);
+  return d.toISOString().split('T')[0];
 }
 
-function saveSetup() {
-  const url = document.getElementById('setup-url').value.trim();
-  if (!url.startsWith('https://') || !url.includes('firebaseio') && !url.includes('firebasedatabase')) {
-    document.getElementById('setup-error').textContent = 'Voer een geldige Firebase database URL in.';
-    document.getElementById('setup-error').style.display = 'block';
-    return;
-  }
-  localStorage.setItem('fb_db_url', url);
-  location.reload();
+function getDatumLabel(dagIndex) {
+  const key = getDagKey(dagIndex);
+  const d = new Date(key);
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
 }
 
-// ---- Firebase init check ----
-function isFirebaseConfigured() {
-  // Check if the placeholder was replaced in the script
-  const scripts = document.querySelectorAll('script[type="module"]');
-  for (const s of scripts) {
-    if (s.textContent.includes('JOUW_API_KEY')) return false;
-  }
-  return true;
+function getTodayIndex() {
+  const day = new Date().getDay();
+  return day === 0 ? 6 : day - 1;
 }
 
-// ---- Wait for Firebase then start ----
-function startApp() {
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('main-app').style.display = 'block';
-
-  window._fbListen((newItems) => {
-    items = newItems;
-    render();
-  });
-
-  setupMic();
+// ---- Tabs ----
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('view-boodschappen').style.display = tab === 'boodschappen' ? 'block' : 'none';
+  document.getElementById('view-menu').style.display = tab === 'menu' ? 'block' : 'none';
+  document.getElementById('tab-boodschappen').className = 'tab' + (tab === 'boodschappen' ? ' active' : '');
+  document.getElementById('tab-menu').className = 'tab' + (tab === 'menu' ? ' active' : '');
 }
 
-document.addEventListener('fb-ready', () => {
-  if (!isFirebaseConfigured()) {
-    document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('setup-screen').style.display = 'block';
-    return;
-  }
-  startApp();
-});
-
-// Fallback: if Firebase module fails to load, show setup
-window.addEventListener('error', (e) => {
-  if (e.message && e.message.includes('firebase')) {
-    document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('setup-screen').style.display = 'block';
-  }
-}, true);
-
-// ---- App logic ----
+// ---- Sync status ----
 function setSyncStatus(saving) {
   document.getElementById('sync-dot').className = 'dot' + (saving ? ' saving' : '');
   document.getElementById('sync-label').textContent = saving ? 'Opslaan…' : 'Live verbonden 🔗';
 }
 
+// ---- Boodschappen ----
 function setPerson(p) {
   currentPerson = p;
   document.getElementById('btn-jij').className = 'person-btn' + (p==='jij' ? ' active-jij' : '');
@@ -366,8 +304,7 @@ function setFilter(el, f) {
 async function addItem() {
   const name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  const newItem = { id: Date.now(), name, person: currentPerson, done: false, qty: 1 };
-  items.unshift(newItem);
+  items.unshift({ id: Date.now(), name, person: currentPerson, done: false, qty: 1 });
   document.getElementById('item-input').value = '';
   setSyncStatus(true);
   await window._fbSave(items);
@@ -443,21 +380,69 @@ function renderList(id, list, isDone) {
     </div>`).join('');
 }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// ---- Weekmenu ----
+function renderMenu() {
+  const grid = document.getElementById('week-grid');
+  const todayIdx = getTodayIndex();
+  grid.innerHTML = DAGEN.map((dag, i) => {
+    const key = getDagKey(i);
+    const gerecht = menu[key] || '';
+    const isToday = i === todayIdx;
+    return `
+      <div class="dag-card ${isToday ? 'dag-vandaag' : ''}" id="dag-${i}">
+        <div class="dag-header" onclick="toggleDag(${i})">
+          <div>
+            <div class="dag-naam">${dag} ${isToday ? '<span class="dag-label">Vandaag</span>' : ''}</div>
+            <div class="dag-datum">${getDatumLabel(i)}</div>
+          </div>
+          <div class="dag-preview ${gerecht ? 'gevuld' : ''}">${gerecht || 'Nog niet ingevuld…'}</div>
+          <span style="color:var(--muted);font-size:0.8rem">▶</span>
+        </div>
+        <div class="dag-body" id="dag-body-${i}">
+          <div class="dag-gerecht">${gerecht ? '🍽️ ' + esc(gerecht) : 'Nog niets gepland voor deze avond.'}</div>
+          <div class="dag-input-row">
+            <input class="dag-input" id="dag-input-${i}" type="text" placeholder="bijv. Pasta bolognese" value="${esc(gerecht)}" />
+            <button class="dag-save-btn" onclick="saveDag(${i})">Opslaan</button>
+            ${gerecht ? `<button class="dag-clear-btn" onclick="clearDag(${i})">✕</button>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleDag(i) {
+  const body = document.getElementById('dag-body-' + i);
+  const isOpen = body.classList.contains('open');
+  document.querySelectorAll('.dag-body').forEach(b => b.classList.remove('open'));
+  if (!isOpen) {
+    body.classList.add('open');
+    setTimeout(() => document.getElementById('dag-input-' + i)?.focus(), 100);
+  }
+}
+
+async function saveDag(i) {
+  const key = getDagKey(i);
+  const val = document.getElementById('dag-input-' + i).value.trim();
+  menu[key] = val;
+  setSyncStatus(true);
+  await window._fbSaveMenu(menu);
+  setSyncStatus(false);
+}
+
+async function clearDag(i) {
+  const key = getDagKey(i);
+  delete menu[key];
+  setSyncStatus(true);
+  await window._fbSaveMenu(menu);
+  setSyncStatus(false);
+}
 
 // ---- Voice ----
 function setupMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    document.getElementById('no-mic').style.display = 'block';
-    document.getElementById('mic-btn').disabled = true;
-    document.getElementById('mic-btn').style.opacity = '0.4';
-    return;
-  }
+  if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
   recognition = new SR();
-  recognition.lang = 'nl-NL';
-  recognition.continuous = false;
-  recognition.interimResults = true;
+  recognition.lang = 'nl-NL'; recognition.continuous = false; recognition.interimResults = true;
   recognition.onstart = () => { isListening=true; document.getElementById('mic-btn').classList.add('listening'); document.getElementById('mic-btn').textContent='🔴'; setMicStatus('Luisteren… spreek nu','active'); };
   recognition.onresult = (e) => {
     let interim='', final='';
@@ -468,34 +453,39 @@ function setupMic() {
   };
   recognition.onerror = (e) => {
     const msgs={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak gehoord.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
-    setMicStatus(msgs[e.error]||'Fout bij spraakherkenning.','active');
-    stopMic(false);
+    setMicStatus(msgs[e.error]||'Fout.','active'); stopMic(false);
   };
   recognition.onend = () => stopMic(true);
 }
 
 function stopMic(clear) {
-  isListening=false;
-  document.getElementById('mic-btn').classList.remove('listening');
-  document.getElementById('mic-btn').textContent='🎙️';
+  isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️';
   if (clear) setTimeout(()=>setMicStatus(''),3000);
 }
 
-function setMicStatus(msg,cls='') {
-  const el=document.getElementById('mic-status');
-  el.textContent=msg; el.className='mic-status'+(cls?' '+cls:'');
-}
+function setMicStatus(msg,cls='') { const el=document.getElementById('mic-status'); el.textContent=msg; el.className='mic-status'+(cls?' '+cls:''); }
 
 document.getElementById('mic-btn').onclick = async () => {
   if (!recognition) return;
   if (isListening) { recognition.stop(); return; }
   try { await navigator.mediaDevices.getUserMedia({audio:true}); } catch { setMicStatus('🚫 Microfoon geweigerd.','active'); return; }
   document.getElementById('item-input').value='';
-  try { recognition.start(); } catch { setMicStatus('Start mislukt, probeer opnieuw.','active'); }
+  try { recognition.start(); } catch { setMicStatus('Start mislukt.','active'); }
 };
 
 document.getElementById('add-btn').onclick = addItem;
 document.getElementById('item-input').addEventListener('keydown', e => { if(e.key==='Enter') addItem(); });
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ---- Start ----
+document.addEventListener('fb-ready', () => {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  window._fbListen((newItems) => { items = newItems; render(); });
+  window._fbListenMenu((newMenu) => { menu = newMenu; renderMenu(); });
+  setupMic();
+});
 </script>
 
 </body>
