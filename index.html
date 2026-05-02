@@ -137,6 +137,31 @@
   .btn-clear { width:100%; padding:10px; border-radius:10px; border:1.5px dashed var(--border); background:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.82rem; color:var(--muted); margin-top:8px; }
   .btn-clear:hover { border-color:var(--red); color:var(--red); background:var(--red-pale); }
 
+  /* Prijsvergelijking */
+  .prijs-card { background:white; border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:20px; box-shadow:0 2px 12px var(--shadow); }
+  .btn-prijs { width:100%; padding:12px; border-radius:12px; border:none; background:#1a56a0; color:white; font-family:"DM Sans",sans-serif; font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:background 0.2s; margin-bottom:8px; }
+  .btn-prijs:hover { background:#1645885; }
+  .btn-prijs:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
+  .prijs-disclaimer { font-size:0.72rem; color:var(--muted); text-align:center; line-height:1.5; }
+  .prijs-resultaat { margin-top:16px; display:none; }
+  .prijs-resultaat.zichtbaar { display:block; }
+  .prijs-loading { text-align:center; padding:20px; color:var(--muted); font-size:0.88rem; }
+  .winkel-card { border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .winkel-header { padding:10px 14px; display:flex; align-items:center; gap:10px; font-weight:600; font-size:0.9rem; }
+  .winkel-ah { background:#EFF7EE; color:#007A3D; }
+  .winkel-jumbo { background:#FFF8E1; color:#E5A000; }
+  .winkel-lidl { background:#EEF2FF; color:#003DA5; }
+  .winkel-advies { background:var(--green); color:white; }
+  .winkel-totaal { margin-left:auto; font-family:"Playfair Display",serif; font-size:1.1rem; }
+  .winkel-items { padding:8px 14px 12px; }
+  .winkel-item-rij { display:flex; justify-content:space-between; font-size:0.82rem; padding:3px 0; border-bottom:1px solid var(--border); }
+  .winkel-item-rij:last-child { border:none; }
+  .prijs-goedkoopst { color:var(--green); font-weight:600; }
+  .prijs-duurder { color:var(--muted); }
+  .advies-banner { background:var(--green); color:white; border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+  .advies-banner h3 { font-family:"Playfair Display",serif; font-size:1.1rem; margin-bottom:4px; }
+  .advies-banner p { font-size:0.82rem; opacity:0.9; line-height:1.5; }
+  .bron-link { font-size:0.7rem; color:var(--muted); text-decoration:underline; }
   /* Weekmenu */
   .week-grid { display:flex; flex-direction:column; gap:10px; }
   .dag-card { background:white; border:1px solid var(--border); border-radius:14px; overflow:hidden; }
@@ -254,7 +279,19 @@
       <div class="list" id="done-list"></div>
       <button class="btn-clear" onclick="clearDone()">🗑 Afgevinkte items verwijderen</button>
     </div>
+
+```
+<!-- Prijsvergelijking -->
+<div class="prijs-card" id="prijs-sectie" style="display:none">
+  <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
+    🔍 Vergelijk prijzen bij supermarkten
+  </button>
+  <div class="prijs-disclaimer">
+    ⚠️ Indicatieve prijzen op basis van AI — niet real-time. Controleer altijd even zelf.
   </div>
+  <div class="prijs-resultaat" id="prijs-resultaat"></div>
+</div>
+```
 
   <!-- Weekmenu -->
 
@@ -405,6 +442,7 @@ function render() {
   document.getElementById('stat-done').textContent = items.filter(i => i.done).length;
   document.getElementById('done-count').textContent = done.length;
   renderList('todo-list', todo, false); renderList('done-list', done, true);
+  updatePrijsKnop();
 }
 
 function renderList(id, list, isDone) {
@@ -478,7 +516,115 @@ async function clearDag(i) {
   setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
 }
 
-// ---- Voice ----
+// ---- Prijsvergelijking ----
+function updatePrijsKnop() {
+  const todoItems = items.filter(i => !i.done);
+  const sectie = document.getElementById('prijs-sectie');
+  if (sectie) sectie.style.display = todoItems.length > 0 ? 'block' : 'none';
+}
+
+async function vergelijkPrijzen() {
+  const todoItems = items.filter(i => !i.done);
+  if (!todoItems.length) return;
+
+  const btn = document.getElementById('btn-prijs');
+  const resultaat = document.getElementById('prijs-resultaat');
+  btn.disabled = true;
+  btn.textContent = '⏳ Prijzen ophalen…';
+  resultaat.className = 'prijs-resultaat zichtbaar';
+  resultaat.innerHTML = '<div class="prijs-loading">🔍 AI zoekt prijzen op bij AH, Jumbo en Lidl…</div>';
+
+  const artikelen = todoItems.map(i => `${i.qty > 1 ? i.qty + 'x ' : ''}${i.name}`).join(', ');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: `Je bent een Nederlandse prijsvergelijker voor supermarkten. Geef altijd een schatting van gangbare prijzen bij Albert Heijn, Jumbo en Lidl in Nederland. Reageer ALLEEN met geldige JSON, geen uitleg, geen markdown. Gebruik dit exacte formaat:
+{
+  "artikelen": [
+    {"naam": "melk", "ah": 1.19, "jumbo": 1.09, "lidl": 0.99}
+  ],
+  "totaal": {"ah": 0.00, "jumbo": 0.00, "lidl": 0.00},
+  "advies": "Naam van goedkoopste winkel",
+  "besparing": "Je bespaart X euro ten opzichte van de duurste optie",
+  "tip": "Korte praktische tip"
+}`,
+        messages: [{
+          role: 'user',
+          content: `Geef indicatieve prijzen voor deze boodschappen bij Nederlandse supermarkten: ${artikelen}. Gebruik gangbare Nederlandse supermarktprijzen van 2024-2025.`
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const tekst = data.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim();
+    const prijzen = JSON.parse(tekst);
+    toonPrijzen(prijzen);
+  } catch (e) {
+    resultaat.innerHTML = '<div class="prijs-loading" style="color:var(--red)">❌ Kon geen prijzen ophalen. Probeer opnieuw.</div>';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔄 Opnieuw vergelijken';
+}
+
+function toonPrijzen(data) {
+  const resultaat = document.getElementById('prijs-resultaat');
+  const winkels = ['ah', 'jumbo', 'lidl'];
+  const namen = { ah: 'Albert Heijn', jumbo: 'Jumbo', lidl: 'Lidl' };
+  const kleuren = { ah: 'winkel-ah', jumbo: 'winkel-jumbo', lidl: 'winkel-lidl' };
+  const logo = { ah: '🔵', jumbo: '🟡', lidl: '🔴' };
+  const links = {
+    ah: 'https://www.ah.nl/zoeken?query=',
+    jumbo: 'https://www.jumbo.com/zoeken?searchTerms=',
+    lidl: 'https://www.lidl.nl/p/zoeken?query='
+  };
+
+  const goedkoopste = winkels.reduce((a, b) => data.totaal[a] < data.totaal[b] ? a : b);
+
+  let html = `<div class="advies-banner">
+    <h3>🏆 Goedkoopst: ${namen[goedkoopste]}</h3>
+    <p>${data.besparing}</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8">💡 ${data.tip}</p>
+  </div>`;
+
+  const gesorteerd = [...winkels].sort((a,b) => data.totaal[a] - data.totaal[b]);
+
+  gesorteerd.forEach(winkel => {
+    const isGoedkoopst = winkel === goedkoopste;
+    html += `<div class="winkel-card">
+      <div class="winkel-header ${kleuren[winkel]}">
+        ${logo[winkel]} ${namen[winkel]}
+        <span class="winkel-totaal">€${data.totaal[winkel].toFixed(2)}</span>
+        ${isGoedkoopst ? '<span style="font-size:0.7rem;background:white;color:var(--green);padding:2px 8px;border-radius:10px;margin-left:6px">✓ Goedkoopst</span>' : ''}
+      </div>
+      <div class="winkel-items">
+        ${data.artikelen.map(a => {
+          const prijs = a[winkel];
+          const minPrijs = Math.min(a.ah, a.jumbo, a.lidl);
+          const isGoedkoopstArtikel = prijs === minPrijs;
+          return `<div class="winkel-item-rij">
+            <span><a href="${links[winkel]}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a></span>
+            <span class="${isGoedkoopstArtikel ? 'prijs-goedkoopst' : 'prijs-duurder'}">€${prijs.toFixed(2)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5">
+    ⚠️ Indicatieve prijzen — kunnen afwijken van actuele winkelprijs.<br>
+    Klik op een artikel voor de actuele pagina.
+  </div>`;
+
+  resultaat.innerHTML = html;
+}
+
+
 function setupMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
