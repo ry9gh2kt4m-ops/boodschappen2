@@ -143,6 +143,12 @@
   .btn-prijs:hover { background:#1645885; }
   .btn-prijs:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
   .prijs-disclaimer { font-size:0.72rem; color:var(--muted); text-align:center; line-height:1.5; }
+  .cat-filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .cat-chip { padding:6px 12px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:0.78rem; cursor:pointer; color:var(--muted); font-family:'DM Sans',sans-serif; transition:all 0.18s; display:flex; align-items:center; gap:4px; }
+  .cat-chip.active { color:white; border-color:transparent; }
+  .cat-chip.cat-super.active { background:#1a56a0; }
+  .cat-chip.cat-drogist.active { background:#C4006A; }
+  .cat-chip.cat-slijterij.active { background:#8B0000; }
   .prijs-resultaat { margin-top:16px; display:none; }
   .prijs-resultaat.zichtbaar { display:block; }
   .prijs-loading { text-align:center; padding:20px; color:var(--muted); font-size:0.88rem; }
@@ -371,11 +377,18 @@
 ```
 <!-- Prijsvergelijking -->
 <div class="prijs-card" id="prijs-sectie" style="display:none">
+  <!-- Categorie filters -->
+  <div style="font-size:0.78rem;font-weight:600;color:var(--ink);margin-bottom:8px">Vergelijk categorie:</div>
+  <div class="cat-filter-row">
+    <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
+    <button class="cat-chip cat-drogist" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
+    <button class="cat-chip cat-slijterij" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
+  </div>
   <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
-    🔍 Vergelijk prijzen bij supermarkten
+    🔍 Vergelijk prijzen
   </button>
   <div class="prijs-disclaimer">
-    ⚠️ Indicatieve prijzen op basis van AI — niet real-time. Controleer altijd even zelf.
+    ⚠️ Indicatieve prijzen — niet real-time. Controleer altijd even zelf.
   </div>
   <div class="prijs-resultaat" id="prijs-resultaat"></div>
 </div>
@@ -1231,10 +1244,40 @@ async function zoekDichtstbijzijndeWinkels(lat, lon) {
   } catch(e) { return null; }
 }
 
+// ---- Categorie filters prijsvergelijking ----
+let actieveCats = { super: true, drogist: false, slijterij: false };
+
+function toggleCat(cat) {
+  actieveCats[cat] = !actieveCats[cat];
+  // Zorg dat altijd minstens 1 categorie actief is
+  if (!Object.values(actieveCats).some(v => v)) actieveCats[cat] = true;
+  const el = document.getElementById('cat-' + cat);
+  if (el) el.classList.toggle('active', actieveCats[cat]);
+  // Reset resultaat
+  const res = document.getElementById('prijs-resultaat');
+  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
+}
+
+function updateCatChips() {
+  // Auto-activeer categorie als er artikelen van die categorie op lijst staan
+  const DROGIST_CHECK = ['scheermesjes','scheermes','scheerschuim','tandpasta','tandenborstel','shampoo','conditioner','douchegel','zeep','deodorant','lippenstift','mascara','foundation','zonnebrand','aftersun','bodylotion','handcrème','watten','maandverband','tampons','condoom','ibuprofen','paracetamol','vitamines','hoestdrank','pleisters','luiers','babydoekjes','haargel','nagellak','schoonmaakmiddel','allesreiniger','vaatwastabletten'];
+  const SLIJTERIJ_CHECK = ['bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne','rosé','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol','biertje'];
+  const todoItems = items.filter(i => !i.done);
+  const hasDrogist = todoItems.some(i => DROGIST_CHECK.some(d => i.name.toLowerCase().includes(d)));
+  const hasSlijterij = todoItems.some(i => SLIJTERIJ_CHECK.some(d => i.name.toLowerCase().includes(d)));
+  if (hasDrogist) { actieveCats.drogist = true; }
+  if (hasSlijterij) { actieveCats.slijterij = true; }
+  ['super','drogist','slijterij'].forEach(cat => {
+    const el = document.getElementById('cat-' + cat);
+    if (el) el.classList.toggle('active', actieveCats[cat]);
+  });
+}
+
 function updatePrijsKnop() {
   const todoItems = items.filter(i => !i.done);
   const sectie = document.getElementById('prijs-sectie');
   if (sectie) sectie.style.display = todoItems.length > 0 ? 'block' : 'none';
+  if (todoItems.length > 0) updateCatChips();
 }
 
 async function vergelijkPrijzen() {
@@ -1263,12 +1306,15 @@ async function vergelijkPrijzen() {
   const drogisten = alleWinkels.filter(w => WINKELS_DEF[w].drogist);
   const slijterijen = alleWinkels.filter(w => WINKELS_DEF[w].slijterij);
 
-  // Stap 2: Locatie ophalen
+  // Gebruik categoriefilter keuze van gebruiker
   let actieveWinkels = [
-    ...supermarkten,
-    ...(heeftDrogistItems ? drogisten : []),
-    ...(heeftSlijterijItems ? slijterijen : [])
+    ...(actieveCats.super ? supermarkten : []),
+    ...(actieveCats.drogist ? drogisten : []),
+    ...(actieveCats.slijterij ? slijterijen : [])
   ];
+  if (!actieveWinkels.length) actieveWinkels = supermarkten; // fallback
+
+  // Stap 2: Locatie ophalen
   let locatieLabel = 'Alle winkels';
 
   try {
@@ -1290,11 +1336,22 @@ async function vergelijkPrijzen() {
 
   resultaat.innerHTML = '<div class="prijs-loading">💰 Prijzen berekenen…</div>';
 
-  // Stap 2: Prijzen zoeken
+  // Stap 2: Prijzen zoeken — filter items op actieve categorie
+  const DROGIST_NAMEN = ['scheermesjes','scheermes','scheerschuim','tandpasta','tandenborstel','shampoo','conditioner','douchegel','zeep','deodorant','lippenstift','mascara','foundation','zonnebrand','aftersun','bodylotion','handcrème','watten','maandverband','tampons','condoom','ibuprofen','paracetamol','vitamines','hoestdrank','pleisters','luiers','babydoekjes','haargel','nagellak','schoonmaakmiddel','allesreiniger','vaatwastabletten','wasverzachter'];
+  const SLIJTERIJ_NAMEN = ['bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne','rosé','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol','biertje','sixpack','whiskey','bourbon','cava','port','sherry'];
+
+  function getCat(naam) {
+    const n = naam.toLowerCase();
+    if (SLIJTERIJ_NAMEN.some(d => n.includes(d))) return 'slijterij';
+    if (DROGIST_NAMEN.some(d => n.includes(d))) return 'drogist';
+    return 'super';
+  }
+
+  const gefilterdItems = todoItems.filter(item => actieveCats[getCat(item.name)]);
   const gevonden = [];
   const nietGevonden = [];
 
-  todoItems.forEach(item => {
+  gefilterdItems.forEach(item => {
     const prijs = zoekPrijs(item.name);
     if (prijs) {
       const qty = item.qty || 1;
