@@ -387,6 +387,7 @@
         <button class="btn-add" id="add-btn">＋</button>
       </div>
       <div class="mic-status" id="mic-status"></div>
+      <div id="dubbel-melding" style="font-size:0.78rem;color:#c47a2a;min-height:18px;text-align:center;margin-bottom:2px"></div>
       <div class="no-mic-msg" id="no-mic">Spraakherkenning niet beschikbaar.</div>
       <div class="person-row" id="person-row"></div>
       <button onclick="openPersonenInstellingen()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.75rem;color:var(--muted)">⚙️ Personen instellen</button>
@@ -411,7 +412,7 @@
     <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
     <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
     <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
-    <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')">🍺 Speciaal</button>
+    <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')">🍺 Speciaalbier</button>
   </div>
   <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
     🔍 Vergelijk prijzen
@@ -1939,6 +1940,20 @@ document.getElementById('mic-btn').onclick=async()=>{
 };
 document.getElementById('add-btn').onclick=addItem;
 document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
+document.getElementById('item-input').addEventListener('input', () => {
+  const val = document.getElementById('item-input').value.trim().toLowerCase();
+  const el = document.getElementById('dubbel-melding');
+  if (!el) return;
+  if (!val || val.length < 2) { el.textContent = ''; return; }
+  const bestaand = items.find(i => !i.done && (
+    i.name.toLowerCase().includes(val) || val.includes(i.name.toLowerCase())
+  ) && i.name.length > 2);
+  if (bestaand) {
+    el.innerHTML = `⚠️ "<strong>${esc(bestaand.name)}</strong>" staat al op je lijst`;
+  } else {
+    el.textContent = '';
+  }
+});
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 </script>
 
