@@ -183,6 +183,25 @@
   .advies-banner h3 { font-family:"Playfair Display",serif; font-size:1.1rem; margin-bottom:4px; }
   .advies-banner p { font-size:0.82rem; opacity:0.9; line-height:1.5; }
   .bron-link { font-size:0.7rem; color:var(--muted); text-decoration:underline; }
+  .folder-btn { display:inline-flex; align-items:center; gap:3px; font-size:0.7rem; padding:2px 7px; border-radius:8px; background:#fff3e0; color:#c47a2a; border:1px solid #f0c070; text-decoration:none; cursor:pointer; white-space:nowrap; }
+  .folder-btn:hover { background:#ffe0b0; }
+  /* Kookboek */
+  .recept-card { background:white; border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:12px; animation:slide-in 0.25s ease; }
+  .recept-video-wrap { position:relative; padding-bottom:56.25%; height:0; overflow:hidden; background:#000; }
+  .recept-video-wrap iframe { position:absolute; top:0; left:0; width:100%; height:100%; border:none; }
+  .recept-body { padding:14px; }
+  .recept-titel { font-family:'Playfair Display',serif; font-size:1.1rem; font-weight:700; color:var(--ink); margin-bottom:4px; }
+  .recept-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .recept-tag { font-size:0.7rem; padding:2px 8px; border-radius:10px; background:var(--green-pale); color:var(--green); font-weight:600; }
+  .recept-beschr { font-size:0.82rem; color:var(--muted); line-height:1.5; margin-bottom:10px; }
+  .recept-acties { display:flex; gap:6px; }
+  .recept-btn { padding:6px 12px; border-radius:8px; border:1.5px solid var(--border); background:white; cursor:pointer; font-size:0.78rem; font-family:'DM Sans',sans-serif; color:var(--muted); }
+  .recept-btn.del:hover { border-color:var(--red); color:var(--red); }
+  .recept-btn.edit:hover { border-color:var(--green); color:var(--green); }
+  .recept-thumb { width:100%; height:160px; object-fit:cover; cursor:pointer; }
+  .recept-play-overlay { position:relative; cursor:pointer; }
+  .recept-play-overlay::after { content:'▶'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:3rem; color:white; text-shadow:0 2px 8px rgba(0,0,0,0.6); pointer-events:none; }
+
   /* Foto avatar */
   .avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; border:2px solid var(--border); }
   .avatar-placeholder { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; border:2px solid var(--border); }
@@ -342,6 +361,9 @@
     <button class="tab" id="tab-ideeen" onclick="switchTab('ideeen')">
       <span class="tab-icon">💡</span> Ideeën
     </button>
+    <button class="tab" id="tab-kookboek" onclick="switchTab('kookboek')">
+      <span class="tab-icon">📖</span> Kookboek
+    </button>
   </div>
 
   <!-- Boodschappen -->
@@ -441,6 +463,85 @@
   <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">✅ Goedgekeurde ideeën</div>
   <div id="ideeen-publiek"></div>
 </div>
+```
+
+  </div>
+</div>
+
+<!-- Kookboek view -->
+
+<div id="view-kookboek" style="display:none">
+
+  <!-- Zoekbalk -->
+
+  <div class="input-card" style="margin-bottom:16px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input class="input-field" id="recept-zoek" type="text" placeholder="🔍 Zoek recept…" oninput="filterRecepten()" style="flex:1" />
+      <button onclick="openReceptForm()" style="background:var(--green);color:white;border:none;border-radius:10px;width:44px;height:44px;font-size:1.3rem;cursor:pointer;flex-shrink:0">＋</button>
+    </div>
+    <!-- Categorie filter -->
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">
+      <button class="filter-chip active" onclick="setCatFilter(this,'alle')">Alle</button>
+      <button class="filter-chip" onclick="setCatFilter(this,'ontbijt')">🥐 Ontbijt</button>
+      <button class="filter-chip" onclick="setCatFilter(this,'lunch')">🥗 Lunch</button>
+      <button class="filter-chip" onclick="setCatFilter(this,'diner')">🍽️ Diner</button>
+      <button class="filter-chip" onclick="setCatFilter(this,'snack')">🍿 Snack</button>
+      <button class="filter-chip" onclick="setCatFilter(this,'dessert')">🍰 Dessert</button>
+      <button class="filter-chip" onclick="setCatFilter(this,'overig')">📦 Overig</button>
+    </div>
+  </div>
+
+  <!-- Receptenlijst -->
+
+  <div id="recepten-lijst"></div>
+
+  <!-- Leeg staat -->
+
+  <div id="recepten-leeg" style="display:none;text-align:center;padding:32px 16px;color:var(--muted)">
+    <div style="font-size:2.5rem;margin-bottom:8px">👨‍🍳</div>
+    <div>Nog geen recepten — voeg er een toe!</div>
+  </div>
+</div>
+
+<!-- Recept formulier modal -->
+
+<div class="modal-overlay" id="recept-modal" style="display:none" onclick="sluitReceptModal(event)">
+  <div class="modal-card" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="recept-modal-titel">📖 Nieuw recept</div>
+    <div class="modal-sub">Voeg een recept toe aan jullie digitale kookboek.</div>
+
+```
+<input type="hidden" id="recept-edit-id" value="" />
+
+<label class="setup-label" style="margin-top:10px">Naam recept *</label>
+<input class="setup-input" id="recept-naam" type="text" placeholder="bijv. Pasta Carbonara" style="letter-spacing:0;margin-bottom:10px" />
+
+<label class="setup-label">YouTube link *</label>
+<input class="setup-input" id="recept-youtube" type="url" placeholder="https://www.youtube.com/watch?v=..." style="letter-spacing:0;margin-bottom:6px" />
+<div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Plak een YouTube of YouTube Shorts link</div>
+
+<label class="setup-label">Categorie</label>
+<select class="setup-input" id="recept-cat" style="letter-spacing:0;margin-bottom:10px">
+  <option value="diner">🍽️ Diner</option>
+  <option value="ontbijt">🥐 Ontbijt</option>
+  <option value="lunch">🥗 Lunch</option>
+  <option value="snack">🍿 Snack</option>
+  <option value="dessert">🍰 Dessert</option>
+  <option value="overig">📦 Overig</option>
+</select>
+
+<label class="setup-label">Beschrijving (optioneel)</label>
+<textarea class="setup-input" id="recept-beschrijving" placeholder="Korte omschrijving…" rows="2" style="letter-spacing:0;resize:vertical;font-family:'DM Sans',sans-serif;margin-bottom:10px"></textarea>
+
+<label class="setup-label">Personen (optioneel)</label>
+<input class="setup-input" id="recept-personen" type="number" min="1" max="20" placeholder="bijv. 4" style="letter-spacing:0;margin-bottom:10px" />
+
+<label class="setup-label">Bereidingstijd (optioneel)</label>
+<input class="setup-input" id="recept-tijd" type="text" placeholder="bijv. 30 min" style="letter-spacing:0;margin-bottom:16px" />
+
+<button class="btn-setup" onclick="slaReceptOp()">Opslaan ✓</button>
+<div class="setup-error" id="recept-error"></div>
+<button onclick="sluitReceptFormulier()" style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-top:12px;width:100%">← Annuleren</button>
 ```
 
   </div>
@@ -750,6 +851,7 @@ function initApp() {
     fbListenRegistraties();
   }
   fbListenIdeeen();
+  fbListenRecepten();
   setupMic();
   setSyncStatus(false);
 }
@@ -769,12 +871,10 @@ function setSyncStatus(saving) {
 
 // ---- Tabs ----
 function switchTab(tab) {
-  document.getElementById('view-boodschappen').style.display = tab === 'boodschappen' ? 'block' : 'none';
-  document.getElementById('view-menu').style.display = tab === 'menu' ? 'block' : 'none';
-  document.getElementById('view-ideeen').style.display = tab === 'ideeen' ? 'block' : 'none';
-  document.getElementById('tab-boodschappen').className = 'tab' + (tab === 'boodschappen' ? ' active' : '');
-  document.getElementById('tab-menu').className = 'tab' + (tab === 'menu' ? ' active' : '');
-  document.getElementById('tab-ideeen').className = 'tab' + (tab === 'ideeen' ? ' active' : '');
+  ['boodschappen','menu','ideeen','kookboek'].forEach(t => {
+    document.getElementById('view-' + t).style.display = tab === t ? 'block' : 'none';
+    document.getElementById('tab-' + t).className = 'tab' + (tab === t ? ' active' : '');
+  });
 }
 
 // ---- Boodschappen ----
@@ -908,6 +1008,168 @@ async function saveDag(i) {
 async function clearDag(i) {
   delete menu[getDagKey(i)];
   setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+}
+
+// ---- Kookboek ----
+let recepten = [];
+let receptCatFilter = 'alle';
+let unsubRecepten = null;
+
+function fbListenRecepten() {
+  if (unsubRecepten) unsubRecepten();
+  unsubRecepten = window._onValue(window._ref(window._db, `gezinnen/${gezinsCode}/recepten`), snap => {
+    const data = snap.val() || {};
+    recepten = Object.values(data).sort((a,b) => b.aangemaakt - a.aangemaakt);
+    renderRecepten();
+  });
+}
+
+function getYouTubeId(url) {
+  if (!url) return null;
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
+function getYouTubeThumbnail(videoId) {
+  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+}
+
+function setCatFilter(el, cat) {
+  receptCatFilter = cat;
+  document.querySelectorAll('#view-kookboek .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderRecepten();
+}
+
+function filterRecepten() { renderRecepten(); }
+
+function renderRecepten() {
+  const zoek = (document.getElementById('recept-zoek')?.value || '').toLowerCase();
+  const gefilterd = recepten.filter(r => {
+    const matchCat = receptCatFilter === 'alle' || r.categorie === receptCatFilter;
+    const matchZoek = !zoek || r.naam.toLowerCase().includes(zoek) || (r.beschrijving||'').toLowerCase().includes(zoek);
+    return matchCat && matchZoek;
+  });
+
+  const el = document.getElementById('recepten-lijst');
+  const leeg = document.getElementById('recepten-leeg');
+  if (!el) return;
+
+  if (!gefilterd.length) {
+    el.innerHTML = '';
+    if (leeg) leeg.style.display = 'block';
+    return;
+  }
+  if (leeg) leeg.style.display = 'none';
+
+  const catLabel = { ontbijt:'🥐 Ontbijt', lunch:'🥗 Lunch', diner:'🍽️ Diner', snack:'🍿 Snack', dessert:'🍰 Dessert', overig:'📦 Overig' };
+
+  el.innerHTML = gefilterd.map(r => {
+    const vidId = getYouTubeId(r.youtube);
+    const thumb = vidId ? getYouTubeThumbnail(vidId) : null;
+    return `
+    <div class="recept-card" id="recept-${r.id}">
+      ${thumb ? `
+        <div class="recept-play-overlay" onclick="speelAf('${r.id}','${vidId}')">
+          <img class="recept-thumb" src="${thumb}" alt="${esc(r.naam)}" loading="lazy" />
+        </div>
+        <div id="video-${r.id}"></div>
+      ` : ''}
+      <div class="recept-body">
+        <div class="recept-titel">${esc(r.naam)}</div>
+        <div class="recept-meta">
+          ${r.categorie ? `<span class="recept-tag">${catLabel[r.categorie]||r.categorie}</span>` : ''}
+          ${r.personen ? `<span class="recept-tag" style="background:#fff3e0;color:#c47a2a">👥 ${r.personen} pers.</span>` : ''}
+          ${r.tijd ? `<span class="recept-tag" style="background:#e8f0fa;color:#1a56a0">⏱ ${esc(r.tijd)}</span>` : ''}
+        </div>
+        ${r.beschrijving ? `<div class="recept-beschr">${esc(r.beschrijving)}</div>` : ''}
+        <div class="recept-acties">
+          ${vidId ? `<button class="recept-btn" onclick="speelAf('${r.id}','${vidId}')">▶ Afspelen</button>` : ''}
+          <button class="recept-btn edit" onclick="bewerkRecept('${r.id}')">✏️ Bewerken</button>
+          <button class="recept-btn del" onclick="verwijderRecept('${r.id}')">🗑 Verwijderen</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function speelAf(receptId, videoId) {
+  const container = document.getElementById('video-' + receptId);
+  const overlay = container?.previousElementSibling;
+  if (!container) return;
+  // Verberg thumbnail, toon video
+  if (overlay) overlay.style.display = 'none';
+  container.innerHTML = `
+    <div class="recept-video-wrap">
+      <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen></iframe>
+    </div>`;
+}
+
+function openReceptForm(id) {
+  document.getElementById('recept-modal-titel').textContent = id ? '✏️ Recept bewerken' : '📖 Nieuw recept';
+  document.getElementById('recept-edit-id').value = id || '';
+  document.getElementById('recept-naam').value = '';
+  document.getElementById('recept-youtube').value = '';
+  document.getElementById('recept-beschrijving').value = '';
+  document.getElementById('recept-personen').value = '';
+  document.getElementById('recept-tijd').value = '';
+  document.getElementById('recept-cat').value = 'diner';
+  document.getElementById('recept-error').style.display = 'none';
+
+  if (id) {
+    const r = recepten.find(x => x.id === id);
+    if (r) {
+      document.getElementById('recept-naam').value = r.naam || '';
+      document.getElementById('recept-youtube').value = r.youtube || '';
+      document.getElementById('recept-beschrijving').value = r.beschrijving || '';
+      document.getElementById('recept-personen').value = r.personen || '';
+      document.getElementById('recept-tijd').value = r.tijd || '';
+      document.getElementById('recept-cat').value = r.categorie || 'diner';
+    }
+  }
+  document.getElementById('recept-modal').style.display = 'flex';
+}
+
+function bewerkRecept(id) { openReceptForm(id); }
+
+function sluitReceptModal(e) {
+  if (e.target.id === 'recept-modal') document.getElementById('recept-modal').style.display = 'none';
+}
+function sluitReceptFormulier() {
+  document.getElementById('recept-modal').style.display = 'none';
+}
+
+async function slaReceptOp() {
+  const naam = document.getElementById('recept-naam').value.trim();
+  const youtube = document.getElementById('recept-youtube').value.trim();
+  const errEl = document.getElementById('recept-error');
+  errEl.style.display = 'none';
+
+  if (!naam) { errEl.textContent = 'Vul een naam in.'; errEl.style.display = 'block'; return; }
+  if (!youtube) { errEl.textContent = 'Vul een YouTube link in.'; errEl.style.display = 'block'; return; }
+  if (!getYouTubeId(youtube)) { errEl.textContent = 'Ongeldige YouTube link. Plak een volledige link.'; errEl.style.display = 'block'; return; }
+
+  const editId = document.getElementById('recept-edit-id').value;
+  const id = editId || 'recept-' + Date.now();
+
+  await window._set(window._ref(window._db, `gezinnen/${gezinsCode}/recepten/${id}`), {
+    id, naam,
+    youtube,
+    categorie: document.getElementById('recept-cat').value,
+    beschrijving: document.getElementById('recept-beschrijving').value.trim(),
+    personen: document.getElementById('recept-personen').value || null,
+    tijd: document.getElementById('recept-tijd').value.trim() || null,
+    aangemaakt: editId ? (recepten.find(r=>r.id===editId)?.aangemaakt||Date.now()) : Date.now()
+  });
+
+  document.getElementById('recept-modal').style.display = 'none';
+}
+
+async function verwijderRecept(id) {
+  if (!confirm('Recept verwijderen?')) return;
+  await window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/recepten/${id}`));
 }
 
 // ---- Registratiebeheer ----
@@ -1273,6 +1535,38 @@ function updateCatChips() {
   });
 }
 
+// ---- Reclamefolder Worker URL ----
+// Vervang dit met jouw Worker URL na het instellen
+const FOLDER_WORKER_URL = 'https://boodschappen-avi.6dpf6r56d6.workers.dev/prijzen';
+
+// ---- Folder links ----
+// Categorieën waarvoor we aanbiedingen tonen
+const AANBIEDING_CATS = [
+  'bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne',
+  'heineken','hertog jan','grolsch','amstel','corona','tequila','cognac','baileys','aperol',
+  'scheermesjes','scheermes','scheerschuim','tandpasta','shampoo','conditioner','douchegel',
+  'deodorant','bodylotion','zonnebrand','maandverband','tampons','luiers','ibuprofen','paracetamol',
+  'vitamines','wasmiddel','vaatwastabletten','wasverzachter','schoonmaakmiddel'
+];
+
+// Reclamefolder.nl winkel-slugs
+const FOLDER_SLUGS = {
+  ah: 'albert-heijn', jumbo: 'jumbo', lidl: 'lidl', aldi: 'aldi',
+  plus: 'plus', dirk: 'dirk', coop: 'coop',
+  etos: 'etos', kruidvat: 'kruidvat', da: 'da',
+  gall: 'gall-gall', mitra: 'mitra',
+};
+
+function isAanbiedingArtikel(naam) {
+  return AANBIEDING_CATS.some(c => naam.toLowerCase().includes(c));
+}
+
+function folderUrl(winkelKey, zoekterm) {
+  const slug = FOLDER_SLUGS[winkelKey];
+  if (!slug) return null;
+  return `https://www.reclamefolder.nl/${slug}/?q=${encodeURIComponent(zoekterm)}`;
+}
+
 function updatePrijsKnop() {
   const todoItems = items.filter(i => !i.done);
   const sectie = document.getElementById('prijs-sectie');
@@ -1332,6 +1626,30 @@ async function vergelijkPrijzen() {
     }
   } catch(e) {
     locatieLabel = '⚠️ Locatie niet beschikbaar — alle winkels getoond';
+  }
+
+  resultaat.innerHTML = '<div class="prijs-loading">🔍 Actuele aanbiedingen ophalen via Reclamefolder…</div>';
+
+  // Probeer live aanbiedingsprijzen op te halen via Worker
+  let livePrijzen = {};
+  const aanbiedingArtikelen = gefilterdItems
+    .filter(i => isAanbiedingArtikel(i.name))
+    .map(i => i.name);
+
+  if (aanbiedingArtikelen.length > 0) {
+    try {
+      const workerRes = await fetch(FOLDER_WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artikelen: aanbiedingArtikelen })
+      });
+      if (workerRes.ok) {
+        const workerData = await workerRes.json();
+        livePrijzen = workerData.resultaten || {};
+      }
+    } catch (e) {
+      // Worker niet beschikbaar, gebruik database prijzen
+    }
   }
 
   resultaat.innerHTML = '<div class="prijs-loading">💰 Prijzen berekenen…</div>';
@@ -1406,10 +1724,28 @@ async function vergelijkPrijzen() {
         ${isGoedkoopst ? '<span style="font-size:0.7rem;background:white;color:var(--green);padding:2px 8px;border-radius:10px;margin-left:6px">✓ Goedkoopst</span>' : ''}
       </div>
       <div class="winkel-items">
-        ${gevonden.map(a => `<div class="winkel-item-rij">
-          <span><a href="${def.link}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a></span>
-          <span class="${minPerArtikel(a.naam,w)?'prijs-goedkoopst':'prijs-duurder'}">€${(a[w]||0).toFixed(2)}</span>
-        </div>`).join('')}
+        ${gevonden.map(a => {
+          const isAanbieding = isAanbiedingArtikel(a.naam);
+          const fUrl = isAanbieding ? folderUrl(w, a.naam) : null;
+          const liveData = livePrijzen[a.naam]?.[w];
+          const toonPrijs = liveData ? liveData.prijs : (a[w]||0);
+          const isLive = !!liveData;
+          const minPrijsRij = Math.min(...actieveWinkels.map(aw => {
+            const ld = livePrijzen[a.naam]?.[aw];
+            return ld ? ld.prijs : (a[aw]||Infinity);
+          }));
+          const isGoedkoopstArtikel = toonPrijs === minPrijsRij;
+          return `<div class="winkel-item-rij">
+            <span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+              <a href="${def.link}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a>
+              ${fUrl ? `<a href="${fUrl}" target="_blank" class="folder-btn">🗂 folder</a>` : ''}
+            </span>
+            <span style="display:flex;align-items:center;gap:4px">
+              ${isLive ? '<span style="font-size:0.65rem;background:#e8f0ea;color:#3d6b4f;padding:1px 5px;border-radius:6px;font-weight:600">LIVE</span>' : ''}
+              <span class="${isGoedkoopstArtikel?'prijs-goedkoopst':'prijs-duurder'}">€${toonPrijs.toFixed(2)}</span>
+            </span>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   });
@@ -1419,9 +1755,12 @@ async function vergelijkPrijzen() {
     html += `<div style="margin-top:10px">
       <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px">Overige winkels</div>
       ${gesorteerd.slice(3).map(w => `
-        <div style="display:flex;justify-content:space-between;padding:7px 12px;background:white;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;font-size:0.85rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:white;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;font-size:0.85rem">
           <span>${WINKELS_DEF[w].logo} ${WINKELS_DEF[w].naam}</span>
-          <span style="font-weight:600">€${totaal[w].toFixed(2)}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${gevonden.some(a => isAanbiedingArtikel(a.naam) && folderUrl(w, a.naam)) ? `<a href="${folderUrl(w, gevonden.find(a => isAanbiedingArtikel(a.naam))?.naam||'')}" target="_blank" class="folder-btn">🗂 folder</a>` : ''}
+            <span style="font-weight:600">€${totaal[w].toFixed(2)}</span>
+          </div>
         </div>`).join('')}
     </div>`;
   }
@@ -1433,7 +1772,7 @@ async function vergelijkPrijzen() {
   }
 
   html += `<div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5">
-    📅 Indicatieve prijzen mei 2025 · Tik op artikel voor winkelzoekpagina
+    🟢 LIVE = actuele aanbieding via Reclamefolder · 📅 overige = indicatief mei 2025 · 🗂 = bekijk folder
   </div>`;
 
   resultaat.innerHTML = html;
