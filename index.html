@@ -516,9 +516,17 @@
 <label class="setup-label" style="margin-top:10px">Naam recept *</label>
 <input class="setup-input" id="recept-naam" type="text" placeholder="bijv. Pasta Carbonara" style="letter-spacing:0;margin-bottom:10px" />
 
-<label class="setup-label">YouTube link *</label>
-<input class="setup-input" id="recept-youtube" type="url" placeholder="https://www.youtube.com/watch?v=..." style="letter-spacing:0;margin-bottom:6px" />
-<div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Plak een YouTube of YouTube Shorts link</div>
+<label class="setup-label">Video/Recept link *</label>
+<input class="setup-input" id="recept-youtube" type="url" placeholder="Plak een link van YouTube, TikTok, Pinterest…" style="letter-spacing:0;margin-bottom:6px" oninput="detectPlatform()" />
+<div id="platform-detect" style="font-size:0.72rem;margin-bottom:10px;min-height:18px"></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+  <span style="font-size:0.7rem;background:#f0f0f0;padding:3px 8px;border-radius:8px">🎬 YouTube</span>
+  <span style="font-size:0.7rem;background:#ffe0ec;padding:3px 8px;border-radius:8px">📌 Pinterest</span>
+  <span style="font-size:0.7rem;background:#e8f0ff;padding:3px 8px;border-radius:8px">📘 Facebook</span>
+  <span style="font-size:0.7rem;background:#fce8f0;padding:3px 8px;border-radius:8px">📸 Instagram</span>
+  <span style="font-size:0.7rem;background:#e8fff0;padding:3px 8px;border-radius:8px">🔍 Google</span>
+  <span style="font-size:0.7rem;background:#f0e8ff;padding:3px 8px;border-radius:8px">🎵 TikTok</span>
+</div>
 
 <label class="setup-label">Categorie</label>
 <select class="setup-input" id="recept-cat" style="letter-spacing:0;margin-bottom:10px">
@@ -1024,14 +1032,63 @@ function fbListenRecepten() {
   });
 }
 
-function getYouTubeId(url) {
+// ---- Platform detectie ----
+function detectPlatformInfo(url) {
   if (!url) return null;
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
-  return match ? match[1] : null;
+  const u = url.toLowerCase();
+  if (u.includes('youtube.com') || u.includes('youtu.be')) {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+    return { type: 'youtube', id: match?.[1], label: '🎬 YouTube', kleur: '#ff0000', embedbaar: !!match };
+  }
+  if (u.includes('tiktok.com')) {
+    return { type: 'tiktok', label: '🎵 TikTok', kleur: '#010101', embedbaar: false };
+  }
+  if (u.includes('pinterest.')) {
+    return { type: 'pinterest', label: '📌 Pinterest', kleur: '#e60023', embedbaar: false };
+  }
+  if (u.includes('instagram.com')) {
+    return { type: 'instagram', label: '📸 Instagram', kleur: '#c13584', embedbaar: false };
+  }
+  if (u.includes('facebook.com') || u.includes('fb.com') || u.includes('fb.watch')) {
+    return { type: 'facebook', label: '📘 Facebook', kleur: '#1877f2', embedbaar: false };
+  }
+  if (u.includes('google.com')) {
+    return { type: 'google', label: '🔍 Google', kleur: '#4285f4', embedbaar: false };
+  }
+  if (u.startsWith('http')) {
+    return { type: 'overig', label: '🔗 Link', kleur: '#7a8c7e', embedbaar: false };
+  }
+  return null;
+}
+
+function detectPlatform() {
+  const url = document.getElementById('recept-youtube')?.value.trim();
+  const el = document.getElementById('platform-detect');
+  if (!el) return;
+  const info = detectPlatformInfo(url);
+  if (info) {
+    el.innerHTML = `<span style="color:${info.kleur};font-weight:600">${info.label} herkend ✓</span>`;
+  } else {
+    el.innerHTML = url ? '<span style="color:var(--muted)">Voer een geldige link in</span>' : '';
+  }
+}
+
+function getYouTubeId(url) {
+  const info = detectPlatformInfo(url);
+  return (info?.type === 'youtube' && info.embedbaar) ? info.id : null;
 }
 
 function getYouTubeThumbnail(videoId) {
   return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+}
+
+function getPlatformThumbnail(platform) {
+  const thumbs = {
+    tiktok: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/100px-TikTok_logo.svg.png',
+    pinterest: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Pinterest_Logo.svg/100px-Pinterest_Logo.svg.png',
+    instagram: null, facebook: null, google: null
+  };
+  return thumbs[platform] || null;
 }
 
 function setCatFilter(el, cat) {
@@ -1066,7 +1123,10 @@ function renderRecepten() {
 
   el.innerHTML = gefilterd.map(r => {
     const vidId = getYouTubeId(r.youtube);
+    const platform = detectPlatformInfo(r.youtube);
     const thumb = vidId ? getYouTubeThumbnail(vidId) : null;
+    const platformKleur = platform?.kleur || 'var(--green)';
+    const platformLabel = platform?.label || '';
     return `
     <div class="recept-card" id="recept-${r.id}">
       ${thumb ? `
@@ -1074,6 +1134,12 @@ function renderRecepten() {
           <img class="recept-thumb" src="${thumb}" alt="${esc(r.naam)}" loading="lazy" />
         </div>
         <div id="video-${r.id}"></div>
+      ` : r.youtube ? `
+        <a href="${esc(r.youtube)}" target="_blank" style="display:block;background:#f5f5f5;padding:16px;text-align:center;text-decoration:none;border-bottom:1px solid var(--border)">
+          <div style="font-size:2rem;margin-bottom:4px">${platformLabel.split(' ')[0]||'🔗'}</div>
+          <div style="font-size:0.82rem;color:${platformKleur};font-weight:600">${platformLabel||'Link'}</div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">Tik om te openen →</div>
+        </a>
       ` : ''}
       <div class="recept-body">
         <div class="recept-titel">${esc(r.naam)}</div>
@@ -1084,7 +1150,7 @@ function renderRecepten() {
         </div>
         ${r.beschrijving ? `<div class="recept-beschr">${esc(r.beschrijving)}</div>` : ''}
         <div class="recept-acties">
-          ${vidId ? `<button class="recept-btn" onclick="speelAf('${r.id}','${vidId}')">▶ Afspelen</button>` : ''}
+          ${vidId ? `<button class="recept-btn" onclick="speelAf('${r.id}','${vidId}')">▶ Afspelen</button>` : r.youtube ? `<a href="${esc(r.youtube)}" target="_blank" class="recept-btn" style="text-decoration:none">${platformLabel} Openen</a>` : ''}
           <button class="recept-btn edit" onclick="bewerkRecept('${r.id}')">✏️ Bewerken</button>
           <button class="recept-btn del" onclick="verwijderRecept('${r.id}')">🗑 Verwijderen</button>
         </div>
@@ -1112,6 +1178,7 @@ function openReceptForm(id) {
   document.getElementById('recept-edit-id').value = id || '';
   document.getElementById('recept-naam').value = '';
   document.getElementById('recept-youtube').value = '';
+  const pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
   document.getElementById('recept-beschrijving').value = '';
   document.getElementById('recept-personen').value = '';
   document.getElementById('recept-tijd').value = '';
@@ -1148,8 +1215,8 @@ async function slaReceptOp() {
   errEl.style.display = 'none';
 
   if (!naam) { errEl.textContent = 'Vul een naam in.'; errEl.style.display = 'block'; return; }
-  if (!youtube) { errEl.textContent = 'Vul een YouTube link in.'; errEl.style.display = 'block'; return; }
-  if (!getYouTubeId(youtube)) { errEl.textContent = 'Ongeldige YouTube link. Plak een volledige link.'; errEl.style.display = 'block'; return; }
+  if (!youtube) { errEl.textContent = 'Vul een video of recept link in.'; errEl.style.display = 'block'; return; }
+  if (!youtube.startsWith('http')) { errEl.textContent = 'Plak een volledige link (beginnend met https://).'; errEl.style.display = 'block'; return; }
 
   const editId = document.getElementById('recept-edit-id').value;
   const id = editId || 'recept-' + Date.now();
