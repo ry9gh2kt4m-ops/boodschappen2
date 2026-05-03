@@ -77,10 +77,10 @@
   .gezin-badge:hover { background:#d0e4d5; }
 
   /* Tabs */
-  .tabs { display:flex; gap:8px; margin-bottom:20px; background:white; border:1px solid var(--border); border-radius:14px; padding:5px; }
-  .tab { flex:1; padding:9px; border-radius:10px; border:none; background:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.85rem; font-weight:500; color:var(--muted); transition:all 0.2s; text-align:center; }
+  .tabs { display:flex; gap:4px; margin-bottom:20px; background:white; border:1px solid var(--border); border-radius:14px; padding:4px; }
+  .tab { flex:1; padding:6px 2px; border-radius:10px; border:none; background:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.68rem; font-weight:500; color:var(--muted); transition:all 0.2s; text-align:center; line-height:1.2; }
   .tab.active { background:var(--green); color:white; }
-  .tab-icon { display:block; font-size:1.1rem; margin-bottom:2px; }
+  .tab-icon { display:block; font-size:1rem; margin-bottom:2px; }
 
   /* Stats */
   .stats { display:flex; gap:10px; margin-bottom:20px; }
@@ -353,16 +353,16 @@
 
   <div class="tabs">
     <button class="tab active" id="tab-boodschappen" onclick="switchTab('boodschappen')">
-      <span class="tab-icon">🛒</span> Boodschappen
+      <span class="tab-icon">🛒</span> Boodschap
     </button>
     <button class="tab" id="tab-menu" onclick="switchTab('menu')">
       <span class="tab-icon">🍽️</span> Weekmenu
     </button>
-    <button class="tab" id="tab-ideeen" onclick="switchTab('ideeen')">
-      <span class="tab-icon">💡</span> Ideeën
-    </button>
     <button class="tab" id="tab-kookboek" onclick="switchTab('kookboek')">
       <span class="tab-icon">📖</span> Kookboek
+    </button>
+    <button class="tab" id="tab-ideeen" onclick="switchTab('ideeen')">
+      <span class="tab-icon">💡</span> Ideeën
     </button>
   </div>
 
@@ -1535,10 +1535,6 @@ function updateCatChips() {
   });
 }
 
-// ---- Reclamefolder Worker URL ----
-// Vervang dit met jouw Worker URL na het instellen
-const FOLDER_WORKER_URL = 'https://boodschappen-avi.6dpf6r56d6.workers.dev/prijzen';
-
 // ---- Folder links ----
 // Categorieën waarvoor we aanbiedingen tonen
 const AANBIEDING_CATS = [
@@ -1628,31 +1624,8 @@ async function vergelijkPrijzen() {
     locatieLabel = '⚠️ Locatie niet beschikbaar — alle winkels getoond';
   }
 
-  resultaat.innerHTML = '<div class="prijs-loading">🔍 Actuele aanbiedingen ophalen via Reclamefolder…</div>';
-
-  // Probeer live aanbiedingsprijzen op te halen via Worker
-  let livePrijzen = {};
-  const aanbiedingArtikelen = gefilterdItems
-    .filter(i => isAanbiedingArtikel(i.name))
-    .map(i => i.name);
-
-  if (aanbiedingArtikelen.length > 0) {
-    try {
-      const workerRes = await fetch(FOLDER_WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artikelen: aanbiedingArtikelen })
-      });
-      if (workerRes.ok) {
-        const workerData = await workerRes.json();
-        livePrijzen = workerData.resultaten || {};
-      }
-    } catch (e) {
-      // Worker niet beschikbaar, gebruik database prijzen
-    }
-  }
-
   resultaat.innerHTML = '<div class="prijs-loading">💰 Prijzen berekenen…</div>';
+  const livePrijzen = {};
 
   // Stap 2: Prijzen zoeken — filter items op actieve categorie
   const DROGIST_NAMEN = ['scheermesjes','scheermes','scheerschuim','tandpasta','tandenborstel','shampoo','conditioner','douchegel','zeep','deodorant','lippenstift','mascara','foundation','zonnebrand','aftersun','bodylotion','handcrème','watten','maandverband','tampons','condoom','ibuprofen','paracetamol','vitamines','hoestdrank','pleisters','luiers','babydoekjes','haargel','nagellak','schoonmaakmiddel','allesreiniger','vaatwastabletten','wasverzachter'];
@@ -1727,23 +1700,14 @@ async function vergelijkPrijzen() {
         ${gevonden.map(a => {
           const isAanbieding = isAanbiedingArtikel(a.naam);
           const fUrl = isAanbieding ? folderUrl(w, a.naam) : null;
-          const liveData = livePrijzen[a.naam]?.[w];
-          const toonPrijs = liveData ? liveData.prijs : (a[w]||0);
-          const isLive = !!liveData;
-          const minPrijsRij = Math.min(...actieveWinkels.map(aw => {
-            const ld = livePrijzen[a.naam]?.[aw];
-            return ld ? ld.prijs : (a[aw]||Infinity);
-          }));
-          const isGoedkoopstArtikel = toonPrijs === minPrijsRij;
+          const toonPrijs = a[w]||0;
+          const isGoedkoopstArtikel = minPerArtikel(a.naam, w);
           return `<div class="winkel-item-rij">
             <span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
               <a href="${def.link}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a>
               ${fUrl ? `<a href="${fUrl}" target="_blank" class="folder-btn">🗂 folder</a>` : ''}
             </span>
-            <span style="display:flex;align-items:center;gap:4px">
-              ${isLive ? '<span style="font-size:0.65rem;background:#e8f0ea;color:#3d6b4f;padding:1px 5px;border-radius:6px;font-weight:600">LIVE</span>' : ''}
-              <span class="${isGoedkoopstArtikel?'prijs-goedkoopst':'prijs-duurder'}">€${toonPrijs.toFixed(2)}</span>
-            </span>
+            <span class="${isGoedkoopstArtikel?'prijs-goedkoopst':'prijs-duurder'}">€${toonPrijs.toFixed(2)}</span>
           </div>`;
         }).join('')}
       </div>
@@ -1772,7 +1736,7 @@ async function vergelijkPrijzen() {
   }
 
   html += `<div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5">
-    🟢 LIVE = actuele aanbieding via Reclamefolder · 📅 overige = indicatief mei 2025 · 🗂 = bekijk folder
+    📅 Indicatieve prijzen mei 2025 · Tik op artikel voor winkelzoekpagina · 🗂 = bekijk actuele folder
   </div>`;
 
   resultaat.innerHTML = html;
