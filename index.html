@@ -403,8 +403,8 @@
   <div style="font-size:0.78rem;font-weight:600;color:var(--ink);margin-bottom:8px">Vergelijk categorie:</div>
   <div class="cat-filter-row">
     <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
-    <button class="cat-chip cat-drogist" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
-    <button class="cat-chip cat-slijterij" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
+    <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
+    <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
   </div>
   <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
     🔍 Vergelijk prijzen
@@ -1574,14 +1574,26 @@ async function zoekDichtstbijzijndeWinkels(lat, lon) {
 }
 
 // ---- Categorie filters prijsvergelijking ----
-let actieveCats = { super: true, drogist: false, slijterij: false };
+let actieveCats = { super: true, drogist: true, slijterij: true };
 
 function toggleCat(cat) {
-  actieveCats[cat] = !actieveCats[cat];
-  // Zorg dat altijd minstens 1 categorie actief is
-  if (!Object.values(actieveCats).some(v => v)) actieveCats[cat] = true;
-  const el = document.getElementById('cat-' + cat);
-  if (el) el.classList.toggle('active', actieveCats[cat]);
+  const alleActief = Object.values(actieveCats).every(v => v);
+  const alleenDezeActief = actieveCats[cat] && Object.entries(actieveCats).every(([k,v]) => k === cat ? v : !v);
+
+  if (alleActief || alleenDezeActief) {
+    // Alles aan -> selecteer alleen deze | alleen deze -> zet alles aan
+    actieveCats = { super: !alleenDezeActief || cat==='super', drogist: !alleenDezeActief || cat==='drogist', slijterij: !alleenDezeActief || cat==='slijterij' };
+    if (alleenDezeActief) actieveCats = { super: true, drogist: true, slijterij: true };
+    else actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij' };
+  } else {
+    // Gedeeltelijk actief -> tik zet alleen deze aan
+    actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij' };
+  }
+
+  ['super','drogist','slijterij'].forEach(c => {
+    const el = document.getElementById('cat-' + c);
+    if (el) el.classList.toggle('active', actieveCats[c]);
+  });
   // Reset resultaat
   const res = document.getElementById('prijs-resultaat');
   if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
