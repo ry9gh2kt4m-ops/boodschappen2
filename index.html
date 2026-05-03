@@ -145,12 +145,14 @@
   .btn-prijs:hover { background:#1645885; }
   .btn-prijs:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
   .prijs-disclaimer { font-size:0.72rem; color:var(--muted); text-align:center; line-height:1.5; }
-  .cat-filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .cat-filter-row { display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto; margin-bottom:12px; padding-bottom:4px; scrollbar-width:none; }
+  .cat-filter-row::-webkit-scrollbar { display:none; }
   .cat-chip { padding:6px 12px; border-radius:20px; border:1.5px solid var(--border); background:white; font-size:0.78rem; cursor:pointer; color:var(--muted); font-family:'DM Sans',sans-serif; transition:all 0.18s; display:flex; align-items:center; gap:4px; }
   .cat-chip.active { color:white; border-color:transparent; }
   .cat-chip.cat-super.active { background:#1a56a0; }
   .cat-chip.cat-drogist.active { background:#C4006A; }
   .cat-chip.cat-slijterij.active { background:#8B0000; }
+  .cat-chip.cat-speciaal.active { background:#7B4F00; }
   .prijs-resultaat { margin-top:16px; display:none; }
   .prijs-resultaat.zichtbaar { display:block; }
   .prijs-loading { text-align:center; padding:20px; color:var(--muted); font-size:0.88rem; }
@@ -414,7 +416,7 @@
     <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
     <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
     <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
-    <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')">🍺 Speciaalbier</button>
+    <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')" style="white-space:nowrap">🍺 Speciaalbier</button>
   </div>
   <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
     🔍 Vergelijk prijzen
