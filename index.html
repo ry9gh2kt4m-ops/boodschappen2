@@ -516,7 +516,7 @@
 <label class="setup-label" style="margin-top:10px">Naam recept *</label>
 <input class="setup-input" id="recept-naam" type="text" placeholder="bijv. Pasta Carbonara" style="letter-spacing:0;margin-bottom:10px" />
 
-<label class="setup-label">Video/Recept link *</label>
+<label class="setup-label">Link recept *</label>
 <input class="setup-input" id="recept-youtube" type="url" placeholder="Plak een link van YouTube, TikTok, Pinterest…" style="letter-spacing:0;margin-bottom:6px" oninput="detectPlatform()" />
 <div id="platform-detect" style="font-size:0.72rem;margin-bottom:10px;min-height:18px"></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
@@ -1142,7 +1142,7 @@ function renderRecepten() {
         </a>
       ` : ''}
       <div class="recept-body">
-        <div class="recept-titel">${esc(r.naam)}</div>
+        <div class="recept-titel">${r.youtube ? `<a href="${esc(r.youtube)}" target="_blank" style="color:var(--ink);text-decoration:none">${esc(r.naam)} ↗</a>` : esc(r.naam)}</div>
         <div class="recept-meta">
           ${r.categorie ? `<span class="recept-tag">${catLabel[r.categorie]||r.categorie}</span>` : ''}
           ${r.personen ? `<span class="recept-tag" style="background:#fff3e0;color:#c47a2a">👥 ${r.personen} pers.</span>` : ''}
