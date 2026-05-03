@@ -195,6 +195,12 @@
   .bron-link { font-size:0.7rem; color:var(--muted); text-decoration:underline; }
   .folder-btn { display:inline-flex; align-items:center; gap:3px; font-size:0.7rem; padding:2px 7px; border-radius:8px; background:#fff3e0; color:#c47a2a; border:1px solid #f0c070; text-decoration:none; cursor:pointer; white-space:nowrap; }
   .folder-btn:hover { background:#ffe0b0; }
+  /* Boodschap categorieën */
+  .cat-header { display:flex; align-items:center; gap:8px; padding:8px 4px 4px; margin-top:4px; }
+  .cat-header-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); font-weight:600; }
+  .cat-header-line { flex:1; height:1px; background:var(--border); }
+  .cat-badge { font-size:0.68rem; padding:1px 7px; border-radius:8px; font-weight:600; margin-left:3px; cursor:pointer; }
+
   /* Kookboek */
   .recept-card { background:white; border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:12px; animation:slide-in 0.25s ease; }
   .recept-video-wrap { position:relative; padding-bottom:56.25%; height:0; overflow:hidden; background:#000; }
@@ -909,10 +915,84 @@ function setFilter(el, f) {
   el.classList.add('active'); render();
 }
 
+// ---- Boodschap categorisering ----
+const BOODSCHAP_CATS = [
+  {
+    key: 'agf', label: 'AGF', icon: '🥦',
+    items: ['appel','peer','banaan','sinaasappel','citroen','druif','aardbei','mango','avocado','kiwi','mandarijn',
+      'tomaat','tomaten','komkommer','sla','paprika','ui','uien','knoflook','wortel','wortelen','broccoli',
+      'bloemkool','spinazie','courgette','aubergine','champignon','aardappel','prei','ijsbergsla','selderij',
+      'peterselie','basilicum','munt','gember','mais','asperge','venkel','radicchio','rucola','witlof',
+      'spruitjes','boerenkool','savooiekool','rode kool','witte kool','bieslook','radijs','pastinaak',
+      'biet','pompoen','zoete aardappel','yam','watermeloen','meloen','ananas','papaja','lychee','vijg',
+      'pruim','kers','perzik','nectarine','abrikoos','granaatappel']
+  },
+  {
+    key: 'vlees', label: 'Vlees & Vis', icon: '🥩',
+    items: ['gehakt','kip','kipfilet','kipschnitzel','spek','bacon','ham','salami','worst','rookworst',
+      'biefstuk','tartaar','lamsrack','lam','varken','varkenshaas','ossenhaas','ribeye','entrecote',
+      'schnitzels','schnitzel','hamburger','kipdrumstick','kippenpoot','kalkoen','eend','konijn',
+      'zalm','tonijn','visstick','kabeljauw','tilapia','garnalen','mosselen','inktvis','haring',
+      'makreel','forel','pangasius','scampi','kreeft','vis','zeevruchten']
+  },
+  {
+    key: 'kruidenierswaren', label: 'Kruidenierswaren', icon: '🛒',
+    items: ['pasta','spaghetti','penne','fusilli','macaroni','tagliatelle','lasagne','orzo','rijst',
+      'basmati','couscous','quinoa','havermout','brood','crackers','beschuit','muesli','cornflakes',
+      'granola','bloem','suiker','zout','peper','olie','azijn','saus','tomatenpuree','passata',
+      'ketchup','mayonaise','mosterd','pesto','sambal','sojasaus','ketjap','jam','pindakaas',
+      'nutella','honing','hagelslag','blikje','bonen','kikkererwten','linzen','soep','bouillon',
+      'chips','koekjes','chocolade','noten','rozijnen','thee','koffie','bakpoeder','vanillesuiker',
+      'kaneel','paprikapoeder','curry','oregano','nootmuskaat','kurkuma','chili','kruidenmix']
+  },
+  {
+    key: 'koeling', label: 'Koeling', icon: '🧊',
+    items: ['melk','halfvolle melk','volle melk','karnemelk','yoghurt','kwark','slagroom','crème fraîche',
+      'zure room','boter','margarine','kaas','gouda','edam','brie','camembert','feta','mozzarella',
+      'parmezaan','roomkaas','smeerkaas','eieren','vla','pudding','sap','sinaasappelsap','appelsap',
+      'verse soep','verse pasta','tofu','tempeh','hummus','dip','tzatziki','pâté','geraspte kaas']
+  },
+  {
+    key: 'diepvries', label: 'Diepvries', icon: '❄️',
+    items: ['diepvries','doperwten','spinazie','friet','pizza','kroketten','bitterballen','visstaaf',
+      'garnalen diepvries','ijsje','ijs','sorbet','smoothie mix','fruit diepvries','groenten mix',
+      'edamame','sojaboontjes','bladerdeeg','deeg','wafels','pannenkoeken']
+  },
+  {
+    key: 'drank', label: 'Drank', icon: '🥤',
+    items: ['water','spa','cola','fanta','sprite','7up','redbull','energiedrank','frisdrank',
+      'limonade','siroop','tonic','bier','heineken','grolsch','amstel','hertog jan','bavaria',
+      'wijn','rode wijn','witte wijn','rosé','prosecco','champagne','cava','port','sherry',
+      'vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','koffiemelk']
+  },
+  {
+    key: 'nonfood', label: 'Non Food', icon: '🧴',
+    items: ['wasmiddel','afwasmiddel','vaatwas','toiletpapier','keukenpapier','aluminiumfolie',
+      'huishoudfolie','schoonmaakmiddel','allesreiniger','wc-eend','bleek','soda','schuurmiddel',
+      'wasverzachter','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta',
+      'tandenborstel','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband',
+      'tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines',
+      'parfum','nagellak','make-up','mascara','foundation','lippenstift']
+  }
+];
+
+function detectCat(naam) {
+  const n = naam.toLowerCase();
+  for (const cat of BOODSCHAP_CATS) {
+    if (cat.items.some(w => n.includes(w) || w.includes(n) && n.length > 3)) return cat.key;
+  }
+  return 'overig';
+}
+
+async function changeCat(id, cat) {
+  items = items.map(i => i.id===id ? {...i, cat} : i);
+  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+}
+
 async function addItem() {
   const name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  items.unshift({ id: Date.now(), name, person: currentPerson, done: false, qty: 1 });
+  items.unshift({ id: Date.now(), name, person: currentPerson, done: false, qty: 1, cat: detectCat(name) });
   document.getElementById('item-input').value = '';
   setSyncStatus(true); await fbSave(items); setSyncStatus(false);
 }
@@ -954,28 +1034,61 @@ function render() {
   updatePrijsKnop();
 }
 
+function renderItem(item) {
+  const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f'};
+  const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+  const borderStyle = !item.done ? `border-left:3px solid ${p.kleur}` : '';
+  const allCats = [...BOODSCHAP_CATS.map(c=>({key:c.key,label:c.label,icon:c.icon})), {key:'overig',label:'Overig',icon:'📦'}];
+  const catSelect = `<select onchange="changeCat(${item.id},this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">
+    ${allCats.map(c=>`<option value="${c.key}" ${(item.cat||'overig')===c.key?'selected':''}>${c.icon} ${c.label}</option>`).join('')}
+  </select>`;
+  return `
+  <div class="item ${item.done?'done':''}" style="${borderStyle}">
+    <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
+    <div class="item-main">
+      <div class="item-name">${esc(item.name)}</div>
+      <div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <span class="item-person" style="background:${bg};color:${p.kleur};display:inline-flex;align-items:center;gap:3px">${p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />` : '👤'} ${esc(item.person)}</span>
+        ${catSelect}
+      </div>
+    </div>
+    <div class="qty-controls">
+      <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
+      <span class="qty-num">${item.qty||1}</span>
+      <button class="qty-btn" onclick="changeQty(${item.id},+1)">+</button>
+    </div>
+    <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
+  </div>`;
+}
+
 function renderList(id, list, isDone) {
   const el = document.getElementById(id);
   if (!list.length && !isDone) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>'; return; }
-  el.innerHTML = list.map(item => {
-    const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f'};
-    const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-    const borderStyle = !item.done ? `border-left:3px solid ${p.kleur}` : '';
-    return `
-    <div class="item ${item.done?'done':''}" style="${borderStyle}">
-      <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
-      <div class="item-main">
-        <div class="item-name">${esc(item.name)}</div>
-        <div style="margin-top:2px"><span class="item-person" style="background:${bg};color:${p.kleur};display:inline-flex;align-items:center;gap:3px">${p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />` : '👤'} ${esc(item.person)}</span></div>
-      </div>
-      <div class="qty-controls">
-        <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
-        <span class="qty-num">${item.qty||1}</span>
-        <button class="qty-btn" onclick="changeQty(${item.id},+1)">+</button>
-      </div>
-      <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
+
+  // Groepeer op categorie
+  const catOrder = [...BOODSCHAP_CATS.map(c=>c.key), 'overig'];
+  const groups = {};
+  catOrder.forEach(k => groups[k] = []);
+  list.forEach(item => {
+    const cat = item.cat || detectCat(item.name);
+    if (groups[cat]) groups[cat].push(item);
+    else groups['overig'].push(item);
+  });
+
+  const allCatDefs = [...BOODSCHAP_CATS, {key:'overig',label:'Overig',icon:'📦'}];
+  let html = '';
+  allCatDefs.forEach(cat => {
+    const groep = groups[cat.key];
+    if (!groep || !groep.length) return;
+    html += `<div class="cat-header">
+      <span style="font-size:0.9rem">${cat.icon}</span>
+      <span class="cat-header-label">${cat.label}</span>
+      <div class="cat-header-line"></div>
+      <span style="font-size:0.68rem;color:var(--muted)">${groep.length}</span>
     </div>`;
-  }).join('');
+    html += groep.map(item => renderItem(item)).join('');
+  });
+  el.innerHTML = html;
 }
 
 // ---- Weekmenu ----
