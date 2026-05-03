@@ -171,7 +171,13 @@
   .winkel-gall        { background:#FFF0F0; color:#8B0000; }
   .winkel-mitra       { background:#FFF5E0; color:#7B4000; }
   .winkel-dirck3      { background:#FFF8E8; color:#5B3A00; }
-  .winkel-deslijterij { background:#F0FFF0; color:#1a5c1a; }
+  .winkel-deslijterij  { background:#F0FFF0; color:#1a5c1a; }
+  .winkel-craftbeer    { background:#FFF8E8; color:#7B4F00; }
+  .winkel-caigny       { background:#FFF0E8; color:#8B3000; }
+  .winkel-hopshop      { background:#F5FFE8; color:#3a6600; }
+  .winkel-hophops      { background:#FFFBE8; color:#665500; }
+  .winkel-bierloods    { background:#E8F5FF; color:#003366; }
+  .winkel-misterhop    { background:#F5E8FF; color:#440066; }
   .winkel-advies { background:var(--green); color:white; }
   .winkel-totaal { margin-left:auto; font-family:"Playfair Display",serif; font-size:1.1rem; }
   .winkel-items { padding:8px 14px 12px; }
@@ -405,6 +411,7 @@
     <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
     <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
     <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
+    <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')">🍺 Speciaal</button>
   </div>
   <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
     🔍 Vergelijk prijzen
@@ -1409,12 +1416,18 @@ const WINKELS_DEF = {
   gall:      { naam:'Gall & Gall',      logo:'🍷', kleur:'winkel-gall',       link:'https://www.gall.nl/assortiment/search?searchTerm=',      osm:'Gall & Gall', slijterij:true },
   mitra:     { naam:'Mitra',            logo:'🥃', kleur:'winkel-mitra',      link:'https://www.mitra.nl/search?q=',                          osm:'Mitra', slijterij:true },
   dirck3:    { naam:'Dirck III',        logo:'🍺', kleur:'winkel-dirck3',     link:'https://www.dirck3.nl/search?q=',                         osm:'Dirck III', slijterij:true },
-  deslijterij: { naam:'De Slijterij',  logo:'🌿', kleur:'winkel-deslijterij', link:'https://www.deslijterij.com/search?q=',                   osm:null, slijterij:true },
+  deslijterij:  { naam:'De Slijterij',    logo:'🌿', kleur:'winkel-deslijterij',  link:'https://www.deslijterij.com/search?q=',              osm:null, slijterij:true },
+  craftbeer:    { naam:'Craftbeer.shop',  logo:'🍺', kleur:'winkel-craftbeer',    link:'https://www.craftbeer.shop/search?q=',               osm:null, speciaal:true },
+  caigny:       { naam:'De Caigny',       logo:'🏺', kleur:'winkel-caigny',       link:'https://www.decaigny.be/search?q=',                  osm:null, speciaal:true },
+  hopshop:      { naam:'De Hopshop',      logo:'🌾', kleur:'winkel-hopshop',      link:'https://www.dehopshop.nl/search?q=',                 osm:null, speciaal:true },
+  hophops:      { naam:'Hops & Hopes',    logo:'🍻', kleur:'winkel-hophops',      link:'https://www.hopsandhopes.nl/search?q=',              osm:null, speciaal:true },
+  bierloods:    { naam:'Bierloods',       logo:'🚢', kleur:'winkel-bierloods',    link:'https://www.bierloods.nl/search?q=',                 osm:null, speciaal:true },
+  misterhop:    { naam:'Mr.Hop',          logo:'🎩', kleur:'winkel-misterhop',    link:'https://www.misterhop.nl/search?q=',                 osm:null, speciaal:true },
 };
 
 // Prijsfactoren per winkel t.o.v. AH (basis)
 // AH=1.0, Jumbo=0.95, Lidl=0.82, Aldi=0.78, Picnic=0.91, Plus=0.97, Dirk=0.88, Coop=0.96
-const FACTOR = { ah:1.00, jumbo:0.95, lidl:0.82, aldi:0.78, picnic:0.91, plus:0.97, dirk:0.88, coop:0.96, etos:1.05, kruidvat:0.95, da:1.02, plein:0.88, online:0.85, schoon:0.82, gall:0.92, mitra:0.90, dirck3:0.88, deslijterij:0.85 };
+const FACTOR = { ah:1.00, jumbo:0.95, lidl:0.82, aldi:0.78, picnic:0.91, plus:0.97, dirk:0.88, coop:0.96, etos:1.05, kruidvat:0.95, da:1.02, plein:0.88, online:0.85, schoon:0.82, gall:0.92, mitra:0.90, dirck3:0.88, deslijterij:0.85, craftbeer:1.15, caigny:1.10, hopshop:1.12, hophops:1.08, bierloods:1.05, misterhop:1.10 };
 
 const PRIJSDB = {
   'melk': {ah:1.19}, 'volle melk': {ah:1.19}, 'halfvolle melk': {ah:1.09},
@@ -1484,6 +1497,22 @@ const PRIJSDB = {
   'luiers': {ah:14.99}, 'babydoekjes': {ah:3.99}, 'babyolie': {ah:4.99},
   'haargel': {ah:3.99}, 'haarspray': {ah:4.99}, 'wax': {ah:5.99},
   'parfum': {ah:29.99}, 'nagellak': {ah:4.99},
+  // Speciaalbier
+  'speciaalbier': {ah:3.49}, 'craft beer': {ah:3.49}, 'craftbeer': {ah:3.49},
+  'ipa': {ah:3.49}, 'pale ale': {ah:3.49}, 'stout': {ah:3.99},
+  'porter': {ah:3.79}, 'tripel': {ah:4.49}, 'dubbel': {ah:3.99},
+  'quadrupel': {ah:5.49}, 'saison': {ah:3.99}, 'witbier': {ah:2.99},
+  'weizen': {ah:2.99}, 'hefeweizen': {ah:2.99}, 'pilsner': {ah:1.99},
+  'lager': {ah:1.99}, 'sour beer': {ah:4.49}, 'lambic': {ah:4.99},
+  'geuze': {ah:4.99}, 'kriek': {ah:4.99}, 'fruit beer': {ah:3.49},
+  'barleywine': {ah:5.99}, 'imperial stout': {ah:5.49}, 'session ipa': {ah:2.99},
+  'neipa': {ah:4.49}, 'hazy ipa': {ah:4.49}, 'west coast ipa': {ah:3.99},
+  'amber ale': {ah:3.49}, 'red ale': {ah:3.49}, 'brown ale': {ah:3.29},
+  'bockbier': {ah:3.49}, 'märzen': {ah:3.29}, 'dunkel': {ah:3.29},
+  'duvel': {ah:2.49}, 'la trappe': {ah:2.99}, 'hertog jan': {ah:1.89},
+  'westmalle': {ah:2.99}, 'chimay': {ah:2.99}, 'orval': {ah:3.49},
+  'rochefort': {ah:3.99}, 'westvleteren': {ah:8.99},
+
   // Alcoholische dranken
   'bier': {ah:6.99}, 'biertje': {ah:6.99}, 'sixpack': {ah:6.99},
   'hertog jan': {ah:7.99}, 'heineken': {ah:7.49}, 'amstel': {ah:6.99},
@@ -1574,23 +1603,21 @@ async function zoekDichtstbijzijndeWinkels(lat, lon) {
 }
 
 // ---- Categorie filters prijsvergelijking ----
-let actieveCats = { super: true, drogist: true, slijterij: true };
+let actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
 
 function toggleCat(cat) {
   const alleActief = Object.values(actieveCats).every(v => v);
   const alleenDezeActief = actieveCats[cat] && Object.entries(actieveCats).every(([k,v]) => k === cat ? v : !v);
 
   if (alleActief || alleenDezeActief) {
-    // Alles aan -> selecteer alleen deze | alleen deze -> zet alles aan
-    actieveCats = { super: !alleenDezeActief || cat==='super', drogist: !alleenDezeActief || cat==='drogist', slijterij: !alleenDezeActief || cat==='slijterij' };
-    if (alleenDezeActief) actieveCats = { super: true, drogist: true, slijterij: true };
-    else actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij' };
+    if (alleenDezeActief) actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+    else actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij', speciaal: cat==='speciaal' };
   } else {
     // Gedeeltelijk actief -> tik zet alleen deze aan
-    actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij' };
+    actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij', speciaal: cat==='speciaal' };
   }
 
-  ['super','drogist','slijterij'].forEach(c => {
+  ['super','drogist','slijterij','speciaal'].forEach(c => {
     const el = document.getElementById('cat-' + c);
     if (el) el.classList.toggle('active', actieveCats[c]);
   });
@@ -1608,7 +1635,8 @@ function updateCatChips() {
   const hasSlijterij = todoItems.some(i => SLIJTERIJ_CHECK.some(d => i.name.toLowerCase().includes(d)));
   if (hasDrogist) { actieveCats.drogist = true; }
   if (hasSlijterij) { actieveCats.slijterij = true; }
-  ['super','drogist','slijterij'].forEach(cat => {
+  if (heeftSpeciaalItems) { actieveCats.speciaal = true; }
+  ['super','drogist','slijterij','speciaal'].forEach(cat => {
     const el = document.getElementById('cat-' + cat);
     if (el) el.classList.toggle('active', actieveCats[cat]);
   });
@@ -1674,12 +1702,14 @@ async function vergelijkPrijzen() {
   const supermarkten = alleWinkels.filter(w => !WINKELS_DEF[w].drogist && !WINKELS_DEF[w].slijterij);
   const drogisten = alleWinkels.filter(w => WINKELS_DEF[w].drogist);
   const slijterijen = alleWinkels.filter(w => WINKELS_DEF[w].slijterij);
+  const speciaals = alleWinkels.filter(w => WINKELS_DEF[w].speciaal);
 
   // Gebruik categoriefilter keuze van gebruiker
   let actieveWinkels = [
     ...(actieveCats.super ? supermarkten : []),
     ...(actieveCats.drogist ? drogisten : []),
-    ...(actieveCats.slijterij ? slijterijen : [])
+    ...(actieveCats.slijterij ? slijterijen : []),
+    ...(actieveCats.speciaal ? speciaals : [])
   ];
   if (!actieveWinkels.length) actieveWinkels = supermarkten; // fallback
 
@@ -1709,9 +1739,11 @@ async function vergelijkPrijzen() {
   // Stap 2: Prijzen zoeken — filter items op actieve categorie
   const DROGIST_NAMEN = ['scheermesjes','scheermes','scheerschuim','tandpasta','tandenborstel','shampoo','conditioner','douchegel','zeep','deodorant','lippenstift','mascara','foundation','zonnebrand','aftersun','bodylotion','handcrème','watten','maandverband','tampons','condoom','ibuprofen','paracetamol','vitamines','hoestdrank','pleisters','luiers','babydoekjes','haargel','nagellak','schoonmaakmiddel','allesreiniger','vaatwastabletten','wasverzachter'];
   const SLIJTERIJ_NAMEN = ['bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne','rosé','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol','biertje','sixpack','whiskey','bourbon','cava','port','sherry'];
+  const SPECIAAL_NAMEN = ['ipa','pale ale','stout','porter','tripel','dubbel','quadrupel','saison','witbier','weizen','sour beer','lambic','geuze','kriek','barleywine','imperial','neipa','hazy','craft beer','craftbeer','speciaalbier','duvel','westmalle','chimay','orval','rochefort','westvleteren','la trappe'];
 
   function getCat(naam) {
     const n = naam.toLowerCase();
+    if (SPECIAAL_NAMEN.some(d => n.includes(d))) return 'speciaal';
     if (SLIJTERIJ_NAMEN.some(d => n.includes(d))) return 'slijterij';
     if (DROGIST_NAMEN.some(d => n.includes(d))) return 'drogist';
     return 'super';
@@ -1779,12 +1811,17 @@ async function vergelijkPrijzen() {
         ${gevonden.map(a => {
           const isAanbieding = isAanbiedingArtikel(a.naam);
           const fUrl = isAanbieding ? folderUrl(w, a.naam) : null;
+          const isSpeciaal = SPECIAAL_NAMEN.some(d => a.naam.toLowerCase().includes(d));
+          const untappdUrl = isSpeciaal ? `https://untappd.com/search?q=${encodeURIComponent(a.naam)}` : null;
+          const untappdProfiel = 'https://untappd.com/user/jorg103';
           const toonPrijs = a[w]||0;
           const isGoedkoopstArtikel = minPerArtikel(a.naam, w);
           return `<div class="winkel-item-rij">
             <span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
               <a href="${def.link}${encodeURIComponent(a.naam)}" target="_blank" class="bron-link">${esc(a.naam)}</a>
               ${fUrl ? `<a href="${fUrl}" target="_blank" class="folder-btn">🗂 folder</a>` : ''}
+              ${untappdUrl ? `<a href="${untappdUrl}" target="_blank" class="folder-btn" style="background:#fce8cc;color:#d4782a;border-color:#f0b87a">🍺 Untappd</a>` : ''}
+              ${untappdUrl ? `<a href="${untappdProfiel}" target="_blank" class="folder-btn" style="background:#e8f0fa;color:#1a56a0;border-color:#90b0e0">👤 jorg103</a>` : ''}
             </span>
             <span class="${isGoedkoopstArtikel?'prijs-goedkoopst':'prijs-duurder'}">€${toonPrijs.toFixed(2)}</span>
           </div>`;
