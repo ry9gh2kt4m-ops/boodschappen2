@@ -217,6 +217,17 @@
   .recept-thumb { width:100%; height:160px; object-fit:cover; cursor:pointer; }
   .recept-play-overlay { position:relative; cursor:pointer; }
   .recept-play-overlay::after { content:'▶'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:3rem; color:white; text-shadow:0 2px 8px rgba(0,0,0,0.6); pointer-events:none; }
+  .ingredienten-lijst { margin-top:10px; }
+  .ingredient-rij { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border); font-size:0.85rem; }
+  .ingredient-rij:last-child { border:none; }
+  .ingredient-check { width:18px; height:18px; border-radius:4px; border:1.5px solid var(--border); flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.7rem; }
+  .ingredient-check.checked { background:var(--green); border-color:var(--green); color:white; }
+  .btn-add-boodschappen { width:100%; padding:10px; border-radius:10px; border:none; background:var(--green); color:white; font-family:'DM Sans',sans-serif; font-size:0.88rem; font-weight:600; cursor:pointer; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .btn-add-boodschappen:hover { background:var(--green-light); }
+  .ingredienten-invoer { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .ingredient-input-rij { display:flex; gap:6px; align-items:center; }
+  .ingredient-input { flex:1; border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-family:'DM Sans',sans-serif; font-size:0.85rem; outline:none; }
+  .ingredient-input:focus { border-color:var(--green-light); }
 
   /* Foto avatar */
   .avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; border:2px solid var(--border); }
@@ -572,7 +583,12 @@
 <input class="setup-input" id="recept-personen" type="number" min="1" max="20" placeholder="bijv. 4" style="letter-spacing:0;margin-bottom:10px" />
 
 <label class="setup-label">Bereidingstijd (optioneel)</label>
-<input class="setup-input" id="recept-tijd" type="text" placeholder="bijv. 30 min" style="letter-spacing:0;margin-bottom:16px" />
+<input class="setup-input" id="recept-tijd" type="text" placeholder="bijv. 30 min" style="letter-spacing:0;margin-bottom:14px" />
+
+<label class="setup-label">Ingrediënten (optioneel)</label>
+<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px">Voeg ingrediënten toe zodat je ze met 1 tik op je boodschappenlijst kunt zetten.</div>
+<div class="ingredienten-invoer" id="ingredienten-invoer"></div>
+<button onclick="voegIngredientToe()" style="width:100%;padding:7px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted);margin-bottom:14px">＋ Ingredient toevoegen</button>
 
 <button class="btn-setup" onclick="slaReceptOp()">Opslaan ✓</button>
 <div class="setup-error" id="recept-error"></div>
@@ -1346,6 +1362,18 @@ function renderRecepten() {
           ${r.tijd ? `<span class="recept-tag" style="background:#e8f0fa;color:#1a56a0">⏱ ${esc(r.tijd)}</span>` : ''}
         </div>
         ${r.beschrijving ? `<div class="recept-beschr">${esc(r.beschrijving)}</div>` : ''}
+        ${r.ingredienten && r.ingredienten.length ? `
+          <div class="ingredienten-lijst" id="ing-${r.id}">
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;margin-top:8px">🧾 Ingrediënten</div>
+            ${r.ingredienten.map((ing,i) => `
+              <div class="ingredient-rij">
+                <div class="ingredient-check" id="ingcheck-${r.id}-${i}" onclick="toggleIngCheck('${r.id}',${i})"></div>
+                <span>${esc(ing)}</span>
+              </div>`).join('')}
+            <button class="btn-add-boodschappen" onclick="voegAlleIngredientenToe('${r.id}')">
+              🛒 Alle ingrediënten op boodschappenlijst
+            </button>
+          </div>` : ''}
         <div class="recept-acties">
           ${vidId ? `<button class="recept-btn" onclick="speelAf('${r.id}','${vidId}')">▶ Afspelen</button>` : r.youtube ? `<a href="${esc(r.youtube)}" target="_blank" class="recept-btn" style="text-decoration:none">${platformLabel} Openen</a>` : ''}
           <button class="recept-btn edit" onclick="bewerkRecept('${r.id}')">✏️ Bewerken</button>
@@ -1370,6 +1398,35 @@ function speelAf(receptId, videoId) {
     </div>`;
 }
 
+// ---- Ingrediënten beheer ----
+let tempIngredienten = [];
+
+function voegIngredientToe(waarde) {
+  tempIngredienten.push(waarde || '');
+  renderIngredientenInvoer();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.ingredient-input');
+    if (inputs.length) inputs[inputs.length-1].focus();
+  }, 50);
+}
+
+function verwijderIngredient(i) {
+  tempIngredienten.splice(i, 1);
+  renderIngredientenInvoer();
+}
+
+function renderIngredientenInvoer() {
+  const el = document.getElementById('ingredienten-invoer');
+  if (!el) return;
+  el.innerHTML = tempIngredienten.map((ing, i) => `
+    <div class="ingredient-input-rij">
+      <input class="ingredient-input" value="${esc(ing)}" placeholder="bijv. 200g spaghetti"
+        oninput="tempIngredienten[${i}]=this.value"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();voegIngredientToe()}" />
+      <button onclick="verwijderIngredient(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>
+    </div>`).join('');
+}
+
 function openReceptForm(id) {
   document.getElementById('recept-modal-titel').textContent = id ? '✏️ Recept bewerken' : '📖 Nieuw recept';
   document.getElementById('recept-edit-id').value = id || '';
@@ -1380,6 +1437,7 @@ function openReceptForm(id) {
   document.getElementById('recept-personen').value = '';
   document.getElementById('recept-tijd').value = '';
   document.getElementById('recept-cat').value = 'diner';
+  tempIngredienten = [];
   document.getElementById('recept-error').style.display = 'none';
 
   if (id) {
@@ -1391,6 +1449,7 @@ function openReceptForm(id) {
       document.getElementById('recept-personen').value = r.personen || '';
       document.getElementById('recept-tijd').value = r.tijd || '';
       document.getElementById('recept-cat').value = r.categorie || 'diner';
+      tempIngredienten = r.ingredienten ? [...r.ingredienten] : [];
     }
   }
   document.getElementById('recept-modal').style.display = 'flex';
@@ -1425,10 +1484,37 @@ async function slaReceptOp() {
     beschrijving: document.getElementById('recept-beschrijving').value.trim(),
     personen: document.getElementById('recept-personen').value || null,
     tijd: document.getElementById('recept-tijd').value.trim() || null,
+    ingredienten: tempIngredienten.filter(i => i.trim()),
     aangemaakt: editId ? (recepten.find(r=>r.id===editId)?.aangemaakt||Date.now()) : Date.now()
   });
 
   document.getElementById('recept-modal').style.display = 'none';
+}
+
+function toggleIngCheck(receptId, idx) {
+  const el = document.getElementById(`ingcheck-${receptId}-${idx}`);
+  if (el) el.classList.toggle('checked');
+  const checked = el?.classList.contains('checked');
+  if (el) el.textContent = checked ? '✓' : '';
+}
+
+async function voegAlleIngredientenToe(receptId) {
+  const r = recepten.find(x => x.id === receptId);
+  if (!r || !r.ingredienten) return;
+  const nieuweItems = r.ingredienten
+    .filter(ing => ing.trim())
+    .map(ing => ({ id: Date.now() + Math.random(), name: ing.trim(), person: currentPerson, done: false, qty: 1, cat: detectCat(ing) }));
+  items.unshift(...nieuweItems);
+  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  // Toon bevestiging
+  const btn = document.querySelector(`#ing-${receptId} .btn-add-boodschappen`);
+  if (btn) {
+    btn.textContent = `✅ ${nieuweItems.length} ingrediënten toegevoegd!`;
+    btn.style.background = '#5a8f6d';
+    setTimeout(() => { btn.innerHTML = '🛒 Alle ingrediënten op boodschappenlijst'; btn.style.background = ''; }, 3000);
+  }
+  // Switch naar boodschappen tab
+  setTimeout(() => switchTab('boodschappen'), 1500);
 }
 
 async function verwijderRecept(id) {
