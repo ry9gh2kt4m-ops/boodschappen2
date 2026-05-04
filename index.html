@@ -281,6 +281,14 @@
   .dag-save-btn { background:var(--green); color:white; border:none; border-radius:10px; padding:9px 14px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.82rem; font-weight:500; }
   .dag-clear-btn { background:none; border:1.5px solid var(--border); color:var(--muted); border-radius:10px; padding:9px 10px; cursor:pointer; }
   .dag-clear-btn:hover { border-color:var(--red); color:var(--red); }
+  .recept-picker { margin-top:10px; display:none; }
+  .recept-picker.open { display:block; }
+  .recept-picker-title { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px; }
+  .recept-keuze { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:white; cursor:pointer; margin-bottom:6px; transition:all 0.15s; }
+  .recept-keuze:hover { border-color:var(--green); background:var(--green-pale); }
+  .recept-keuze-thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+  .recept-keuze-naam { font-size:0.85rem; font-weight:500; color:var(--ink); }
+  .recept-keuze-cat { font-size:0.7rem; color:var(--muted); }
   .dag-gerecht { font-size:0.92rem; color:var(--ink); margin-top:10px; line-height:1.4; }
   .dag-vandaag .dag-header { background:var(--green-pale); }
   .dag-vandaag .dag-naam { color:var(--green); }
@@ -1113,15 +1121,32 @@ function renderMenu() {
           <div class="dag-naam">${dag}${isToday?'<span class="dag-label">Vandaag</span>':''}</div>
           <div class="dag-datum">${getDatumLabel(i)}</div>
         </div>
-        <div class="dag-preview ${gerecht?'gevuld':''}">${gerecht||'Nog niet ingevuld…'}</div>
+        <div class="dag-preview ${gerecht?'gevuld':''}">${(() => {
+          const rid = menu[key+'_receptId'];
+          const hasRecept = rid && recepten.find(x => x.id===rid);
+          return (hasRecept ? '📖 ' : '') + (gerecht||'Nog niet ingevuld…');
+        })()}</div>
         <span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>
       </div>
       <div class="dag-body" id="dag-body-${i}">
-        <div class="dag-gerecht">${gerecht?'🍽️ '+esc(gerecht):'Nog niets gepland.'}</div>
+        <div class="dag-gerecht" id="dag-gerecht-${i}">${(() => {
+          const rid = menu[key+'_receptId'];
+          const r = rid ? recepten.find(x => x.id===rid) : null;
+          if (!gerecht) return 'Nog niets gepland.';
+          if (r && r.youtube) return `🍽️ <a href="${esc(r.youtube)}" target="_blank" style="color:var(--green);font-weight:600">${esc(gerecht)} ↗</a>`;
+          return '🍽️ ' + esc(gerecht);
+        })()}</div>
         <div class="dag-input-row">
           <input class="dag-input" id="dag-input-${i}" type="text" placeholder="bijv. Pasta bolognese" value="${esc(gerecht)}" />
           <button class="dag-save-btn" onclick="saveDag(${i})">Opslaan</button>
           ${gerecht?`<button class="dag-clear-btn" onclick="clearDag(${i})">✕</button>`:''}
+        </div>
+        <button onclick="toggleReceptPicker(${i})" style="width:100%;margin-top:8px;padding:7px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted)">
+          📖 Kies uit kookboek
+        </button>
+        <div class="recept-picker" id="recept-picker-${i}">
+          <div class="recept-picker-title">Kies een recept</div>
+          <div id="recept-picker-lijst-${i}"></div>
         </div>
       </div>
     </div>`;
@@ -1132,6 +1157,52 @@ function toggleDag(i) {
   const body = document.getElementById('dag-body-'+i), isOpen = body.classList.contains('open');
   document.querySelectorAll('.dag-body').forEach(b => b.classList.remove('open'));
   if (!isOpen) { body.classList.add('open'); setTimeout(()=>document.getElementById('dag-input-'+i)?.focus(),100); }
+}
+
+function toggleReceptPicker(i) {
+  const picker = document.getElementById('recept-picker-' + i);
+  if (!picker) return;
+  const isOpen = picker.classList.contains('open');
+  // Sluit alle pickers
+  document.querySelectorAll('.recept-picker').forEach(p => p.classList.remove('open'));
+  if (!isOpen) {
+    picker.classList.add('open');
+    renderReceptPicker(i);
+  }
+}
+
+function renderReceptPicker(i) {
+  const lijst = document.getElementById('recept-picker-lijst-' + i);
+  if (!lijst) return;
+  if (!recepten.length) {
+    lijst.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);padding:8px">Nog geen recepten in je kookboek. Voeg eerst recepten toe via de 📖 Kookboek tab.</div>';
+    return;
+  }
+  const catLabel = { ontbijt:'🥐', lunch:'🥗', diner:'🍽️', snack:'🍿', dessert:'🍰', overig:'📦' };
+  lijst.innerHTML = recepten.map(r => {
+    const vidId = getYouTubeId(r.youtube);
+    const thumb = vidId ? getYouTubeThumbnail(vidId) : null;
+    return `<div class="recept-keuze" onclick="kiesRecept(${i},'${esc(r.naam)}','${r.id}')">
+      ${thumb ? `<img class="recept-keuze-thumb" src="${thumb}" />` : `<div class="recept-keuze-thumb" style="background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem">${catLabel[r.categorie]||'🍽️'}</div>`}
+      <div>
+        <div class="recept-keuze-naam">${esc(r.naam)}</div>
+        <div class="recept-keuze-cat">${catLabel[r.categorie]||'📦'} ${r.categorie||'overig'}${r.tijd?' · ⏱ '+esc(r.tijd):''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function kiesRecept(dagIdx, naam, receptId) {
+  // Vul naam in het invoerveld
+  const input = document.getElementById('dag-input-' + dagIdx);
+  if (input) input.value = naam;
+  // Sla direct op inclusief receptId voor link
+  const key = getDagKey(dagIdx);
+  menu[key] = naam;
+  menu[key + '_receptId'] = receptId;
+  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+  // Sluit picker
+  document.querySelectorAll('.recept-picker').forEach(p => p.classList.remove('open'));
 }
 
 async function saveDag(i) {
