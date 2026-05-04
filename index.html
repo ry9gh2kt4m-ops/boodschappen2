@@ -419,6 +419,7 @@
   <!-- Categorie filters -->
   <div style="font-size:0.78rem;font-weight:600;color:var(--ink);margin-bottom:8px">Vergelijk categorie:</div>
   <div class="cat-filter-row">
+    <button class="cat-chip" id="cat-alle" onclick="toggleCat('alle')" style="display:none;background:#3d6b4f;color:white;border-color:#3d6b4f;white-space:nowrap">✕ Alles</button>
     <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
     <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
     <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
@@ -1724,24 +1725,30 @@ async function zoekDichtstbijzijndeWinkels(lat, lon) {
 let actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
 
 function toggleCat(cat) {
-  const alleActief = Object.values(actieveCats).every(v => v);
-  const alleenDezeActief = actieveCats[cat] && Object.entries(actieveCats).every(([k,v]) => k === cat ? v : !v);
-
-  if (alleActief || alleenDezeActief) {
-    if (alleenDezeActief) actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
-    else actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij', speciaal: cat==='speciaal' };
+  if (cat === 'alle') {
+    // Reset knop — alles aan
+    actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
   } else {
-    // Gedeeltelijk actief -> tik zet alleen deze aan
-    actieveCats = { super: cat==='super', drogist: cat==='drogist', slijterij: cat==='slijterij', speciaal: cat==='speciaal' };
+    // Simpel aan/uit per chip — zorg dat altijd minstens 1 actief blijft
+    const nieuw = { ...actieveCats, [cat]: !actieveCats[cat] };
+    if (Object.values(nieuw).some(v => v)) actieveCats = nieuw;
+    // Anders alles aanzetten
+    else actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
   }
+  updateCatChipUI();
+  const res = document.getElementById('prijs-resultaat');
+  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
+}
 
+function updateCatChipUI() {
   ['super','drogist','slijterij','speciaal'].forEach(c => {
     const el = document.getElementById('cat-' + c);
     if (el) el.classList.toggle('active', actieveCats[c]);
   });
-  // Reset resultaat
-  const res = document.getElementById('prijs-resultaat');
-  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
+  // Toon/verberg "Alles" reset knop
+  const alleActief = Object.values(actieveCats).every(v => v);
+  const resetBtn = document.getElementById('cat-alle');
+  if (resetBtn) resetBtn.style.display = alleActief ? 'none' : 'inline-flex';
 }
 
 function updateCatChips() {
@@ -1754,10 +1761,7 @@ function updateCatChips() {
   if (hasDrogist) { actieveCats.drogist = true; }
   if (hasSlijterij) { actieveCats.slijterij = true; }
   if (heeftSpeciaalItems) { actieveCats.speciaal = true; }
-  ['super','drogist','slijterij','speciaal'].forEach(cat => {
-    const el = document.getElementById('cat-' + cat);
-    if (el) el.classList.toggle('active', actieveCats[cat]);
-  });
+  updateCatChipUI();
 }
 
 // ---- Folder links ----
