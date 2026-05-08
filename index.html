@@ -903,6 +903,7 @@ function initApp() {
   }
   fbListenIdeeen();
   fbListenRecepten();
+  fbListenGeleerd();
   setupMic();
   setSyncStatus(false);
 }
@@ -1001,8 +1002,34 @@ const BOODSCHAP_CATS = [
   }
 ];
 
+// ---- Zelflerend categorieën ----
+let geleerdeCategorieen = {}; // { 'melk': 'koeling', 'dettol': 'nonfood', ... }
+let unsubGeleerd = null;
+
+function fbListenGeleerd() {
+  if (unsubGeleerd) unsubGeleerd();
+  unsubGeleerd = window._onValue(getRef('geleerde_cats'), snap => {
+    geleerdeCategorieen = snap.val() || {};
+  });
+}
+
+async function slaGeleerdeCategorie(naam, cat) {
+  const key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  geleerdeCategorieen[key] = cat;
+  await window._set(getRef('geleerde_cats/' + key), cat);
+}
+
 function detectCat(naam) {
-  const n = naam.toLowerCase();
+  const n = naam.toLowerCase().trim();
+  // 1. Check geleerde categorieën eerst
+  const key = n.replace(/[^a-z0-9]/g, '_');
+  if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
+  // Gedeeltelijke match in geleerde categorieën
+  for (const [gelKey, gelCat] of Object.entries(geleerdeCategorieen)) {
+    const woord = gelKey.replace(/_/g, ' ');
+    if (n.includes(woord) || woord.includes(n) && n.length > 3) return gelCat;
+  }
+  // 2. Standaard detectie
   for (const cat of BOODSCHAP_CATS) {
     if (cat.items.some(w => n.includes(w) || w.includes(n) && n.length > 3)) return cat.key;
   }
@@ -1010,8 +1037,20 @@ function detectCat(naam) {
 }
 
 async function changeCat(id, cat) {
+  const item = items.find(i => i.id===id);
   items = items.map(i => i.id===id ? {...i, cat} : i);
   setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  // Onthoud deze keuze voor de toekomst
+  if (item) {
+    await slaGeleerdeCategorie(item.name, cat);
+    // Toon bevestiging
+    const select = document.querySelector(`select[onchange*="${id}"]`);
+    if (select) {
+      const orig = select.style.color;
+      select.style.color = 'var(--green)';
+      setTimeout(() => select.style.color = orig, 1500);
+    }
+  }
 }
 
 async function addItem() {
@@ -1126,12 +1165,36 @@ function getDagKey(i) {
 function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
 function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
 
+let toonVerledenDagen = false;
+
+function toggleVerledenDagen() {
+  toonVerledenDagen = !toonVerledenDagen;
+  renderMenu();
+}
+
 function renderMenu() {
   const grid = document.getElementById('week-grid');
   const todayIdx = getTodayIndex();
-  grid.innerHTML = DAGEN.map((dag, i) => {
+  const aantalVerleden = DAGEN.filter((_, i) => i < todayIdx).length;
+
+  // Toon knop voor verleden dagen bovenaan
+  let header = '';
+  if (aantalVerleden > 0) {
+    header = `<div style="text-align:center;margin-bottom:12px">
+      <button onclick="toggleVerledenDagen()" style="background:none;border:1.5px solid var(--border);border-radius:20px;padding:5px 14px;font-family:'DM Sans',sans-serif;font-size:0.75rem;color:var(--muted);cursor:pointer">
+        ${toonVerledenDagen ? '▲ Verberg' : '▼ Toon'} ${aantalVerleden} verlopen dag${aantalVerleden>1?'en':''}
+      </button>
+    </div>`;
+  }
+
+  grid.innerHTML = header + DAGEN.map((dag, i) => {
     const key = getDagKey(i), gerecht = menu[key]||'', isToday = i===todayIdx;
-    return `<div class="dag-card ${isToday?'dag-vandaag':''}">
+    const isVerleden = i < todayIdx;
+
+    // Verberg verleden dagen tenzij toggle aan staat
+    if (isVerleden && !toonVerledenDagen) return '';
+
+    return `<div class="dag-card ${isToday?'dag-vandaag':''}" style="${isVerleden?'opacity:0.5':''}">
       <div class="dag-header" onclick="toggleDag(${i})">
         <div style="flex-shrink:0">
           <div class="dag-naam">${dag}${isToday?'<span class="dag-label">Vandaag</span>':''}</div>
