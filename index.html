@@ -938,20 +938,37 @@ function initApp() {
   setSyncStatus(false);
 }
 
-document.addEventListener('fb-ready', () => {
+function startAppMet(opgeslagen) {
   document.getElementById('loading-screen').style.display = 'none';
-  // Probeer gezinscode uit localStorage OF sessionStorage
-  const opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode');
   if (opgeslagen) {
-    // Sla op in beide voor maximale persistentie
     try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
     try { sessionStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
-    gezinsCode = opgeslagen; initApp();
+    gezinsCode = opgeslagen;
+    initApp();
   } else {
     document.getElementById('setup-screen').style.display = 'block';
     toonKeuze();
   }
+}
+
+document.addEventListener('fb-ready', () => {
+  const opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode');
+  startAppMet(opgeslagen);
 });
+
+// Fallback: als fb-ready al eerder afgevuurd is (module timing)
+if (window._fbReady) {
+  const opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode');
+  startAppMet(opgeslagen);
+}
+
+// Timeout fallback: als Firebase na 8 seconden nog niet geladen is
+setTimeout(() => {
+  const loading = document.getElementById('loading-screen');
+  if (loading && loading.style.display !== 'none') {
+    loading.innerHTML = '<div style="text-align:center;padding:20px"><div style="font-size:2rem;margin-bottom:10px">⚠️</div><div style="color:#c4473a;font-size:0.9rem;margin-bottom:16px">Verbinding mislukt.<br>Controleer je internet.</div><button onclick="location.reload()" style="background:#3d6b4f;color:white;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:0.9rem">🔄 Opnieuw proberen</button></div>';
+  }
+}, 8000);
 
 // ---- Sync ----
 function setSyncStatus(saving) {
