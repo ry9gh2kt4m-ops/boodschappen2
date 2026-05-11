@@ -492,6 +492,18 @@
 <!-- Beheerder sectie -->
 <div id="beheer-sectie" style="display:none">
 
+  <!-- Deel app knop -->
+  <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:16px">
+    <div style="font-size:0.82rem;font-weight:600;color:var(--green);margin-bottom:8px">🔗 App delen met nieuw gezin</div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.5">Stuur deze link naar een nieuw gezin. Zij melden zich aan en jij keurt goed.</div>
+    <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:0.78rem;color:var(--ink);margin-bottom:8px;word-break:break-all;font-family:monospace">https://ry9gh2kt4m-ops.github.io/boodschappen2/</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="kopieerAppLink()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📋 Kopieer link</button>
+      <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via...</button>
+    </div>
+    <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Link gekopieerd!</div>
+  </div>
+
   <!-- Gezinnenbeheer -->
   <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:8px">👨‍👩‍👧 Gezinnenbeheer</div>
   <div id="registraties-lijst"></div>
@@ -1774,6 +1786,35 @@ async function updateIdeeStatus(id, status) {
 async function verwijderIdee(id) {
   if (!confirm('Idee verwijderen?')) return;
   await window._remove(window._ref(window._db, 'ideeen/' + id));
+}
+
+function kopieerAppLink() {
+  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  navigator.clipboard.writeText(link).then(() => {
+    const el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+  });
+}
+
+function deelAppLink() {
+  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  if (navigator.share) {
+    navigator.share({
+      title: 'Onze Boodschappen App',
+      text: 'Meld je aan voor onze boodschappenapp!',
+      url: link
+    });
+  } else {
+    kopieerAppLink();
+  }
 }
 
 function checkBeheerder() {
