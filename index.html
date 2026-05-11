@@ -396,6 +396,9 @@
     <button class="tab" id="tab-kookboek" onclick="switchTab('kookboek')">
       <span class="tab-icon">📖</span> Kookboek
     </button>
+    <button class="tab" id="tab-prijzen" onclick="switchTab('prijzen')">
+      <span class="tab-icon">💰</span> Prijzen
+    </button>
     <button class="tab" id="tab-ideeen" onclick="switchTab('ideeen')">
       <span class="tab-icon">💡</span> Ideeën
     </button>
@@ -413,10 +416,18 @@
       <div class="input-row">
         <input class="input-field" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
         <button class="btn-mic" id="mic-btn">🎙️</button>
-        <button class="btn-add" id="add-btn">＋</button>
+        <button id="live-prijs-btn" title="Zoek beste prijs" onclick="zoekLivePrijs()" style="background:white;color:#c47a2a;border:1.5px solid #f0c070;border-radius:10px;width:44px;height:44px;font-size:1.1rem;cursor:pointer;flex-shrink:0">💰</button>
+      <button class="btn-add" id="add-btn">＋</button>
       </div>
       <div class="mic-status" id="mic-status"></div>
       <div id="dubbel-melding" style="font-size:0.78rem;color:#c47a2a;min-height:18px;text-align:center;margin-bottom:2px"></div>
+      <div id="live-prijs-resultaat" style="display:none;margin-top:8px;padding:10px;background:var(--green-pale);border-radius:10px;font-size:0.8rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;color:var(--green)">💰 Goedkoopste aanbieding</span>
+          <button onclick="sluitLivePrijs()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem">✕</button>
+        </div>
+        <div id="live-prijs-inhoud"></div>
+      </div>
       <div class="no-mic-msg" id="no-mic">Spraakherkenning niet beschikbaar.</div>
       <div class="person-row" id="person-row"></div>
       <button onclick="openPersonenInstellingen()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.75rem;color:var(--muted)">⚙️ Personen instellen</button>
@@ -432,28 +443,29 @@
       <button class="btn-clear" onclick="clearDone()">🗑 Afgevinkte items verwijderen</button>
     </div>
 
-```
-<!-- Prijsvergelijking -->
-<div class="prijs-card" id="prijs-sectie" style="display:none">
-  <!-- Categorie filters -->
-  <div style="font-size:0.78rem;font-weight:600;color:var(--ink);margin-bottom:8px">Vergelijk categorie:</div>
-  <div class="cat-filter-row">
-    <button class="cat-chip" id="cat-alle" onclick="toggleCat('alle')" style="display:none;background:#3d6b4f;color:white;border-color:#3d6b4f;white-space:nowrap">✕ Alles</button>
-    <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
-    <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
-    <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
-    <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')" style="white-space:nowrap">🍺 Speciaalbier</button>
   </div>
-  <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
-    🔍 Vergelijk prijzen
-  </button>
-  <div class="prijs-disclaimer">
-    ⚠️ Indicatieve prijzen — niet real-time. Controleer altijd even zelf.
-  </div>
-  <div class="prijs-resultaat" id="prijs-resultaat"></div>
-</div>
-```
 
+  <!-- Prijsvergelijking tab -->
+
+  <div id="view-prijzen" style="display:none">
+    <div class="prijs-card" style="margin-bottom:0">
+      <!-- Categorie filters -->
+      <div style="font-size:0.78rem;font-weight:600;color:var(--ink);margin-bottom:8px">Vergelijk categorie:</div>
+      <div class="cat-filter-row">
+        <button class="cat-chip" id="cat-alle" onclick="toggleCat('alle')" style="display:none;background:#3d6b4f;color:white;border-color:#3d6b4f;white-space:nowrap">✕ Alles</button>
+        <button class="cat-chip cat-super active" id="cat-super" onclick="toggleCat('super')">🛒 Boodschappen</button>
+        <button class="cat-chip cat-drogist active" id="cat-drogist" onclick="toggleCat('drogist')">💊 Drogisterij</button>
+        <button class="cat-chip cat-slijterij active" id="cat-slijterij" onclick="toggleCat('slijterij')">🍷 Dranken</button>
+        <button class="cat-chip cat-speciaal active" id="cat-speciaal" onclick="toggleCat('speciaal')" style="white-space:nowrap">🍺 Speciaalbier</button>
+      </div>
+      <button class="btn-prijs" id="btn-prijs" onclick="vergelijkPrijzen()">
+        🔍 Vergelijk prijzen
+      </button>
+      <div class="prijs-disclaimer">
+        ⚠️ Indicatieve prijzen — niet real-time. Controleer altijd even zelf.
+      </div>
+      <div class="prijs-resultaat" id="prijs-resultaat"></div>
+    </div>
   </div>
 
   <!-- Weekmenu -->
@@ -471,7 +483,6 @@
     <div class="input-card" style="margin-bottom:20px">
       <div style="font-size:0.95rem;font-weight:600;color:var(--ink);margin-bottom:4px">💡 Stuur een idee in</div>
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px;line-height:1.5">Heb je een idee om de app te verbeteren? Laat het weten!</div>
-      <input class="input-field" id="idee-naam" type="text" placeholder="Jouw naam (optioneel)" style="margin-bottom:8px;width:100%;display:block" />
       <textarea class="input-field" id="idee-tekst" placeholder="Beschrijf jouw idee…" rows="3" style="width:100%;display:block;resize:vertical;font-family:'DM Sans',sans-serif;margin-bottom:8px"></textarea>
       <button class="btn-add" onclick="stuurIdee()" style="width:100%;border-radius:10px;height:auto;padding:11px;font-size:0.95rem;font-weight:600">Idee insturen 💡</button>
       <div id="idee-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.85rem;margin-top:8px">✅ Bedankt! Je idee is ontvangen.</div>
@@ -796,6 +807,7 @@ async function startMetCode() {
   // Beheerder mag altijd inloggen
   if (code === sanitizeCode('admin-boodschappen-2025') || localStorage.getItem('beheerder') === '1') {
     localStorage.setItem('gezinscode', code);
+    try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
     gezinsCode = code;
     document.getElementById('setup-screen').style.display = 'none';
     initApp();
@@ -815,6 +827,7 @@ async function startMetCode() {
   if (!reg) {
     // Geen registratie gevonden — direct inloggen (bestaande gezinnen)
     localStorage.setItem('gezinscode', code);
+    try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
     gezinsCode = code;
     document.getElementById('setup-screen').style.display = 'none';
     errEl.style.display = 'none';
@@ -892,7 +905,12 @@ function fbListen() {
 
 // ---- Init ----
 function initApp() {
-  document.getElementById('gezin-naam').textContent = gezinsCode;
+  // Toon gezinsnaam uit registratie ipv ruwe code
+  window._onValue(window._ref(window._db, `registraties/${gezinsCode}/naam`), snap => {
+    const naam = snap.val();
+    const el = document.getElementById('gezin-naam');
+    if (el) el.textContent = naam || gezinsCode;
+  }, {onlyOnce: true});
   document.getElementById('main-app').style.display = 'block';
   laadPersonen();
   fbListen();
@@ -910,9 +928,17 @@ function initApp() {
 
 document.addEventListener('fb-ready', () => {
   document.getElementById('loading-screen').style.display = 'none';
-  const opgeslagen = localStorage.getItem('gezinscode');
-  if (opgeslagen) { gezinsCode = opgeslagen; initApp(); }
-  else { document.getElementById('setup-screen').style.display = 'block'; }
+  // Probeer gezinscode uit localStorage OF sessionStorage
+  const opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode');
+  if (opgeslagen) {
+    // Sla op in beide voor maximale persistentie
+    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    try { sessionStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    gezinsCode = opgeslagen; initApp();
+  } else {
+    document.getElementById('setup-screen').style.display = 'block';
+    toonKeuze();
+  }
 });
 
 // ---- Sync ----
@@ -923,9 +949,11 @@ function setSyncStatus(saving) {
 
 // ---- Tabs ----
 function switchTab(tab) {
-  ['boodschappen','menu','ideeen','kookboek'].forEach(t => {
-    document.getElementById('view-' + t).style.display = tab === t ? 'block' : 'none';
-    document.getElementById('tab-' + t).className = 'tab' + (tab === t ? ' active' : '');
+  ['boodschappen','menu','ideeen','kookboek','prijzen'].forEach(t => {
+    const v = document.getElementById('view-' + t);
+    const b = document.getElementById('tab-' + t);
+    if (v) v.style.display = tab === t ? 'block' : 'none';
+    if (b) b.className = 'tab' + (tab === t ? ' active' : '');
   });
 }
 
@@ -1077,7 +1105,10 @@ async function changeQty(id, delta) {
 }
 
 async function clearDone() {
-  const del = items.filter(i => i.done); items = items.filter(i => !i.done);
+  const del = items.filter(i => i.done);
+  if (!del.length) return;
+  if (!confirm(`${del.length} afgevinkt${del.length>1?'e items':' item'} verwijderen uit het mandje?`)) return;
+  items = items.filter(i => !i.done);
   setSyncStatus(true); for (const i of del) await fbDelete(i.id); setSyncStatus(false);
 }
 
@@ -1156,14 +1187,21 @@ function renderList(id, list, isDone) {
 }
 
 // ---- Weekmenu ----
+let weekOffset = 0; // 0 = huidige week, 1 = volgende week
+
 function getDagKey(i) {
   const now = new Date(), day = now.getDay(), monday = new Date(now);
-  monday.setDate(now.getDate() - (day===0 ? 6 : day-1));
+  monday.setDate(now.getDate() - (day===0 ? 6 : day-1) + (weekOffset * 7));
   const d = new Date(monday); d.setDate(monday.getDate()+i);
   return d.toISOString().split('T')[0];
 }
 function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
 function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
+
+function wisselWeek(offset) {
+  weekOffset = offset;
+  renderMenu();
+}
 
 let toonVerledenDagen = false;
 
@@ -1177,10 +1215,26 @@ function renderMenu() {
   const todayIdx = getTodayIndex();
   const aantalVerleden = DAGEN.filter((_, i) => i < todayIdx).length;
 
-  // Toon knop voor verleden dagen bovenaan
-  let header = '';
-  if (aantalVerleden > 0) {
-    header = `<div style="text-align:center;margin-bottom:12px">
+  // Week navigatie header
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const isFridayOrLater = dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0;
+  const maandag = new Date(now);
+  maandag.setDate(now.getDate() - (dayOfWeek===0?6:dayOfWeek-1) + (weekOffset*7));
+  const weekLabel = weekOffset === 0 ? 'Deze week' : weekOffset === 1 ? 'Volgende week' : `Week ${weekOffset > 0 ? '+'+weekOffset : weekOffset}`;
+
+  let header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:white;border:1px solid var(--border);border-radius:12px;padding:10px 14px">
+    <button onclick="wisselWeek(${weekOffset-1})" ${weekOffset<=0?'disabled style="opacity:0.3"':''} style="background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px">◀</button>
+    <div style="text-align:center">
+      <div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--green)">${weekLabel}</div>
+      <div style="font-size:0.72rem;color:var(--muted)">${maandag.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</div>
+    </div>
+    <button onclick="wisselWeek(${weekOffset+1})" style="background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px">▶</button>
+  </div>`;
+
+  // Toon knop voor verleden dagen (alleen huidige week)
+  if (weekOffset === 0 && aantalVerleden > 0) {
+    header += `<div style="text-align:center;margin-bottom:12px">
       <button onclick="toggleVerledenDagen()" style="background:none;border:1.5px solid var(--border);border-radius:20px;padding:5px 14px;font-family:'DM Sans',sans-serif;font-size:0.75rem;color:var(--muted);cursor:pointer">
         ${toonVerledenDagen ? '▲ Verberg' : '▼ Toon'} ${aantalVerleden} verlopen dag${aantalVerleden>1?'en':''}
       </button>
@@ -1701,12 +1755,13 @@ function statusLabel(status) {
 }
 
 async function stuurIdee() {
-  const naam = document.getElementById('idee-naam').value.trim();
   const tekst = document.getElementById('idee-tekst').value.trim();
   if (!tekst) return;
+  // Gebruik registratienaam als beschikbaar, anders gezinscode
+  const regSnap = await new Promise(res => window._onValue(window._ref(window._db, `registraties/${gezinsCode}/naam`), res, {onlyOnce:true}));
+  const naam = regSnap.val() || gezinsCode;
   const id = 'idee-' + Date.now();
-  await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam: naam||'Anoniem', tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
-  document.getElementById('idee-naam').value = '';
+  await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam, tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
   document.getElementById('idee-tekst').value = '';
   document.getElementById('idee-bevestiging').style.display = 'block';
   setTimeout(() => document.getElementById('idee-bevestiging').style.display = 'none', 3000);
@@ -2013,10 +2068,8 @@ function folderUrl(winkelKey, zoekterm) {
 }
 
 function updatePrijsKnop() {
-  const todoItems = items.filter(i => !i.done);
-  const sectie = document.getElementById('prijs-sectie');
-  if (sectie) sectie.style.display = todoItems.length > 0 ? 'block' : 'none';
-  if (todoItems.length > 0) updateCatChips();
+  // Prijzen staan nu in eigen tab - geen toggle nodig
+  updateCatChips();
 }
 
 async function vergelijkPrijzen() {
@@ -2279,6 +2332,60 @@ document.getElementById('mic-btn').onclick=async()=>{
   document.getElementById('item-input').value='';
   try{recognition.start();}catch{setMicStatus('Start mislukt.','active');}
 };
+// ---- Live prijszoeken per artikel ----
+let livePrijsTimer = null;
+
+function sluitLivePrijs() {
+  document.getElementById('live-prijs-resultaat').style.display = 'none';
+}
+
+async function zoekLivePrijs() {
+  const naam = document.getElementById('item-input').value.trim();
+  if (!naam || naam.length < 2) {
+    alert('Typ eerst een artikel in het invoerveld.');
+    return;
+  }
+  const btn = document.getElementById('live-prijs-btn');
+  const resultaat = document.getElementById('live-prijs-resultaat');
+  const inhoud = document.getElementById('live-prijs-inhoud');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  resultaat.style.display = 'block';
+  inhoud.innerHTML = '<div style="color:var(--muted)">Beste prijs zoeken voor <strong>' + esc(naam) + '</strong>…</div>';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: 'Je bent een Nederlandse prijsvergelijker. Zoek de goedkoopste aanbieding voor het opgegeven product bij Nederlandse supermarkten en winkels. Geef een beknopt antwoord met maximaal 3 opties: winkel, prijs en directe link. Gebruik altijd Nederlandse winkels.',
+        messages: [{ role: 'user', content: `Zoek de beste/goedkoopste prijs voor: ${naam} in Nederlandse supermarkten of webshops. Geef de top 3 goedkoopste opties met prijs en directe link.` }]
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Fout');
+    const tekst = data.content.filter(b => b.type === 'text').map(b => b.text).join('
+');
+    // Converteer markdown links naar HTML
+    const html = tekst
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[(.*?)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--green)">$1 ↗</a>')
+      .replace(/
+/g, '<br>');
+    inhoud.innerHTML = html || 'Geen resultaten gevonden.';
+  } catch(e) {
+    inhoud.innerHTML = '<span style="color:var(--red)">❌ Zoeken mislukt. Probeer opnieuw.</span>';
+  }
+  btn.textContent = '💰';
+  btn.disabled = false;
+}
+
 document.getElementById('add-btn').onclick=addItem;
 document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
 document.getElementById('item-input').addEventListener('input', () => {
