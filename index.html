@@ -354,16 +354,13 @@
 
   <div class="setup-card" id="setup-registreren" style="display:none">
     <div class="setup-logo">✨</div>
-    <h2>Nieuw gezin</h2>
-    <p>Meld je aan om de app te gebruiken. Na aanmelding word je zo snel mogelijk goedgekeurd.</p>
+    <h2>Nieuw gezin aanmelden</h2>
+    <p>Vul je naam en e-mailadres in. Na goedkeuring kun je direct aan de slag!</p>
     <label class="setup-label">Naam gezin</label>
     <input class="setup-input" id="reg-naam" type="text" placeholder="bijv. Familie De Jong" autocomplete="off" style="margin-bottom:10px;letter-spacing:0" />
     <label class="setup-label">E-mailadres</label>
-    <input class="setup-input" id="reg-email" type="email" placeholder="jullie@email.nl" autocomplete="off" style="margin-bottom:10px;letter-spacing:0" />
-    <label class="setup-label">Kies een gezinscode</label>
-    <input class="setup-input" id="reg-code" type="text" placeholder="bijv. familie-dejong" autocomplete="off" autocapitalize="none" />
-    <div class="setup-hint">Kleine letters, geen spaties. Deel met je partner.</div>
-    <button class="btn-setup" onclick="registreerGezin()" style="margin-top:14px">Aanmelden →</button>
+    <input class="setup-input" id="reg-email" type="email" placeholder="jullie@email.nl" autocomplete="off" style="margin-bottom:16px;letter-spacing:0" />
+    <button class="btn-setup" onclick="registreerGezin()">Aanmelden →</button>
     <div class="setup-error" id="reg-error"></div>
     <button onclick="toonKeuze()" style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-top:12px;width:100%">← Terug</button>
   </div>
@@ -373,8 +370,12 @@
   <div class="setup-card" id="setup-wachten" style="display:none">
     <div class="setup-logo">⏳</div>
     <h2>Aanmelding ontvangen!</h2>
-    <p>Je aanmelding is verstuurd. Je ontvangt een bericht zodra je bent goedgekeurd.<br><br>
-    Heb je al een gezinscode? Dan kun je direct inloggen.</p>
+    <p>Gelukt! Je aanmelding is verstuurd.<br><br>
+    Zodra je bent goedgekeurd ontvang je bericht en kun je direct inloggen.</p>
+    <div id="wacht-code-info" style="background:var(--green-pale);border-radius:10px;padding:12px;margin:12px 0;font-size:0.82rem;color:var(--green);display:none">
+      <strong>Jouw inlogcode:</strong><br>
+      <span id="wacht-code" style="font-family:monospace;font-size:1rem"></span>
+    </div>
     <button class="btn-setup" onclick="toonInloggen()">Inloggen →</button>
     <button onclick="toonKeuze()" style="background:none;border:none;color:var(--muted);font-size:0.82rem;cursor:pointer;margin-top:12px;width:100%">← Terug</button>
   </div>
@@ -412,6 +413,9 @@
     <button class="tab" id="tab-ideeen" onclick="switchTab('ideeen')">
       <span class="tab-icon">💡</span> Ideeën
     </button>
+    <button class="tab" id="tab-admin" onclick="openAdminTab()" style="display:none">
+      <span class="tab-icon">⚙️</span> Admin
+    </button>
   </div>
 
   <!-- Boodschappen -->
@@ -424,11 +428,11 @@
     </div>
     <div class="input-card">
       <div style="position:relative">
-      <div class="input-row">
-        <input class="input-field" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
-        <button class="btn-mic" id="mic-btn">🎙️</button>
-        <button id="live-prijs-btn" title="Zoek beste prijs" onclick="zoekLivePrijs()" style="background:white;color:#c47a2a;border:1.5px solid #f0c070;border-radius:10px;width:44px;height:44px;font-size:1.1rem;cursor:pointer;flex-shrink:0">💰</button>
-        <button class="btn-add" id="add-btn">＋</button>
+      <div class="input-row" style="flex-wrap:nowrap;overflow:hidden">
+        <input class="input-field" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" style="min-width:0;flex:1" />
+        <button class="btn-mic" id="mic-btn" style="flex-shrink:0">🎙️</button>
+        <button id="live-prijs-btn" title="Zoek beste prijs" onclick="zoekLivePrijs()" style="background:white;color:#c47a2a;border:1.5px solid #f0c070;border-radius:10px;width:40px;height:40px;font-size:1rem;cursor:pointer;flex-shrink:0">💰</button>
+        <button class="btn-add" id="add-btn" style="flex-shrink:0;width:40px;height:40px">＋</button>
       </div>
       <!-- Autocomplete dropdown -->
       <div id="autocomplete-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;background:white;border:1.5px solid var(--green-light);border-radius:12px;box-shadow:0 8px 24px rgba(61,107,79,0.15);z-index:100;max-height:280px;overflow-y:auto;margin-top:4px"></div>
@@ -500,39 +504,9 @@
       <textarea class="input-field" id="idee-tekst" placeholder="Beschrijf jouw idee…" rows="3" style="width:100%;display:block;resize:vertical;font-family:'DM Sans',sans-serif;margin-bottom:8px"></textarea>
       <button class="btn-add" onclick="stuurIdee()" style="width:100%;border-radius:10px;height:auto;padding:11px;font-size:0.95rem;font-weight:600">Idee insturen 💡</button>
       <div id="idee-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.85rem;margin-top:8px">✅ Bedankt! Je idee is ontvangen.</div>
-    </div>
+     <div id="beheer-sectie" style="display:none"><div id="ideeen-lijst"></div></div>
 
 ```
-<!-- Beheerder sectie -->
-<div id="beheer-sectie" style="display:none">
-
-  <!-- Deel app knop -->
-  <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:16px">
-    <div style="font-size:0.82rem;font-weight:600;color:var(--green);margin-bottom:8px">🔗 App delen met nieuw gezin</div>
-    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.5">Stuur deze link naar een nieuw gezin. Zij melden zich aan en jij keurt goed.</div>
-    <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:0.78rem;color:var(--ink);margin-bottom:8px;word-break:break-all;font-family:monospace">https://ry9gh2kt4m-ops.github.io/boodschappen2/</div>
-    <div style="display:flex;gap:8px">
-      <button onclick="kopieerAppLink()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📋 Kopieer link</button>
-      <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via...</button>
-    </div>
-    <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Link gekopieerd!</div>
-  </div>
-
-  <!-- Gezinnenbeheer -->
-  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:8px">👨‍👩‍👧 Gezinnenbeheer</div>
-  <div id="registraties-lijst"></div>
-
-  <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:20px">💡 Ingediende ideeën</div>
-  <div id="ideeen-lijst"></div>
-</div>
-
-<!-- Beheerder ontgrendelen -->
-<div class="beheer-unlock" id="beheer-unlock-form">
-  <div style="font-size:0.8rem;color:var(--muted);margin-bottom:4px">🔐 Beheerder? Voer je code in</div>
-  <input type="password" id="beheer-code-input" placeholder="Beheerderscode" />
-  <button onclick="checkBeheerder()">Inloggen</button>
-</div>
-
 <!-- Niet-beheerder: publieke goedgekeurde ideeën -->
 <div id="publiek-sectie">
   <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">✅ Goedgekeurde ideeën</div>
@@ -542,6 +516,29 @@
 
   </div>
 </div>
+
+<!-- Admin view -->
+
+  <div id="view-admin" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <div class="stat"><div class="stat-num" id="admin-actief">-</div><div class="stat-label">Actieve gezinnen</div></div>
+      <div class="stat"><div class="stat-num" id="admin-wachtend">-</div><div class="stat-label">Wachtend</div></div>
+      <div class="stat"><div class="stat-num" id="admin-totaal">-</div><div class="stat-label">Totaal aanmeldingen</div></div>
+      <div class="stat"><div class="stat-num" id="admin-ideeen-count">-</div><div class="stat-label">Ingediende ideeën</div></div>
+    </div>
+    <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:0.82rem;font-weight:600;color:var(--green);margin-bottom:8px">🔗 App delen</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="kopieerAppLink()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📋 Kopieer link</button>
+        <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via WhatsApp</button>
+      </div>
+      <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Link gekopieerd!</div>
+    </div>
+    <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">👨‍👩‍👧 Gezinnenbeheer</div>
+    <div id="admin-registraties-lijst"></div>
+    <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:20px">💡 Ingediende ideeën</div>
+    <div id="admin-ideeen-lijst"></div>
+  </div>
 
 <!-- Kookboek view -->
 
@@ -666,27 +663,45 @@ function slaPersonenLocalOp() {
 }
 
 function renderPersonenKnoppen() {
-  // Selecteer eerste persoon als nog geen persoon geselecteerd
-  if (!currentPerson || !personen.find(p => p.naam === currentPerson)) {
-    currentPerson = personen[0]?.naam || '';
+  var row = document.getElementById('person-row');
+  var filterRow = document.getElementById('filter-row');
+  if (!row) return;
+  // Person selection buttons
+  var html = '';
+  for (var pi=0; pi<personen.length; pi++) {
+    var p = personen[pi];
+    var isActief = p.naam === currentPerson;
+    var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+    var avatarHtml = p.foto
+      ? '<img src="' + p.foto + '" style="width:20px;height:20px;border-radius:50%;object-fit:cover;margin-right:4px;vertical-align:middle" />'
+      : '<span style="margin-right:3px">&#128100;</span>';
+    var stijl = 'flex:1;padding:7px;border-radius:8px;border:1.5px solid ' + (isActief?p.kleur:'var(--border)') + ';background:' + (isActief?bg:'white') + ';cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:500;color:' + (isActief?p.kleur:'var(--muted)') + ';transition:all 0.18s;display:flex;align-items:center;justify-content:center';
+    html += '<button style="' + stijl + '" data-naam="' + esc(p.naam) + '">' + avatarHtml + esc(p.naam) + '</button>';
   }
-  // Person row knoppen
-  const row = document.getElementById('person-row');
-  if (row) row.innerHTML = personen.map(p => {
-    const isActief = p.naam === currentPerson;
-    const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-    const avatar = p.foto
-      ? `<img src="${p.foto}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;margin-right:4px;vertical-align:middle" />`
-      : `<span style="margin-right:3px">👤</span>`;
-    return `<button onclick="setPerson('${p.naam}')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid ${isActief ? p.kleur : 'var(--border)'};background:${isActief ? bg : 'white'};cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:500;color:${isActief ? p.kleur : 'var(--muted)'};transition:all 0.18s;display:flex;align-items:center;justify-content:center">${avatar}${p.naam}</button>`;
-  }).join('');
+  row.innerHTML = html;
+  // Attach click handlers
+  var pbtns = row.querySelectorAll('[data-naam]');
+  for (var pbi=0; pbi<pbtns.length; pbi++) {
+    (function(pb) {
+      pb.onclick = function() { setPerson(pb.getAttribute('data-naam')); };
+    })(pbtns[pbi]);
+  }
   // Filter chips
-  const filterRow = document.getElementById('filter-row');
-  if (filterRow) filterRow.innerHTML = `<button class="filter-chip ${currentFilter==='alle'?'active':''}" onclick="setFilter(this,'alle')">Alle</button>` +
-    personen.map(p => {
-      const avatar = p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:3px;vertical-align:middle" />` : '👤 ';
-      return `<button class="filter-chip ${currentFilter===p.naam?'active':''}" onclick="setFilter(this,'${p.naam}')">${avatar}${p.naam}</button>`;
-    }).join('');
+  if (filterRow) {
+    var fhtml = '<button class="filter-chip' + (currentFilter==='alle'?' active':'') + '" data-filter="alle">Alle</button>';
+    for (var fi=0; fi<personen.length; fi++) {
+      var fp = personen[fi];
+      var fAvatar = fp.foto ? '<img src="' + fp.foto + '" style="width:13px;height:13px;border-radius:50%;object-fit:cover;margin-right:3px;vertical-align:middle" />' : '&#128100; ';
+      fhtml += '<button class="filter-chip' + (currentFilter===fp.naam?' active':'') + '" data-filter="' + esc(fp.naam) + '">' + fAvatar + esc(fp.naam) + '</button>';
+    }
+    filterRow.innerHTML = fhtml;
+    var fbtns = filterRow.querySelectorAll('[data-filter]');
+    for (var fbi=0; fbi<fbtns.length; fbi++) {
+      (function(fb) {
+        fb.onclick = function() { setFilter(fb, fb.getAttribute('data-filter')); };
+      })(fbtns[fbi]);
+    }
+  }
 }
 
 function openPersonenInstellingen() {
@@ -755,8 +770,8 @@ function verwijderPersoon(i) {
 
 function slaPersonenOp() {
   personen = personen.map((p, i) => ({
-    naam: document.getElementById('persoon-naam-'+i)?.value.trim() || p.naam,
-    kleur: document.getElementById('persoon-kleur-'+i)?.value || p.kleur,
+    naam: (document.getElementById('persoon-naam-'+i) ? document.getElementById('persoon-naam-'+i).value.trim() : p.naam),
+    kleur: (document.getElementById('persoon-kleur-'+i) ? document.getElementById('persoon-kleur-'+i).value : p.kleur),
     foto: p.foto || null
   })).filter(p => p.naam);
   slaPersonenLocalOp();
@@ -795,27 +810,35 @@ function toonRegistreren() {
 async function registreerGezin() {
   const naam = document.getElementById('reg-naam').value.trim();
   const email = document.getElementById('reg-email').value.trim();
-  const rawCode = document.getElementById('reg-code').value.trim();
-  const code = sanitizeCode(rawCode);
   const errEl = document.getElementById('reg-error');
   errEl.style.display = 'none';
 
   if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
   if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
-  if (code.length < 3) { errEl.textContent = 'Kies een code van minimaal 3 tekens.'; errEl.style.display = 'block'; return; }
 
-  // Check of code al bestaat
-  const bestaand = await window._ref(window._db, `registraties/${code}`);
-  const snap = await new Promise(res => window._onValue(bestaand, res, {onlyOnce: true}));
-  if (snap.val()) { errEl.textContent = 'Deze code is al in gebruik, kies een andere.'; errEl.style.display = 'block'; return; }
+  // Auto-genereer code vanuit naam
+  const code = sanitizeCode(naam);
+
+  // Tel bestaande registraties voor volgnummer
+  const allSnap = await new Promise(res => window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}));
+  const bestaande = allSnap.val() || {};
+  const volgnummer = Object.keys(bestaande).length + 1;
+
+  // Maak unieke code: gezinsnaam + volgnummer als naam al bestaat
+  let uniekeCode = code;
+  if (bestaande[code]) uniekeCode = code + '-' + volgnummer;
 
   // Sla registratie op
-  await window._set(window._ref(window._db, `registraties/${code}`), {
-    code, naam, email,
+  await window._set(window._ref(window._db, 'registraties/' + uniekeCode), {
+    code: uniekeCode, naam, email,
+    volgnummer,
     status: 'wachtend',
     aangemeld: Date.now(),
     goedgekeurd: false
   });
+
+  // Update globale teller
+  await window._set(window._ref(window._db, 'meta/totaal_aanmeldingen'), volgnummer);
 
   document.getElementById('setup-keuze').style.display = 'none';
   document.getElementById('setup-registreren').style.display = 'none';
@@ -830,8 +853,8 @@ async function startMetCode() {
   errEl.style.display = 'none';
   if (code.length < 3) { errEl.textContent = 'Kies een code van minimaal 3 tekens.'; errEl.style.display = 'block'; return; }
 
-  // Beheerder mag altijd inloggen
-  if (code === sanitizeCode('admin-boodschappen-2025') || localStorage.getItem('beheerder') === '1') {
+  // Beheerder check via localStorage (gezet door Face ID)
+  if (localStorage.getItem('beheerder') === '1') {
     localStorage.setItem('gezinscode', code);
     try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
     gezinsCode = code;
@@ -942,7 +965,8 @@ function initApp() {
   fbListen();
   isBeheerder = localStorage.getItem('beheerder') === '1';
   if (isBeheerder) {
-    const f = document.getElementById('beheer-unlock-form'); if(f) f.style.display='none';
+    const btn = document.getElementById('tab-admin');
+    if (btn) btn.style.display = 'flex';
     fbListenRegistraties();
   }
   fbListenIdeeen();
@@ -965,24 +989,42 @@ function startAppMet(opgeslagen) {
   }
 }
 
-document.addEventListener('fb-ready', () => {
-  const opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode');
-  startAppMet(opgeslagen);
+document.addEventListener('fb-ready', function() {
+  document.getElementById('loading-screen').style.display = 'none';
+  var opgeslagen = null;
+  try { opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode'); } catch(e) {}
+  if (opgeslagen) {
+    gezinsCode = opgeslagen;
+    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    try { sessionStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    initApp();
+  } else {
+    document.getElementById('setup-screen').style.display = 'block';
+    toonKeuze();
+  }
 });
 
-// Fallback: als fb-ready al eerder afgevuurd is (module timing)
+// Fallback als fb-ready al eerder afgevuurd is
 if (window._fbReady) {
-  const opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode');
-  startAppMet(opgeslagen);
+  document.getElementById('loading-screen').style.display = 'none';
+  var _opgeslagen = null;
+  try { _opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode'); } catch(e) {}
+  if (_opgeslagen) {
+    gezinsCode = _opgeslagen;
+    initApp();
+  } else {
+    document.getElementById('setup-screen').style.display = 'block';
+    toonKeuze();
+  }
 }
 
-// Timeout fallback: als Firebase na 8 seconden nog niet geladen is
-setTimeout(() => {
-  const loading = document.getElementById('loading-screen');
-  if (loading && loading.style.display !== 'none') {
-    loading.innerHTML = '<div style="text-align:center;padding:20px"><div style="font-size:2rem;margin-bottom:10px">⚠️</div><div style="color:#c4473a;font-size:0.9rem;margin-bottom:16px">Verbinding mislukt.<br>Controleer je internet.</div><button onclick="location.reload()" style="background:#3d6b4f;color:white;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:0.9rem">🔄 Opnieuw proberen</button></div>';
+// Timeout: na 10 seconden foutmelding tonen
+setTimeout(function() {
+  var ld = document.getElementById('loading-screen');
+  if (ld && ld.style.display !== 'none') {
+    ld.innerHTML = '<div style="text-align:center;padding:20px"><div style="font-size:2rem;margin-bottom:10px">⚠️</div><div style="color:#c4473a;font-size:0.9rem;margin-bottom:16px">Verbinding mislukt.<br>Controleer je internet.</div><button onclick="location.reload()" style="background:#3d6b4f;color:white;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:0.9rem">🔄 Opnieuw proberen</button></div>';
   }
-}, 8000);
+}, 10000);
 
 // ---- Sync ----
 function setSyncStatus(saving) {
@@ -992,12 +1034,13 @@ function setSyncStatus(saving) {
 
 // ---- Tabs ----
 function switchTab(tab) {
-  ['boodschappen','menu','ideeen','kookboek','prijzen'].forEach(t => {
+  ['boodschappen','menu','ideeen','kookboek','prijzen','admin'].forEach(t => {
     const v = document.getElementById('view-' + t);
     const b = document.getElementById('tab-' + t);
     if (v) v.style.display = tab === t ? 'block' : 'none';
     if (b) b.className = 'tab' + (tab === t ? ' active' : '');
   });
+  if (tab === 'admin') updateAdminStats();
 }
 
 // ---- Boodschappen ----
@@ -1096,7 +1139,7 @@ function detectCat(naam) {
   const key = n.replace(/[^a-z0-9]/g, '_');
   if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
   // Gedeeltelijke match in geleerde categorieën
-  for (const [gelKey, gelCat] of Object.entries(geleerdeCategorieen)) {
+  var _gk=Object.keys(geleerdeCategorieen),_gi2=0;for(;_gi2<_gk.length;_gi2++) {
     const woord = gelKey.replace(/_/g, ' ');
     if (n.includes(woord) || woord.includes(n) && n.length > 3) return gelCat;
   }
@@ -1109,7 +1152,7 @@ function detectCat(naam) {
 
 async function changeCat(id, cat) {
   const item = items.find(i => i.id===id);
-  items = items.map(i => i.id===id ? {...i, cat} : i);
+  items = items.map(function(i) { if (i.id===id) { var n={}; for(var k in i){n[k]=i[k];} n.cat=cat; return n; } return i; });
   setSyncStatus(true); await fbSave(items); setSyncStatus(false);
   // Onthoud deze keuze voor de toekomst
   if (item) {
@@ -1133,7 +1176,7 @@ async function addItem() {
 }
 
 async function toggleItem(id) {
-  items = items.map(i => i.id===id ? {...i, done: !i.done} : i);
+  items = items.map(function(i) { if (i.id===id) { var n={}; for(var k in i){n[k]=i[k];} n.done=!i.done; return n; } return i; });
   setSyncStatus(true); await fbSave(items); setSyncStatus(false);
 }
 
@@ -1143,7 +1186,7 @@ async function deleteItem(id) {
 }
 
 async function changeQty(id, delta) {
-  items = items.map(i => i.id===id ? {...i, qty: Math.max(1,(i.qty||1)+delta)} : i);
+  items = items.map(function(i) { if (i.id===id) { var n={}; for(var k in i){n[k]=i[k];} n.qty=Math.max(1,(i.qty||1)+delta); return n; } return i; });
   setSyncStatus(true); await fbSave(items); setSyncStatus(false);
 }
 
@@ -1332,7 +1375,7 @@ function renderMenu() {
 function toggleDag(i) {
   const body = document.getElementById('dag-body-'+i), isOpen = body.classList.contains('open');
   document.querySelectorAll('.dag-body').forEach(b => b.classList.remove('open'));
-  if (!isOpen) { body.classList.add('open'); setTimeout(()=>document.getElementById('dag-input-'+i)?.focus(),100); }
+  if (!isOpen) { body.classList.add('open'); setTimeout(function(){var _di=document.getElementById('dag-input-'+i);if(_di)_di.focus();},100); }
 }
 
 function toggleReceptPicker(i) {
@@ -1411,7 +1454,7 @@ function detectPlatformInfo(url) {
   const u = url.toLowerCase();
   if (u.includes('youtube.com') || u.includes('youtu.be')) {
     const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
-    return { type: 'youtube', id: match?.[1], label: '🎬 YouTube', kleur: '#ff0000', embedbaar: !!match };
+    return { type: 'youtube', id: (match ? match[1] : null), label: '🎬 YouTube', kleur: '#ff0000', embedbaar: !!match };
   }
   if (u.includes('tiktok.com')) {
     return { type: 'tiktok', label: '🎵 TikTok', kleur: '#010101', embedbaar: false };
@@ -1435,7 +1478,7 @@ function detectPlatformInfo(url) {
 }
 
 function detectPlatform() {
-  const url = document.getElementById('recept-youtube')?.value.trim();
+  const url = (document.getElementById('recept-youtube') ? document.getElementById('recept-youtube').value.trim() : '');
   const el = document.getElementById('platform-detect');
   if (!el) return;
   const info = detectPlatformInfo(url);
@@ -1448,7 +1491,7 @@ function detectPlatform() {
 
 function getYouTubeId(url) {
   const info = detectPlatformInfo(url);
-  return (info?.type === 'youtube' && info.embedbaar) ? info.id : null;
+  return (info && info.type === 'youtube' && info.embedbaar) ? info.id : null;
 }
 
 function getYouTubeThumbnail(videoId) {
@@ -1474,7 +1517,7 @@ function setCatFilter(el, cat) {
 function filterRecepten() { renderRecepten(); }
 
 function renderRecepten() {
-  const zoek = (document.getElementById('recept-zoek')?.value || '').toLowerCase();
+  const zoek = (document.getElementById('recept-zoek') ? document.getElementById('recept-zoek').value : '').toLowerCase();
   const gefilterd = recepten.filter(r => {
     const matchCat = receptCatFilter === 'alle' || r.categorie === receptCatFilter;
     const matchZoek = !zoek || r.naam.toLowerCase().includes(zoek) || (r.beschrijving||'').toLowerCase().includes(zoek);
@@ -1498,8 +1541,8 @@ function renderRecepten() {
     const vidId = getYouTubeId(r.youtube);
     const platform = detectPlatformInfo(r.youtube);
     const thumb = vidId ? getYouTubeThumbnail(vidId) : null;
-    const platformKleur = platform?.kleur || 'var(--green)';
-    const platformLabel = platform?.label || '';
+    const platformKleur = (platform && platform.kleur) ? platform.kleur : 'var(--green)';
+    const platformLabel = (platform && platform.label) ? platform.label : '';
     return `
     <div class="recept-card" id="recept-${r.id}">
       ${thumb ? `
@@ -1546,7 +1589,7 @@ function renderRecepten() {
 
 function speelAf(receptId, videoId) {
   const container = document.getElementById('video-' + receptId);
-  const overlay = container?.previousElementSibling;
+  const overlay = container ? container.previousElementSibling : null;
   if (!container) return;
   // Verberg thumbnail, toon video
   if (overlay) overlay.style.display = 'none';
@@ -1645,7 +1688,7 @@ async function slaReceptOp() {
     personen: document.getElementById('recept-personen').value || null,
     tijd: document.getElementById('recept-tijd').value.trim() || null,
     ingredienten: tempIngredienten.filter(i => i.trim()),
-    aangemaakt: editId ? (recepten.find(r=>r.id===editId)?.aangemaakt||Date.now()) : Date.now()
+    aangemaakt: editId ? ((function(){ var _r = recepten.find(function(r){return r.id===editId;}); return _r ? _r.aangemaakt : Date.now(); })()) : Date.now()
   });
 
   document.getElementById('recept-modal').style.display = 'none';
@@ -1654,7 +1697,7 @@ async function slaReceptOp() {
 function toggleIngCheck(receptId, idx) {
   const el = document.getElementById(`ingcheck-${receptId}-${idx}`);
   if (el) el.classList.toggle('checked');
-  const checked = el?.classList.contains('checked');
+  const checked = el ? el.classList.contains('checked') : false;
   if (el) el.textContent = checked ? '✓' : '';
 }
 
@@ -1735,8 +1778,192 @@ async function verwijderRegistratie(code) {
 }
 
 // ---- Ideeënbus ----
-const BEHEER_CODE = 'admin-boodschappen-2025'; // Jouw geheime beheerderscode
 let isBeheerder = false;
+let unsubAdminRegs = null;
+
+// ---- Face ID / Biometrie ----
+async function openAdminTab() {
+  // Check of al ingelogd als beheerder
+  if (isBeheerder) { switchTab('admin'); return; }
+
+  // Probeer Face ID
+  if (!window.PublicKeyCredential) {
+    // Geen WebAuthn support - vraag bevestiging
+    if (confirm('Face ID niet beschikbaar in deze browser. Wil je toch doorgaan?')) {
+      activeerBeheerder();
+    }
+    return;
+  }
+
+  try {
+    // Check of er al een credential is opgeslagen
+    const credId = localStorage.getItem('admin_cred_id');
+    if (credId) {
+      // Verifieer met bestaande credential
+      await verifieerFaceId(credId);
+    } else {
+      // Eerste keer: registreer Face ID
+      await registreerFaceId();
+    }
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      alert('Face ID geannuleerd of geweigerd.');
+    } else {
+      console.error('Face ID fout:', e);
+      // Fallback
+      if (confirm('Face ID mislukt. Toegang toch verlenen?')) activeerBeheerder();
+    }
+  }
+}
+
+async function registreerFaceId() {
+  const challenge = new Uint8Array(32);
+  crypto.getRandomValues(challenge);
+
+  const credential = await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: 'Boodschappen App', id: location.hostname },
+      user: {
+        id: new TextEncoder().encode('admin-jorg'),
+        name: 'admin',
+        displayName: 'Beheerder'
+      },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required'
+      },
+      timeout: 60000
+    }
+  });
+
+  // Sla credential ID op
+  const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+  localStorage.setItem('admin_cred_id', credId);
+  activeerBeheerder();
+}
+
+async function verifieerFaceId(credIdB64) {
+  const challenge = new Uint8Array(32);
+  crypto.getRandomValues(challenge);
+
+  const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+
+  await navigator.credentials.get({
+    publicKey: {
+      challenge,
+      allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  });
+
+  activeerBeheerder();
+}
+
+function activeerBeheerder() {
+  isBeheerder = true;
+  localStorage.setItem('beheerder', '1');
+  // Toon admin tab
+  const btn = document.getElementById('tab-admin');
+  if (btn) btn.style.display = 'flex';
+  fbListenIdeeen();
+  fbListenRegistraties();
+  switchTab('admin');
+}
+
+// ---- Admin stats & beheer ----
+function updateAdminStats() {
+  // Laad registraties stats
+  window._onValue(window._ref(window._db, 'registraties'), snap => {
+    const data = snap.val() || {};
+    const regs = Object.values(data);
+    document.getElementById('admin-actief').textContent = regs.filter(r => r.status === 'goedgekeurd').length;
+    document.getElementById('admin-wachtend').textContent = regs.filter(r => r.status === 'wachtend').length;
+    document.getElementById('admin-totaal').textContent = regs.length;
+    renderAdminRegistraties(regs);
+  }, {onlyOnce: true});
+
+  // Laad ideeën count
+  window._onValue(window._ref(window._db, 'ideeen'), snap => {
+    const data = snap.val() || {};
+    document.getElementById('admin-ideeen-count').textContent = Object.keys(data).length;
+    renderAdminIdeeen(Object.values(data).sort((a,b) => b.timestamp - a.timestamp));
+  }, {onlyOnce: true});
+}
+
+function renderAdminRegistraties(regs) {
+  var el = document.getElementById('admin-registraties-lijst');
+  if (!el) return;
+  var gs = regs.slice().sort(function(a,b){return b.aangemeld-a.aangemeld;});
+  if (!gs.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen aanmeldingen.</div>'; return; }
+  var html = '';
+  for (var ri=0; ri<gs.length; ri++) {
+    var reg = gs[ri];
+    var s = reg.status || 'wachtend';
+    var kl = {wachtend:'#c47a2a',goedgekeurd:'#3d6b4f',afgewezen:'#c4473a',geblokkeerd:'#7a4db5'}[s]||'#ccc';
+    var lb = {wachtend:'Wachtend',goedgekeurd:'Actief',afgewezen:'Afgewezen',geblokkeerd:'Geblokkeerd'}[s]||s;
+    var sc = (s==='goedgekeurd'?'goedgekeurd':(s==='wachtend'?'nieuw':'afgewezen'));
+    var dt = new Date(reg.aangemeld).toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    html += '<div class="idee-card status-' + sc + '" style="margin-bottom:8px">';
+    html += '<div class="idee-header"><div>';
+    html += '<div style="font-weight:600;font-size:0.9rem">' + esc(reg.naam||'?') + ' <span style="font-size:0.7rem;color:var(--muted)">#' + (reg.volgnummer||'?') + '</span></div>';
+    html += '<div style="font-size:0.75rem;color:var(--muted)">' + esc(reg.email||'') + '</div>';
+    html += '<div style="font-size:0.72rem;font-family:monospace;color:var(--muted)">code: ' + esc(reg.code) + '</div></div>';
+    html += '<div style="text-align:right"><span style="font-size:0.68rem;padding:2px 7px;border-radius:8px;font-weight:600;background:' + kl + '20;color:' + kl + '">' + lb + '</span>';
+    html += '<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">' + dt + '</div></div></div>';
+    html += '<div class="idee-acties">';
+    if (s !== 'goedgekeurd') html += '<button class="idee-btn goedkeuren" data-c="' + esc(reg.code) + '" data-a="goedgekeurd">&#10003; Goedkeuren</button>';
+    if (s === 'goedgekeurd') html += '<button class="idee-btn behandeling" data-c="' + esc(reg.code) + '" data-a="geblokkeerd">Blokkeren</button>';
+    if (s === 'geblokkeerd') html += '<button class="idee-btn goedkeuren" data-c="' + esc(reg.code) + '" data-a="goedgekeurd">Deblokkeren</button>';
+    if (s !== 'afgewezen' && s !== 'goedgekeurd') html += '<button class="idee-btn afwijzen" data-c="' + esc(reg.code) + '" data-a="afgewezen">Afwijzen</button>';
+    html += '<button class="idee-btn verwijder" data-c="' + esc(reg.code) + '" data-del="1">&#128465;</button>';
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+  var btns = el.querySelectorAll('[data-a],[data-del]');
+  for (var bi=0; bi<btns.length; bi++) {
+    (function(b) {
+      b.onclick = function() {
+        var c = b.getAttribute('data-c'), a = b.getAttribute('data-a'), d = b.getAttribute('data-del');
+        if (d) verwijderRegistratie(c); else updateRegistratieStatus(c, a);
+      };
+    })(btns[bi]);
+  }
+}
+
+function renderAdminIdeeen(ideeen) {
+  var el = document.getElementById('admin-ideeen-lijst');
+  if (!el) return;
+  if (!ideeen.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen ideeen.</div>'; return; }
+  var html = '';
+  for (var ii=0; ii<ideeen.length; ii++) {
+    var id2 = ideeen[ii];
+    var s2 = id2.status || 'nieuw';
+    var dt2 = new Date(id2.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    html += '<div class="idee-card">';
+    html += '<div class="idee-header"><span class="idee-naam">&#128100; ' + esc(id2.naam||'?') + '</span>';
+    html += '<span class="idee-datum">' + dt2 + '</span></div>';
+    html += '<div class="idee-tekst">' + esc(id2.tekst) + '</div>';
+    html += '<div class="idee-acties">';
+    if (s2 !== 'goedgekeurd') html += '<button class="idee-btn goedkeuren" data-i="' + esc(id2.id) + '" data-s="goedgekeurd">&#10003;</button>';
+    html += '<button class="idee-btn behandeling" data-i="' + esc(id2.id) + '" data-s="behandeling">&#8635;</button>';
+    html += '<button class="idee-btn afwijzen" data-i="' + esc(id2.id) + '" data-s="afgewezen">&#10007;</button>';
+    html += '<button class="idee-btn verwijder" data-i="' + esc(id2.id) + '" data-del2="1">&#128465;</button>';
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+  var btns2 = el.querySelectorAll('[data-s],[data-del2]');
+  for (var bj=0; bj<btns2.length; bj++) {
+    (function(b2) {
+      b2.onclick = function() {
+        var id = b2.getAttribute('data-i'), st = b2.getAttribute('data-s'), dl = b2.getAttribute('data-del2');
+        if (dl) verwijderIdee(id); else updateIdeeStatus(id, st);
+      };
+    })(btns2[bj]);
+  }
+}
 let unsubIdeeen = null;
 
 function fbIdeeRef() { return window._ref(window._db, 'ideeen'); }
@@ -1751,45 +1978,24 @@ function fbListenIdeeen() {
 }
 
 function renderIdeeen(ideeen) {
-  // Beheerder ziet alles
-  if (isBeheerder) {
-    document.getElementById('beheer-sectie').style.display = 'block';
-    document.getElementById('publiek-sectie').style.display = 'none';
-    const el = document.getElementById('ideeen-lijst');
-    if (!ideeen.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen ideeën ingediend.</div>'; return; }
-    el.innerHTML = ideeen.map(idee => `
-      <div class="idee-card status-${idee.status||'nieuw'}">
-        <div class="idee-header">
-          <div>
-            <span class="idee-naam">👤 ${esc(idee.naam||'Anoniem')}</span>
-            <span class="idee-status-badge badge-${idee.status||'nieuw'}" style="margin-left:6px">${statusLabel(idee.status)}</span>
-          </div>
-          <span class="idee-datum">${new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</span>
-        </div>
-        <div class="idee-tekst">${esc(idee.tekst)}</div>
-        <div class="idee-acties">
-          <button class="idee-btn goedkeuren" onclick="updateIdeeStatus('${idee.id}','goedgekeurd')">✅ Goedkeuren</button>
-          <button class="idee-btn behandeling" onclick="updateIdeeStatus('${idee.id}','behandeling')">🔄 In behandeling</button>
-          <button class="idee-btn afwijzen" onclick="updateIdeeStatus('${idee.id}','afgewezen')">❌ Afwijzen</button>
-          <button class="idee-btn verwijder" onclick="verwijderIdee('${idee.id}')">🗑</button>
-        </div>
-      </div>`).join('');
-  } else {
-    // Gewone gebruiker ziet alleen goedgekeurde ideeën
-    document.getElementById('beheer-sectie').style.display = 'none';
-    document.getElementById('publiek-sectie').style.display = 'block';
-    const goedgekeurd = ideeen.filter(i => i.status === 'goedgekeurd');
-    const el = document.getElementById('ideeen-publiek');
-    if (!goedgekeurd.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>'; return; }
-    el.innerHTML = goedgekeurd.map(idee => `
-      <div class="idee-card status-goedgekeurd">
-        <div class="idee-header">
-          <span class="idee-naam">👤 ${esc(idee.naam||'Anoniem')}</span>
-          <span class="idee-datum">${new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</span>
-        </div>
-        <div class="idee-tekst">${esc(idee.tekst)}</div>
-      </div>`).join('');
+  document.getElementById('beheer-sectie').style.display = 'none';
+  document.getElementById('publiek-sectie').style.display = 'block';
+  const goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
+  const el = document.getElementById('ideeen-publiek');
+  if (!el) return;
+  if (!goedgekeurd.length) {
+    el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>';
+    return;
   }
+  el.innerHTML = goedgekeurd.map(function(idee) {
+    return '<div class="idee-card status-goedgekeurd">' +
+      '<div class="idee-header">' +
+        '<span class="idee-naam">👤 ' + esc(idee.naam||'Anoniem') + '</span>' +
+        '<span class="idee-datum">' + new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + '</span>' +
+      '</div>' +
+      '<div class="idee-tekst">' + esc(idee.tekst) + '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function statusLabel(status) {
@@ -1837,29 +2043,18 @@ function kopieerAppLink() {
 
 function deelAppLink() {
   const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  const tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
   if (navigator.share) {
-    navigator.share({
-      title: 'Onze Boodschappen App',
-      text: 'Meld je aan voor onze boodschappenapp!',
-      url: link
-    });
+    navigator.share({ title: 'Boodschappen App', text: tekst });
   } else {
-    kopieerAppLink();
+    navigator.clipboard.writeText(tekst).then(() => {
+      const el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+    });
   }
 }
 
-function checkBeheerder() {
-  const code = document.getElementById('beheer-code-input')?.value;
-  if (code === BEHEER_CODE) {
-    isBeheerder = true;
-    localStorage.setItem('beheerder', '1');
-    fbListenIdeeen();
-    fbListenRegistraties();
-    document.getElementById('beheer-unlock-form').style.display = 'none';
-  } else {
-    alert('Onjuiste code');
-  }
-}
+
 
 // ---- Prijsvergelijking met statische database ----
 
@@ -2006,7 +2201,9 @@ const PRIJSDB = {
 // Bereken prijzen voor alle winkels op basis van AH-prijs * factor
 function berekenPrijzen(ahPrijs) {
   const result = {};
-  for (const [w, f] of Object.entries(FACTOR)) {
+  var _fks=Object.keys(FACTOR);
+  for (var _fki=0;_fki<_fks.length;_fki++) {
+    var w=_fks[_fki]; var f=FACTOR[w];
     result[w] = +( ahPrijs * f ).toFixed(2);
   }
   return result;
@@ -2017,15 +2214,15 @@ function zoekPrijs(naam) {
   let ahPrijs = null;
   if (PRIJSDB[n]) { ahPrijs = PRIJSDB[n].ah; }
   else {
-    for (const [key, val] of Object.entries(PRIJSDB)) {
-      if (n.includes(key) || key.includes(n)) { ahPrijs = val.ah; break; }
+    var _pk=Object.keys(PRIJSDB);for(var _pi=0;_pi<_pk.length;_pi++) {
+      if (n.includes(_pk[_pi]) || _pk[_pi].includes(n)) { ahPrijs = PRIJSDB[_pk[_pi]].ah; break; }
     }
     if (!ahPrijs) {
       const woorden = n.split(/\s+/);
       for (const woord of woorden) {
         if (woord.length < 3) continue;
-        for (const [key, val] of Object.entries(PRIJSDB)) {
-          if (key.includes(woord) || woord.includes(key)) { ahPrijs = val.ah; break; }
+        var _pk=Object.keys(PRIJSDB);for(var _pi=0;_pi<_pk.length;_pi++) {
+          if (_pk[_pi].includes(woord) || woord.includes(_pk[_pi])) { ahPrijs = PRIJSDB[_pk[_pi]].ah; break; }
         }
         if (ahPrijs) break;
       }
@@ -2055,8 +2252,9 @@ async function zoekDichtstbijzijndeWinkels(lat, lon) {
     const data = await res.json();
     const gevondenWinkels = new Set();
     data.elements.forEach(el => {
-      const naam = (el.tags?.name || '').toLowerCase();
-      for (const [key, def] of Object.entries(WINKELS_DEF)) {
+      const naam = (el.tags && el.tags.name ? el.tags.name : '').toLowerCase();
+      var _wk=Object.keys(WINKELS_DEF);for(var _wi=0;_wi<_wk.length;_wi++) {
+    var key=_wk[_wi]; var def=WINKELS_DEF[key];
         if (def.osm && naam.includes(def.osm.toLowerCase())) {
           gevondenWinkels.add(key);
         }
@@ -2305,7 +2503,7 @@ async function vergelijkPrijzen() {
         <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:white;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;font-size:0.85rem">
           <span>${WINKELS_DEF[w].logo} ${WINKELS_DEF[w].naam}</span>
           <div style="display:flex;align-items:center;gap:6px">
-            ${gevonden.some(a => isAanbiedingArtikel(a.naam) && folderUrl(w, a.naam)) ? `<a href="${folderUrl(w, gevonden.find(a => isAanbiedingArtikel(a.naam))?.naam||'')}" target="_blank" class="folder-btn">🗂 folder</a>` : ''}
+            ${gevonden.some(a => isAanbiedingArtikel(a.naam) && folderUrl(w, a.naam)) ? `<a href="${folderUrl(w, (function(){ var _f = gevonden.find(function(a){ return isAanbiedingArtikel(a.naam); }); return _f ? _f.naam : ''; })())}" target="_blank" class="folder-btn">🗂 folder</a>` : ''}
             <span style="font-weight:600">€${totaal[w].toFixed(2)}</span>
           </div>
         </div>`).join('')}
@@ -2533,6 +2731,23 @@ const PRODUCTEN_DB = [
   {n:'Kikkererwten blik 400g', c:'kruidenierswaren', p:0.99}, {n:'Bruine bonen blik 400g', c:'kruidenierswaren', p:0.89},
   {n:'Witte bonen blik 400g', c:'kruidenierswaren', p:0.89}, {n:'Linzen rood 400g', c:'kruidenierswaren', p:1.29},
   {n:'Mais blik 340g', c:'kruidenierswaren', p:0.99}, {n:'Tonijn in water blik 185g', c:'kruidenierswaren', p:1.49},
+  // Bier - kratjes en flessen
+  {n:'Hertog Jan krat 24x30cl', c:'drank', p:17.99},
+  {n:'Hertog Jan 6-pack 30cl', c:'drank', p:6.99},
+  {n:'Heineken krat 24x30cl', c:'drank', p:15.99},
+  {n:'Heineken 6-pack 33cl', c:'drank', p:5.99},
+  {n:'Grolsch krat 24x30cl', c:'drank', p:15.99},
+  {n:'Amstel krat 24x30cl', c:'drank', p:14.99},
+  {n:'Bavaria krat 24x30cl', c:'drank', p:12.99},
+  {n:'Jupiler krat 24x25cl', c:'drank', p:13.99},
+  {n:'Corona 6-pack 35.5cl', c:'drank', p:9.99},
+  {n:'Duvel 4-pack 33cl', c:'drank', p:9.99},
+  {n:'La Trappe Tripel 6-pack', c:'drank', p:11.99},
+  {n:'Westvleteren 12 fles 33cl', c:'drank', p:8.99},
+  {n:'Chimay Blauw 33cl', c:'drank', p:2.99},
+  {n:'Westmalle Tripel 33cl', c:'drank', p:2.99},
+  {n:'IPA craft beer 33cl', c:'drank', p:2.99},
+  {n:'Bier alcoholvrij 6-pack', c:'drank', p:4.99},
   // Diepvries
   {n:'Friet AH 1kg', c:'diepvries', p:2.49}, {n:'Friet McCain 1kg', c:'diepvries', p:3.49},
   {n:'Pizza Margherita AH', c:'diepvries', p:2.99}, {n:'Pizza Dr Oetker Salami', c:'diepvries', p:3.99},
@@ -2564,11 +2779,29 @@ let acSelectedIdx = -1;
 
 function zoekAutocomplete(val) {
   if (!val || val.length < 2) { sluitAutocomplete(); return; }
-  const n = val.toLowerCase();
+  const n = val.toLowerCase().trim();
+  const woorden = n.split(/\s+/).filter(w => w.length > 1);
+
   const resultaten = PRODUCTEN_DB.filter(p => {
     const naam = p.n.toLowerCase();
-    return naam.includes(n) || n.split(' ').every(woord => naam.includes(woord));
-  }).slice(0, 8);
+    // Exacte substring match
+    if (naam.includes(n)) return true;
+    // Alle woorden moeten voorkomen
+    if (woorden.length > 1 && woorden.every(w => naam.includes(w))) return true;
+    // Elk woord afzonderlijk
+    if (woorden.some(w => naam.includes(w) && w.length > 2)) return true;
+    return false;
+  })
+  .sort((a, b) => {
+    // Sorteer: exacte match eerst, dan begint-met, dan bevat
+    const an = a.n.toLowerCase(), bn = b.n.toLowerCase();
+    if (an.startsWith(n) && !bn.startsWith(n)) return -1;
+    if (!an.startsWith(n) && bn.startsWith(n)) return 1;
+    if (an.includes(n) && !bn.includes(n)) return -1;
+    if (!an.includes(n) && bn.includes(n)) return 1;
+    return 0;
+  })
+  .slice(0, 10);
 
   const dropdown = document.getElementById('autocomplete-dropdown');
   if (!dropdown) return;
@@ -2587,11 +2820,12 @@ function zoekAutocomplete(val) {
   let html = '';
   Object.entries(groepen).forEach(([cat, producten]) => {
     html += `<div class="ac-header">${catLabels[cat]||cat}</div>`;
-    producten.forEach((p, i) => {
-      html += `<div class="ac-item" onclick="kiesProduct('${p.n.replace(/'/g, "\'")}','${p.c}')" data-idx="${i}">
-        <div class="ac-naam">${markeerTekst(p.n, val)}</div>
-        <span class="ac-prijs">v.a. €${p.p.toFixed(2)}</span>
-      </div>`;
+    producten.forEach(function(p) {
+      var vn = p.n.split("'").join("\'");
+      html += '<div class="ac-item" onclick="kiesProduct(' + "'" + vn + "'" + ',' + "'" + p.c + "'" + ')">'
+        + '<span class="ac-naam">' + esc(p.n) + '</span>'
+        + '<span class="ac-prijs">v.a. €' + p.p.toFixed(2) + '</span>'
+        + '</div>';
     });
   });
 
@@ -2600,8 +2834,9 @@ function zoekAutocomplete(val) {
 }
 
 function markeerTekst(tekst, zoek) {
-  const re = new RegExp('(' + zoek.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-  return esc(tekst).replace(re, '<strong style="color:var(--green)">$1</strong>');
+  var veiligZoek = zoek.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var patroon = new RegExp('(' + veiligZoek + ')', 'gi');
+  return esc(tekst).replace(patroon, '<strong style="color:var(--green)">$1</strong>');
 }
 
 function kiesProduct(naam, cat) {
