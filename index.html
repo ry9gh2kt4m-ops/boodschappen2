@@ -2610,35 +2610,27 @@ function sluitLivePrijs() {
 }
 
 async function zoekLivePrijs() {
-  const naam = document.getElementById('item-input').value.trim();
+  var naam = document.getElementById('item-input').value.trim();
   if (!naam || naam.length < 2) { alert('Typ eerst een artikel in het invoerveld.'); return; }
-  const btn = document.getElementById('live-prijs-btn');
-  const resultaat = document.getElementById('live-prijs-resultaat');
-  const inhoud = document.getElementById('live-prijs-inhoud');
+  var btn = document.getElementById('live-prijs-btn');
+  var resultaat = document.getElementById('live-prijs-resultaat');
+  var inhoud = document.getElementById('live-prijs-inhoud');
   btn.textContent = '...'; btn.disabled = true;
   resultaat.style.display = 'block';
   inhoud.innerHTML = 'Zoeken naar beste prijs voor <strong>' + esc(naam) + '</strong>...';
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    var response = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: 'Je bent een Nederlandse prijsvergelijker. Geef top 3 goedkoopste opties voor het product bij NL winkels. Per optie: winkel, prijs, link. Kort en bondig.',
-        messages: [{ role: 'user', content: 'Goedkoopste prijs voor: ' + naam + ' in Nederlandse supermarkten of webshops. Top 3 met prijs en directe link.' }]
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artikel: naam })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error('API fout');
-    let tekst = '';
-    const parts = data.content || [];
-    for (let i = 0; i < parts.length; i++) { if (parts[i].type === 'text') tekst += parts[i].text; }
-    const regels = tekst.split('\n').filter(function(r) { return r.trim(); });
+    var data = await response.json();
+    if (!response.ok) throw new Error('Worker fout');
+    var tekst = data.resultaat || '';
+    var regels = tekst.split('\n').filter(function(r) { return r.trim(); });
     inhoud.innerHTML = regels.join('<br>') || 'Geen resultaten gevonden.';
   } catch(e) {
-    inhoud.innerHTML = 'Zoeken mislukt, probeer opnieuw.';
+    inhoud.innerHTML = 'Zoeken mislukt. Controleer je verbinding.';
   }
   btn.textContent = 'prijs'; btn.disabled = false;
 }
