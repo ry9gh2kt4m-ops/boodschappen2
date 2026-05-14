@@ -1278,11 +1278,22 @@ async function voegSuggestie(naam) {
 }
 
 async function addItem() {
-  const name = document.getElementById('item-input').value.trim();
+  var inp = document.getElementById('item-input');
+  var name = inp ? inp.value.trim() : '';
   if (!name) return;
-  items.unshift({ id: Date.now(), name, person: currentPerson, done: false, qty: 1, cat: detectCat(name) });
-  document.getElementById('item-input').value = '';
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  sluitAutocomplete();
+  var newItem = { id: Date.now(), name: name, person: currentPerson, done: false, qty: 1, cat: detectCat(name) };
+  items.unshift(newItem);
+  inp.value = '';
+  var dbl = document.getElementById('dubbel-melding');
+  if (dbl) dbl.textContent = '';
+  logAankoopHistorie(name);
+  // Leer categorie op als nog niet bekend
+  slaGeleerdeCategorie(name, newItem.cat);
+  render();
+  setSyncStatus(true);
+  await fbSave(items);
+  setSyncStatus(false);
 }
 
 async function toggleItem(id) {
