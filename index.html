@@ -944,9 +944,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // ---- Firebase per gezin ----
 function getRef(pad) { return window._ref(window._db, `gezinnen/${gezinsCode}/${pad}`); }
 
-function fbSave(items) {
-  const obj = {}; items.forEach(i => { obj[i.id] = i; });
+function fbSave(itemsArr) {
+  // Schrijf de volledige lijst als object (atomisch)
+  var obj = {};
+  for (var si=0; si<itemsArr.length; si++) { obj[itemsArr[si].id] = itemsArr[si]; }
   return window._set(getRef('boodschappen'), obj);
+}
+function fbSaveItem(item) {
+  // Schrijf één item zonder de rest te raken
+  return window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + item.id), item);
 }
 function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/boodschappen/${id}`)); }
 function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
@@ -1292,7 +1298,7 @@ async function addItem() {
   slaGeleerdeCategorie(name, newItem.cat);
   render();
   setSyncStatus(true);
-  await fbSave(items);
+  await fbSaveItem(newItem);
   setSyncStatus(false);
 }
 
