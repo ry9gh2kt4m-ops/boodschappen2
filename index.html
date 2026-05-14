@@ -432,7 +432,7 @@
         <input class="input-field" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" style="min-width:0;flex:1" />
         <button class="btn-mic" id="mic-btn" style="flex-shrink:0">🎙️</button>
         <button id="live-prijs-btn" title="Zoek beste prijs" onclick="zoekLivePrijs()" style="background:white;color:#c47a2a;border:1.5px solid #f0c070;border-radius:10px;width:40px;height:40px;font-size:1rem;cursor:pointer;flex-shrink:0">💰</button>
-        <button class="btn-add" id="add-btn" style="flex-shrink:0;width:40px;height:40px">＋</button>
+        <button class="btn-add" id="add-btn" onclick="addItem()" style="flex-shrink:0;width:40px;height:40px">＋</button>
       </div>
       <!-- Autocomplete dropdown -->
       <div id="autocomplete-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;background:white;border:1.5px solid var(--green-light);border-radius:12px;box-shadow:0 8px 24px rgba(61,107,79,0.15);z-index:100;max-height:280px;overflow-y:auto;margin-top:4px"></div>
@@ -2690,19 +2690,22 @@ function setupMic() {
 }
 
 function startCountdown(text) {
-  let secs = autoAddSeconds;
-  setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
-  countdownTimer = setInterval(() => {
+  // Zet tekst in inputveld zodat addItem hem kan lezen
+  var inp = document.getElementById('item-input');
+  if (inp) inp.value = text;
+  var secs = autoAddSeconds;
+  setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
+  countdownTimer = setInterval(function() {
     secs--;
     if (secs > 0) {
-      setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+      setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
     }
   }, 1000);
-  autoAddTimer = setTimeout(() => {
+  autoAddTimer = setTimeout(function() {
     clearInterval(countdownTimer);
     addItem();
     setMicStatus('✅ Toegevoegd!', 'success');
-    setTimeout(()=>setMicStatus(''), 2000);
+    setTimeout(function(){setMicStatus('');}, 2000);
   }, autoAddSeconds * 1000);
 }
 
