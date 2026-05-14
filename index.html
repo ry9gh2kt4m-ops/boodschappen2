@@ -450,16 +450,25 @@
       <div class="person-row" id="person-row"></div>
       <button onclick="openPersonenInstellingen()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.75rem;color:var(--muted)">⚙️ Personen instellen</button>
     </div>
-    <div class="filter-row" id="filter-row"></div>
-    <div class="section-label">Te halen</div>
-    <div class="list" id="todo-list"></div>
-    <button class="done-toggle" onclick="toggleDone()">
-      <span id="done-arrow">▶</span> In mandje (<span id="done-count">0</span>)
-    </button>
-    <div id="done-section" style="display:none">
-      <div class="list" id="done-list"></div>
-      <button class="btn-clear" onclick="clearDone()">🗑 Afgevinkte items verwijderen</button>
+    <!-- Slimme suggesties -->
+    <div id="wow-box" style="display:none;background:linear-gradient(135deg,#3d6b4f,#5a8f6d);border-radius:14px;padding:14px;margin-bottom:16px;color:white">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:2px">🧠 Slim voorstel</div>
+      <div style="font-size:0.72rem;opacity:0.85;margin-bottom:10px" id="wow-sub">Op basis van jouw aankooppatroon:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="wow-chips"></div>
     </div>
+
+```
+<div class="filter-row" id="filter-row"></div>
+<div class="section-label">Te halen</div>
+<div class="list" id="todo-list"></div>
+<button class="done-toggle" onclick="toggleDone()">
+  <span id="done-arrow">▶</span> In mandje (<span id="done-count">0</span>)
+</button>
+<div id="done-section" style="display:none">
+  <div class="list" id="done-list"></div>
+  <button class="btn-clear" onclick="clearDone()">🗑 Afgevinkte items verwijderen</button>
+</div>
+```
 
   </div>
 
@@ -902,6 +911,8 @@ async function startMetCode() {
 
   // Goedgekeurd!
   localStorage.setItem('gezinscode', code);
+  try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
+  try { document.cookie = 'gezinscode=' + code + ';max-age=31536000;path=/'; } catch(e) {}
   gezinsCode = code;
   document.getElementById('setup-screen').style.display = 'none';
   errEl.style.display = 'none';
@@ -911,7 +922,7 @@ async function startMetCode() {
 function wijzigCode() {
   if (!confirm('Wil je van gezinscode wisselen?')) return;
   if (unsubItems) unsubItems(); if (unsubMenu) unsubMenu();
-  localStorage.removeItem('gezinscode');
+  localStorage.removeItem('gezinscode'); try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('setup-screen').style.display = 'block';
   toonKeuze();
@@ -963,10 +974,10 @@ function initApp() {
   document.getElementById('main-app').style.display = 'block';
   laadPersonen();
   fbListen();
-  isBeheerder = localStorage.getItem('beheerder') === '1';
+  isBeheerder = localStorage.getItem('beheerder') === '1' || gezinsCode === 'familie-de-jong';
   if (isBeheerder) {
-    const btn = document.getElementById('tab-admin');
-    if (btn) btn.style.display = 'flex';
+    var btnAdmin = document.getElementById('tab-admin');
+    if (btnAdmin) btnAdmin.style.display = 'flex';
     fbListenRegistraties();
   }
   fbListenIdeeen();
@@ -977,6 +988,19 @@ function initApp() {
 }
 
 function startAppMet(opgeslagen) {
+  // Probeer ook cookie als localStorage leeg is
+  if (!opgeslagen) {
+    try {
+      var cookies = document.cookie.split(';');
+      for (var ci=0; ci<cookies.length; ci++) {
+        var c = cookies[ci].trim();
+        if (c.indexOf('gezinscode=') === 0) {
+          opgeslagen = c.substring('gezinscode='.length);
+          break;
+        }
+      }
+    } catch(e) {}
+  }
   document.getElementById('loading-screen').style.display = 'none';
   if (opgeslagen) {
     try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
@@ -1165,6 +1189,92 @@ async function changeCat(id, cat) {
       setTimeout(() => select.style.color = orig, 1500);
     }
   }
+}
+
+
+// ============================================================
+// SLIMME SUGGESTIES
+// ============================================================
+function logAankoopHistorie(naam) {
+  try {
+    var hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}');
+    var n = naam.toLowerCase().trim();
+    var nu = Date.now();
+    if (!hist[n]) hist[n] = {count:0, laats:[]};
+    hist[n].count++;
+    hist[n].laats.push(nu);
+    if (hist[n].laats.length > 10) hist[n].laats = hist[n].laats.slice(-10);
+    hist[n].gem_interval = berekenGemInterval(hist[n].laats);
+    localStorage.setItem('aankoop_hist_' + gezinsCode, JSON.stringify(hist));
+  } catch(e) {}
+}
+function berekenGemInterval(tijden) {
+  if (tijden.length < 2) return null;
+  var som = 0;
+  for (var i=1; i<tijden.length; i++) som += tijden[i] - tijden[i-1];
+  return som / (tijden.length - 1);
+}
+function toonSlimmeVoorstellenStil() {
+  if (!gezinsCode) return;
+  var hist = {};
+  try { hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}'); } catch(e) { return; }
+  var nu = Date.now();
+  var dag = new Date().getDay();
+  var MINI_PRIJZEN = {'melk':1.09,'brood':2.09,'eieren':1.99,'boter':2.49,'kaas':3.49,'yoghurt':1.09,'pasta':0.99,'rijst':1.99,'tomaten':1.99,'bananen':1.49,'appels':1.99,'kipfilet':5.99,'gehakt':4.49};
+  var voorstellen = [];
+  for (var naam in hist) {
+    var data = hist[naam];
+    if (!data.laats || !data.laats.length) continue;
+    var laats = data.laats[data.laats.length-1];
+    var verstreken = nu - laats;
+    var interval = data.gem_interval || (7*24*60*60*1000);
+    if (verstreken > interval * 0.8) {
+      var alOp = false;
+      for (var ii=0; ii<items.length; ii++) { if (items[ii].name.toLowerCase() === naam && !items[ii].done) { alOp=true; break; } }
+      if (!alOp) voorstellen.push({naam:naam, prijs:MINI_PRIJZEN[naam]||null, score:verstreken/interval});
+    }
+  }
+  var dagelijks = ['melk','brood','eieren'];
+  if (dag >= 1 && dag <= 5) {
+    for (var di=0; di<dagelijks.length; di++) {
+      var dn = dagelijks[di];
+      var alOp2 = false; var alVoor = false;
+      for (var ii2=0; ii2<items.length; ii2++) { if (items[ii2].name.toLowerCase().indexOf(dn)>-1 && !items[ii2].done) { alOp2=true; break; } }
+      for (var vi=0; vi<voorstellen.length; vi++) { if (voorstellen[vi].naam.indexOf(dn)>-1) { alVoor=true; break; } }
+      if (!alOp2 && !alVoor) voorstellen.push({naam:dn, prijs:MINI_PRIJZEN[dn]||null, score:0.5});
+    }
+  }
+  voorstellen.sort(function(a,b){return b.score-a.score;});
+  voorstellen = voorstellen.slice(0,5);
+  var box = document.getElementById('wow-box');
+  var chips = document.getElementById('wow-chips');
+  var sub = document.getElementById('wow-sub');
+  if (!box || !chips) return;
+  if (!voorstellen.length) { box.style.display='none'; return; }
+  box.style.display = 'block';
+  var html = '';
+  for (var vi2=0; vi2<voorstellen.length; vi2++) {
+    var v = voorstellen[vi2];
+    var prijsHtml = v.prijs ? ' <span style="font-size:0.68rem;opacity:0.8">v.a. €'+v.prijs.toFixed(2)+'</span>' : '';
+    var _vn = v.naam.split("'").join("&#39;");
+    html += '<button class="wow-chip" onclick="voegSuggestie(&quot;' + _vn + '&quot;")>＋ ' + esc(v.naam) + prijsHtml + '</button>';
+  }
+  chips.innerHTML = html;
+  if (sub) {
+    var heeftPatroon = false;
+    for (var pi=0; pi<voorstellen.length; pi++) { if (voorstellen[pi].score > 0.5) { heeftPatroon=true; break; } }
+    sub.textContent = heeftPatroon ? 'Tijd om dit weer in te slaan:' : 'Vergeet je dit niet?';
+  }
+}
+async function voegSuggestie(naam) {
+  var newItem = {id:Date.now(), name:naam, person:currentPerson, done:false, qty:1, cat:detectCat(naam)};
+  items.unshift(newItem);
+  render();
+  logAankoopHistorie(naam);
+  setSyncStatus(true);
+  await fbSave(items);
+  setSyncStatus(false);
+  toonSlimmeVoorstellenStil();
 }
 
 async function addItem() {
@@ -1783,15 +1893,10 @@ let unsubAdminRegs = null;
 
 // ---- Face ID / Biometrie ----
 async function openAdminTab() {
-  // Check of al ingelogd als beheerder
   if (isBeheerder) { switchTab('admin'); return; }
-
-  // Probeer Face ID
   if (!window.PublicKeyCredential) {
-    // Geen WebAuthn support - vraag bevestiging
-    if (confirm('Face ID niet beschikbaar in deze browser. Wil je toch doorgaan?')) {
-      activeerBeheerder();
-    }
+    var pin = prompt('Voer de beheerderspincode in:');
+    if (pin === 'jorg103') { activeerBeheerder(); }
     return;
   }
 
