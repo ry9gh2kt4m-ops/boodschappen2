@@ -2457,15 +2457,20 @@ function updateCatChipUI() {
 }
 
 function updateCatChips() {
-  // Auto-activeer categorie als er artikelen van die categorie op lijst staan
-  const DROGIST_CHECK = ['scheermesjes','scheermes','scheerschuim','tandpasta','tandenborstel','shampoo','conditioner','douchegel','zeep','deodorant','lippenstift','mascara','foundation','zonnebrand','aftersun','bodylotion','handcrème','watten','maandverband','tampons','condoom','ibuprofen','paracetamol','vitamines','hoestdrank','pleisters','luiers','babydoekjes','haargel','nagellak','schoonmaakmiddel','allesreiniger','vaatwastabletten'];
-  const SLIJTERIJ_CHECK = ['bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne','rosé','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol','biertje'];
-  const todoItems = items.filter(i => !i.done);
-  const hasDrogist = todoItems.some(i => DROGIST_CHECK.some(d => i.name.toLowerCase().includes(d)));
-  const hasSlijterij = todoItems.some(i => SLIJTERIJ_CHECK.some(d => i.name.toLowerCase().includes(d)));
-  if (hasDrogist) { actieveCats.drogist = true; }
-  if (hasSlijterij) { actieveCats.slijterij = true; }
-  if (heeftSpeciaalItems) { actieveCats.speciaal = true; }
+  var DROGIST_CHECK = ['scheermesjes','scheermes','tandpasta','shampoo','conditioner','douchegel','zeep','deodorant','bodylotion','maandverband','tampons','ibuprofen','paracetamol','vitamines','pleisters','luiers','schoonmaakmiddel','allesreiniger','vaatwastabletten'];
+  var SLIJTERIJ_CHECK = ['bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol'];
+  var SPECIAAL_CHECK = ['ipa','pale ale','stout','tripel','dubbel','saison','craft','duvel','westmalle','chimay','la trappe','neipa'];
+  var todoItems = items.filter(function(i) { return !i.done; });
+  var hasDrogist = false, hasSlijterij = false, hasSpeciaal = false;
+  for (var ti=0; ti<todoItems.length; ti++) {
+    var iname = todoItems[ti].name.toLowerCase();
+    for (var di=0; di<DROGIST_CHECK.length; di++) { if (iname.indexOf(DROGIST_CHECK[di]) > -1) { hasDrogist = true; break; } }
+    for (var si=0; si<SLIJTERIJ_CHECK.length; si++) { if (iname.indexOf(SLIJTERIJ_CHECK[si]) > -1) { hasSlijterij = true; break; } }
+    for (var spi=0; spi<SPECIAAL_CHECK.length; spi++) { if (iname.indexOf(SPECIAAL_CHECK[spi]) > -1) { hasSpeciaal = true; break; } }
+  }
+  if (hasDrogist) actieveCats.drogist = true;
+  if (hasSlijterij) actieveCats.slijterij = true;
+  if (hasSpeciaal) actieveCats.speciaal = true;
   updateCatChipUI();
 }
 
