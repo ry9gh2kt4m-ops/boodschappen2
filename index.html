@@ -978,12 +978,12 @@ function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/
 function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
 
 function fbListen() {
-  unsubItems = window._onValue(getRef('boodschappen'), snap => {
-    const data = snap.val();
-    items = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+  unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
+    var data = snap.val();
+    items = data ? Object.values(data).sort(function(a,b) { return b.id - a.id; }) : [];
     render();
   });
-  unsubMenu = window._onValue(getRef('weekmenu'), snap => {
+  unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
     menu = snap.val() || {};
     renderMenu();
   });
@@ -1201,19 +1201,18 @@ function detectCat(naam) {
 }
 
 async function changeCat(id, cat) {
-  const item = items.find(i => i.id===id);
-  items = items.map(function(i) { if (i.id===id) { var n={}; for(var k in i){n[k]=i[k];} n.cat=cat; return n; } return i; });
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
-  // Onthoud deze keuze voor de toekomst
-  if (item) {
-    await slaGeleerdeCategorie(item.name, cat);
-    // Toon bevestiging
-    const select = document.querySelector(`select[onchange*="${id}"]`);
-    if (select) {
-      const orig = select.style.color;
-      select.style.color = 'var(--green)';
-      setTimeout(() => select.style.color = orig, 1500);
+  var gewijzigd = null;
+  items = items.map(function(i) {
+    if (i.id===id) {
+      var n={}; for(var k in i){n[k]=i[k];} n.cat=cat;
+      gewijzigd = n; return n;
     }
+    return i;
+  });
+  render();
+  if (gewijzigd) {
+    setSyncStatus(true); await fbSaveItem(gewijzigd); setSyncStatus(false);
+    slaGeleerdeCategorie(gewijzigd.name, cat);
   }
 }
 
@@ -1323,26 +1322,46 @@ async function addItem() {
 }
 
 async function toggleItem(id) {
-  items = items.map(function(i) { if (i.id===id) { var n={}; for(var k in i){n[k]=i[k];} n.done=!i.done; return n; } return i; });
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  var gewijzigd = null;
+  items = items.map(function(i) {
+    if (i.id===id) {
+      var n={}; for(var k in i){n[k]=i[k];} n.done=!i.done;
+      gewijzigd = n; return n;
+    }
+    return i;
+  });
+  render();
+  if (gewijzigd) { setSyncStatus(true); await fbSaveItem(gewijzigd); setSyncStatus(false); }
 }
 
 async function deleteItem(id) {
-  items = items.filter(i => i.id!==id);
+  items = items.filter(function(i) { return i.id !== id; });
+  render();
   setSyncStatus(true); await fbDelete(id); setSyncStatus(false);
 }
 
 async function changeQty(id, delta) {
-  items = items.map(function(i) { if (i.id===id) { var n={}; for(var k in i){n[k]=i[k];} n.qty=Math.max(1,(i.qty||1)+delta); return n; } return i; });
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  var gewijzigd = null;
+  items = items.map(function(i) {
+    if (i.id===id) {
+      var n={}; for(var k in i){n[k]=i[k];} n.qty=Math.max(1,(i.qty||1)+delta);
+      gewijzigd = n; return n;
+    }
+    return i;
+  });
+  render();
+  if (gewijzigd) { setSyncStatus(true); await fbSaveItem(gewijzigd); setSyncStatus(false); }
 }
 
 async function clearDone() {
-  const del = items.filter(i => i.done);
+  var del = items.filter(function(i) { return i.done; });
   if (!del.length) return;
-  if (!confirm(`${del.length} afgevinkt${del.length>1?'e items':' item'} verwijderen uit het mandje?`)) return;
-  items = items.filter(i => !i.done);
-  setSyncStatus(true); for (const i of del) await fbDelete(i.id); setSyncStatus(false);
+  if (!confirm(del.length + ' afgevinkt' + (del.length>1?'e items':' item') + ' verwijderen uit het mandje?')) return;
+  items = items.filter(function(i) { return !i.done; });
+  render();
+  setSyncStatus(true);
+  for (var di=0; di<del.length; di++) { await fbDelete(del[di].id); }
+  setSyncStatus(false);
 }
 
 function toggleDone() {
@@ -3021,28 +3040,32 @@ document.addEventListener('click', function(e) {
 });
 
 document.getElementById('add-btn').onclick=addItem;
-document.getElementById('item-input').addEventListener('keydown', e => {
+document.getElementById('item-input').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
-    const dropdown = document.getElementById('autocomplete-dropdown');
+    var dropdown = document.getElementById('autocomplete-dropdown');
     if (!dropdown || dropdown.style.display === 'none' || acSelectedIdx < 0) addItem();
+    else { sluitAutocomplete(); addItem(); }
   }
 });
-document.getElementById('item-input').addEventListener('input', () => {
-  const val = document.getElementById('item-input').value.trim();
-  const el = document.getElementById('dubbel-melding');
-  // Dubbel check
+document.getElementById('item-input').addEventListener('input', function() {
+  var val = document.getElementById('item-input').value.trim();
+  var el = document.getElementById('dubbel-melding');
   if (el) {
-    const n = val.toLowerCase();
+    var n = val.toLowerCase();
     if (!n || n.length < 2) { el.textContent = ''; }
     else {
-      const bestaand = items.find(i => !i.done && (
-        i.name.toLowerCase().includes(n) || n.includes(i.name.toLowerCase())
-      ) && i.name.length > 2);
-      if (bestaand) el.innerHTML = '⚠️ "<strong>' + esc(bestaand.name) + '</strong>" staat al op je lijst';
+      var bestaand = null;
+      for (var ii=0; ii<items.length; ii++) {
+        var item = items[ii];
+        if (!item.done && item.name.length > 2) {
+          var iname = item.name.toLowerCase();
+          if (iname.indexOf(n) > -1 || n.indexOf(iname) > -1) { bestaand = item; break; }
+        }
+      }
+      if (bestaand) el.innerHTML = '\u26A0\uFE0F "<strong>' + esc(bestaand.name) + '</strong>" staat al op je lijst';
       else el.textContent = '';
     }
   }
-  // Autocomplete
   zoekAutocomplete(val);
 });
 document.getElementById('item-input').addEventListener('keydown', navigeerAutocomplete);
