@@ -833,10 +833,20 @@ async function registreerGezin() {
   var bestaande = allSnap.val() || {};
   var volgnummer = Object.keys(bestaande).length + 1;
 
-  // Check of naam al bestaat (zelfde code) - toon melding
-  if (bestaande[code]) {
-    var bestaandeReg = bestaande[code];
-    var statusTekst = bestaandeReg.status === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
+  // Check of code OF naam al bestaat (case-insensitive)
+  var naamLower = naam.toLowerCase().trim();
+  var codeAlGebruikt = !!bestaande[code];
+  var naamAlGebruikt = false;
+  var bestaandeStatus = 'wachtend';
+  for (var bk in bestaande) {
+    if ((bestaande[bk].naam || '').toLowerCase().trim() === naamLower) {
+      naamAlGebruikt = true;
+      bestaandeStatus = bestaande[bk].status || 'wachtend';
+      break;
+    }
+  }
+  if (codeAlGebruikt || naamAlGebruikt) {
+    var statusTekst = bestaandeStatus === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
     errEl.textContent = 'De naam "' + naam + '" is ' + statusTekst + '. Kies een andere naam, bijv. "' + naam + ' Thuis" of "' + naam + ' 2".';
     errEl.style.display = 'block';
     return;
@@ -1867,10 +1877,17 @@ let unsubRegistraties = null;
 
 function fbListenRegistraties() {
   if (unsubRegistraties) unsubRegistraties();
-  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), snap => {
-    const data = snap.val() || {};
-    const regs = Object.values(data).sort((a,b) => b.aangemeld - a.aangemeld);
-    renderRegistraties(regs);
+  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), function(snap) {
+    var data = snap.val() || {};
+    var regs = Object.values(data).sort(function(a,b) { return b.aangemeld - a.aangemeld; });
+    // Update stats
+    var actief = regs.filter(function(r){return r.status==='goedgekeurd';}).length;
+    var wachtend = regs.filter(function(r){return r.status==='wachtend';}).length;
+    var ae = document.getElementById('admin-actief'); if(ae) ae.textContent = actief;
+    var aw = document.getElementById('admin-wachtend'); if(aw) aw.textContent = wachtend;
+    var at = document.getElementById('admin-totaal'); if(at) at.textContent = regs.length;
+    // Render lijst
+    renderAdminRegistraties(regs);
   });
 }
 
@@ -2007,21 +2024,13 @@ function activeerBeheerder() {
 
 // ---- Admin stats & beheer ----
 function updateAdminStats() {
-  // Laad registraties stats
-  window._onValue(window._ref(window._db, 'registraties'), snap => {
-    const data = snap.val() || {};
-    const regs = Object.values(data);
-    document.getElementById('admin-actief').textContent = regs.filter(r => r.status === 'goedgekeurd').length;
-    document.getElementById('admin-wachtend').textContent = regs.filter(r => r.status === 'wachtend').length;
-    document.getElementById('admin-totaal').textContent = regs.length;
-    renderAdminRegistraties(regs);
-  }, {onlyOnce: true});
-
-  // Laad ideeën count
-  window._onValue(window._ref(window._db, 'ideeen'), snap => {
-    const data = snap.val() || {};
-    document.getElementById('admin-ideeen-count').textContent = Object.keys(data).length;
-    renderAdminIdeeen(Object.values(data).sort((a,b) => b.timestamp - a.timestamp));
+  // Registraties worden live bijgehouden door fbListenRegistraties
+  // Laad alleen ideeen (onlyOnce is ok want die veranderen minder vaak)
+  window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
+    var data = snap.val() || {};
+    var ai = document.getElementById('admin-ideeen-count');
+    if (ai) ai.textContent = Object.keys(data).length;
+    renderAdminIdeeen(Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;}));
   }, {onlyOnce: true});
 }
 
