@@ -826,21 +826,31 @@ async function registreerGezin() {
   if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
 
   // Auto-genereer code vanuit naam
-  const code = sanitizeCode(naam);
+  var code = sanitizeCode(naam);
 
-  // Tel bestaande registraties voor volgnummer
-  const allSnap = await new Promise(res => window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}));
-  const bestaande = allSnap.val() || {};
-  const volgnummer = Object.keys(bestaande).length + 1;
+  // Tel bestaande registraties
+  var allSnap = await new Promise(function(res) { window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}); });
+  var bestaande = allSnap.val() || {};
+  var volgnummer = Object.keys(bestaande).length + 1;
 
-  // Maak unieke code: gezinsnaam + volgnummer als naam al bestaat
-  let uniekeCode = code;
-  if (bestaande[code]) uniekeCode = code + '-' + volgnummer;
+  // Check of naam al bestaat (zelfde code) - toon melding
+  if (bestaande[code]) {
+    var bestaandeReg = bestaande[code];
+    var statusTekst = bestaandeReg.status === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
+    errEl.textContent = 'De naam "' + naam + '" is ' + statusTekst + '. Kies een andere naam, bijv. "' + naam + ' Thuis" of "' + naam + ' 2".';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Wis eventuele eerdere gezinscode op dit apparaat zodat opnieuw registreren werkt
+  try { localStorage.removeItem('gezinscode'); } catch(e) {}
+  try { sessionStorage.removeItem('gezinscode'); } catch(e) {}
+  try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
 
   // Sla registratie op
-  await window._set(window._ref(window._db, 'registraties/' + uniekeCode), {
-    code: uniekeCode, naam, email,
-    volgnummer,
+  await window._set(window._ref(window._db, 'registraties/' + code), {
+    code: code, naam: naam, email: email,
+    volgnummer: volgnummer,
     status: 'wachtend',
     aangemeld: Date.now(),
     goedgekeurd: false
@@ -1895,13 +1905,13 @@ function renderRegistraties(regs) {
 }
 
 async function updateRegistratieStatus(code, status) {
-  await window._set(window._ref(window._db, `registraties/${code}/status`), status);
-  await window._set(window._ref(window._db, `registraties/${code}/goedgekeurd`), status === 'goedgekeurd');
+  await window._set(window._ref(window._db, 'registraties/' + code + '/status'), status);
+  await window._set(window._ref(window._db, 'registraties/' + code + '/goedgekeurd'), status === 'goedgekeurd');
 }
 
 async function verwijderRegistratie(code) {
-  if (!confirm(`Aanmelding van ${code} verwijderen?`)) return;
-  await window._remove(window._ref(window._db, `registraties/${code}`));
+  if (!confirm('Aanmelding van ' + code + ' verwijderen?')) return;
+  await window._remove(window._ref(window._db, 'registraties/' + code));
 }
 
 // ---- Ideeënbus ----
