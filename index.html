@@ -980,7 +980,6 @@ function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
 var _saving = false;
 function fbListen() {
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
-    if (_saving) return;
     var data = snap.val();
     items = data ? Object.values(data).sort(function(a,b) { return b.id - a.id; }) : [];
     render();
@@ -1216,7 +1215,7 @@ async function changeCat(id, cat) {
   });
   render();
   if (gewijzigd) {
-    setSyncStatus(true); await fbSaveItem(gewijzigd); setSyncStatus(false);
+    setSyncStatus(true); try { await fbSaveItem(gewijzigd); } finally { setSyncStatus(false); }
     slaGeleerdeCategorie(gewijzigd.name, cat);
   }
 }
@@ -1327,7 +1326,7 @@ async function addItem() {
   slaGeleerdeCategorie(name, newItem.cat);
   render();
   setSyncStatus(true);
-  await fbSaveItem(newItem);
+  try { await fbSave(items); } catch(e) { console.log('save fout:', e); }
   setSyncStatus(false);
 }
 
