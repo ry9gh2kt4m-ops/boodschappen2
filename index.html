@@ -1052,6 +1052,9 @@ function initApp() {
   fbListenGeleerdeWinkels();
   setupMic();
   setSyncStatus(false);
+  // Bind event handlers veilig na DOM init
+  bindInputEvents();
+  bindMicBtn();
 }
 
 function startAppMet(opgeslagen) {
@@ -2996,14 +2999,22 @@ function clearAutoAdd() {
 function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(()=>setMicStatus(''),3000); }
 function setMicStatus(m,c=''){const el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
 
-document.getElementById('mic-btn').onclick=async()=>{
-  if(!recognition)return;
-  // Als afteller bezig: annuleer
-  if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(()=>setMicStatus(''),1500); return; }
-  if(isListening){recognition.stop();return;}
-  try{await navigator.mediaDevices.getUserMedia({audio:true});}catch{setMicStatus('🚫 Microfoon geweigerd.','active');return;}
-  document.getElementById('item-input').value='';
-  try{recognition.start();}catch{setMicStatus('Start mislukt.','active');}
+function bindMicBtn() {
+  var micBtn = document.getElementById('mic-btn');
+  if (!micBtn) return;
+  micBtn.onclick = async function() {
+    if (!recognition) return;
+    if (autoAddTimer) { clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(function(){setMicStatus('');},1500); return; }
+    if (isListening) { recognition.stop(); return; }
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({audio:true});
+      }
+    } catch(e) { setMicStatus('&#128683; Microfoon geweigerd.','active'); return; }
+    var inp = document.getElementById('item-input');
+    if (inp) inp.value = '';
+    recognition.start();
+  };
 };
 // ---- Live prijszoeken per artikel ----
 let livePrijsTimer = null;
@@ -3279,36 +3290,42 @@ document.addEventListener('click', function(e) {
   }
 });
 
-document.getElementById('add-btn').onclick=addItem;
-document.getElementById('item-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') {
-    var dropdown = document.getElementById('autocomplete-dropdown');
-    if (!dropdown || dropdown.style.display === 'none' || acSelectedIdx < 0) addItem();
-    else { sluitAutocomplete(); addItem(); }
-  }
-});
-document.getElementById('item-input').addEventListener('input', function() {
-  var val = document.getElementById('item-input').value.trim();
-  var el = document.getElementById('dubbel-melding');
-  if (el) {
-    var n = val.toLowerCase();
-    if (!n || n.length < 2) { el.textContent = ''; }
-    else {
-      var bestaand = null;
-      for (var ii=0; ii<items.length; ii++) {
-        var item = items[ii];
-        if (!item.done && item.name.length > 2) {
-          var iname = item.name.toLowerCase();
-          if (iname.indexOf(n) > -1 || n.indexOf(iname) > -1) { bestaand = item; break; }
+function bindInputEvents() {
+  var addBtn = document.getElementById('add-btn');
+  var inp = document.getElementById('item-input');
+  if (addBtn) addBtn.onclick = addItem;
+  if (inp) {
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var dropdown = document.getElementById('autocomplete-dropdown');
+        if (!dropdown || dropdown.style.display === 'none' || acSelectedIdx < 0) addItem();
+        else { sluitAutocomplete(); addItem(); }
+      }
+      navigeerAutocomplete(e);
+    });
+    inp.addEventListener('input', function() {
+      var val = inp.value.trim();
+      var el = document.getElementById('dubbel-melding');
+      if (el) {
+        var n = val.toLowerCase();
+        if (!n || n.length < 2) { el.textContent = ''; }
+        else {
+          var bestaand = null;
+          for (var ii=0; ii<items.length; ii++) {
+            var it = items[ii];
+            if (!it.done && it.name.length > 2) {
+              var iname = it.name.toLowerCase();
+              if (iname.indexOf(n) > -1 || n.indexOf(iname) > -1) { bestaand = it; break; }
+            }
+          }
+          if (bestaand) el.innerHTML = '\u26A0\uFE0F "<strong>' + esc(bestaand.name) + '</strong>" staat al op je lijst';
+          else el.textContent = '';
         }
       }
-      if (bestaand) el.innerHTML = '\u26A0\uFE0F "<strong>' + esc(bestaand.name) + '</strong>" staat al op je lijst';
-      else el.textContent = '';
-    }
+      zoekAutocomplete(val);
+    });
   }
-  zoekAutocomplete(val);
-});
-document.getElementById('item-input').addEventListener('keydown', navigeerAutocomplete);
+}
 // ============================================================
 // VIND DICHTSTBIJZIJNDE WINKEL (GPS + OpenStreetMap)
 // ============================================================
