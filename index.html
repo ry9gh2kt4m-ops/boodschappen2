@@ -1333,8 +1333,10 @@ async function voegSuggestie(naam) {
 }
 
 async function addItem() {
+  console.log('[addItem] aangeroepen');
   var inp = document.getElementById('item-input');
   var name = inp ? inp.value.trim() : '';
+  console.log('[addItem] name:', name);
   // Als input leeg is, check of er een geselecteerde autocomplete item is
   if (!name) {
     var selEl = document.querySelector('#autocomplete-dropdown .ac-item.selected, #autocomplete-dropdown .ac-item:first-child');
@@ -1632,7 +1634,19 @@ function renderMenu() {
   const isFridayOrLater = dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0;
   const maandag = new Date(now);
   maandag.setDate(now.getDate() - (dayOfWeek===0?6:dayOfWeek-1) + (weekOffset*7));
-  const weekLabel = weekOffset === 0 ? 'Deze week' : weekOffset === 1 ? 'Volgende week' : `Week ${weekOffset > 0 ? '+'+weekOffset : weekOffset}`;
+  // ISO 8601 weeknummer berekening
+  function getISOWeek(d) {
+    var date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    var week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  }
+  var weekNr = getISOWeek(maandag);
+  var vandaag = new Date();
+  var vandaagStr = vandaag.toLocaleDateString('nl-NL', {day:'numeric', month:'long'});
+  var weekNrLabel = ' • week ' + weekNr;
+  const weekLabel = (weekOffset === 0 ? 'Deze week' : weekOffset === 1 ? 'Volgende week' : 'Week +' + weekOffset) + weekNrLabel;
 
   let header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:white;border:1px solid var(--border);border-radius:12px;padding:10px 14px">
     <button onclick="wisselWeek(${weekOffset-1})" ${weekOffset<=0?'disabled style="opacity:0.3"':''} style="background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px">◀</button>
