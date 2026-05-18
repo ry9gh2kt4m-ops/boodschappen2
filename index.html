@@ -314,6 +314,30 @@
   .dag-vandaag .dag-header { background:var(--green-pale); }
   .dag-vandaag .dag-naam { color:var(--green); }
   .dag-label { font-size:0.65rem; background:var(--green); color:white; padding:2px 6px; border-radius:6px; text-transform:uppercase; letter-spacing:0.5px; margin-left:5px; }
+.winkel-ah-badge{background:#ebf3ff;color:#003087;border:none;cursor:pointer;padding:2px 7px;border-radius:8px;font-size:0.68rem;font-weight:700}
+.winkel-kv-badge{background:#f3e8ff;color:#6a00c4;border:none;cursor:pointer;padding:2px 7px;border-radius:8px;font-size:0.68rem;font-weight:700}
+.winkel-ah-badge:active,.winkel-kv-badge:active{opacity:0.7}
+
+/* Vind Winkel */
+.vw-btn{width:100%;padding:11px;border:none;border-radius:11px;background:linear-gradient(135deg,#1a56a0,#2d7dd2);color:white;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px}
+.vw-btn:active{opacity:0.85}
+.vw-modal{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:400;display:none;align-items:flex-end;justify-content:center}
+.vw-modal.open{display:flex}
+.vw-card{background:white;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;max-height:88vh;overflow-y:auto}
+.vw-titel{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--ink);margin-bottom:3px}
+.vw-sub{font-size:0.78rem;color:var(--muted);margin-bottom:16px}
+.vw-sectie-titel{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:14px 0 7px 2px}
+.vw-winkel-card{border:1px solid var(--bdr);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.vw-winkel-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.vw-winkel-info{flex:1;min-width:0}
+.vw-winkel-naam{font-weight:600;font-size:0.9rem;color:var(--ink)}
+.vw-winkel-adres{font-size:0.75rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vw-winkel-afstand{font-size:0.72rem;color:var(--green);font-weight:600;margin-top:2px}
+.vw-nav-btn{background:var(--green);color:white;border:none;border-radius:9px;padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:4px}
+.vw-nav-btn:active{opacity:0.85}
+.vw-loading{text-align:center;padding:24px;color:var(--muted);font-size:0.85rem}
+.vw-fout{text-align:center;padding:20px;color:var(--red);font-size:0.85rem}
+.vw-sluiten{width:100%;padding:10px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-top:6px}
 </style>
 
 </head>
@@ -459,6 +483,7 @@
 
 ```
 <div class="filter-row" id="filter-row"></div>
+<button class="vw-btn" onclick="vindDichtstbijzijndeWinkel()">📍 Vind dichtstbijzijnde winkel</button>
 <div class="section-label">Te halen</div>
 <div class="list" id="todo-list"></div>
 <button class="done-toggle" onclick="toggleDone()">
@@ -1010,6 +1035,7 @@ function initApp() {
   fbListenIdeeen();
   fbListenRecepten();
   fbListenGeleerd();
+  fbListenGeleerdeWinkels();
   setupMic();
   setSyncStatus(false);
 }
@@ -1316,7 +1342,7 @@ async function addItem() {
   }
   if (!name) return;
   sluitAutocomplete();
-  var newItem = { id: Date.now(), name: name, person: currentPerson, done: false, qty: 1, cat: detectCat(name) };
+  var newItem = { id: Date.now(), name: name, person: currentPerson, done: false, qty: 1, cat: detectCat(name), winkel: detectWinkel(name) };
   items.unshift(newItem);
   inp.value = '';
   var dbl = document.getElementById('dubbel-melding');
@@ -1394,6 +1420,10 @@ function renderItem(item) {
   const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f'};
   const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
   const borderStyle = !item.done ? `border-left:3px solid ${p.kleur}` : '';
+  var winkel = item.winkel || detectWinkel(item.name);
+  var winkelBadge = winkel === 'kruidvat'
+    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
+    : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
   const allCats = [...BOODSCHAP_CATS.map(c=>({key:c.key,label:c.label,icon:c.icon})), {key:'overig',label:'Overig',icon:'📦'}];
   const catSelect = `<select onchange="changeCat(${item.id},this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">
     ${allCats.map(c=>`<option value="${c.key}" ${(item.cat||'overig')===c.key?'selected':''}>${c.icon} ${c.label}</option>`).join('')}
@@ -1404,6 +1434,7 @@ function renderItem(item) {
     <div class="item-main">
       <div class="item-name">${esc(item.name)}</div>
       <div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        ${winkelBadge}
         <span class="item-person" style="background:${bg};color:${p.kleur};display:inline-flex;align-items:center;gap:3px">${p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />` : '👤'} ${esc(item.person)}</span>
         ${catSelect}
       </div>
@@ -1415,6 +1446,125 @@ function renderItem(item) {
     </div>
     <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
   </div>`;
+}
+
+
+// ============================================================
+// WINKEL DETECTIE: AH vs Kruidvat
+// ============================================================
+var AH_ITEMS = [
+  // Vers & AGF
+  'appel','peer','banaan','sinaasappel','citroen','druif','aardbei','mango','avocado',
+  'tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie',
+  'champignon','aardappel','courgette','prei','bloemkool','peterselie','basilicum',
+  // Vlees & vis
+  'kip','gehakt','spek','ham','bacon','zalm','garnalen','vis','biefstuk','worst',
+  // Zuivel
+  'melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk',
+  // Kruidenierswaren
+  'brood','pasta','rijst','havermout','muesli','cornflakes','crackers','beschuit',
+  'bloem','suiker','olie','azijn','ketchup','mayonaise','mosterd','pesto','sambal',
+  'soep','bouillon','blik','bonen','tomatenpuree','passata','jam','honing','pindakaas',
+  'nutella','hagelslag','chips','chocolade','noten','koekjes','cracker',
+  'koffie','thee','frisdrank','cola','water','sap','limonade',
+  'friet','pizza','kroketten','ijs','diepvries',
+  // Dranken
+  'bier','wijn','prosecco','heineken','hertog jan','grolsch','amstel',
+  // Huishouden food
+  'zout','peper','kruiden','specerijen','bakpoeder','vanille',
+  // Non-food die AH verkoopt
+  'toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak',
+  // Ontbijt
+  'cruesli','granola','muesli','cornflakes','brinta','sultana',
+  // Extra
+  'kaas','feta','mozzarella','brie','gouda'
+];
+
+var KRUIDVAT_ITEMS = [
+  // Verzorging
+  'shampoo','conditioner','douchegel','zeep','handzeep','bodylotion','handcreme',
+  'deodorant','antitranspirant','parfum','aftershave','scheermesje','scheerschuim',
+  'scheergel','tandpasta','tandenborstel','floss','mondwater','whitening',
+  // Make-up & huid
+  'zonnebrand','aftersun','lippenbalsem','lippenstift','mascara','foundation',
+  'concealer','blush','oogschaduw','nagellak','nagelvijl','wattenschijfjes','watten',
+  // Haar
+  'haargel','haarspray','haarkleuring','haarmasker','droogshampoo',
+  // Gezondheid
+  'paracetamol','ibuprofen','aspirine','neusdruppels','hoestdrank','keeltabletten',
+  'vitamines','vitamine','omega','multivitamine','probiotica','zink','magnesium',
+  'pleisters','verband','ontsmettingsmiddel','thermometer','bloeddrukmeter',
+  // Baby & kind
+  'luiers','babydoekjes','babylotion','speen','fles',
+  // Vrouwelijke hygiëne
+  'maandverband','tampons','inlegkruisje','menstruatie',
+  // Schoonmaak (meer drogisterij gericht)
+  'schoonmaakmiddel','allesreiniger','vaatwastabletten','wasmiddel','wasverzachter',
+  'afwasmiddel','wc-reiniger','badkamerreiniger','schuurmiddel','soda','bleek',
+  'ontkalk','waterontharder','gootsteenontstopper',
+  // Huisdier
+  'kattenvoer','hondenvoer','kattenbak','vlooienband',
+  // Overig drogisterij
+  'condoom','glijmiddel','anticonceptie','zwangerschapstest','bloedsuiker'
+];
+
+function detectWinkel(naam) {
+  var n = naam.toLowerCase().trim();
+  // Check geleerde winkel eerst
+  var geleerdeKey = n.replace(/[^a-z0-9]/g, '_');
+  if (geleerdeWinkels[geleerdeKey]) return geleerdeWinkels[geleerdeKey];
+  // Check op gedeeltelijke match
+  for (var gk in geleerdeWinkels) {
+    var woord = gk.replace(/_/g, ' ');
+    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
+      return geleerdeWinkels[gk];
+    }
+  }
+  // Check Kruidvat eerst (specifieker)
+  for (var ki=0; ki<KRUIDVAT_ITEMS.length; ki++) {
+    if (n.indexOf(KRUIDVAT_ITEMS[ki]) > -1 || KRUIDVAT_ITEMS[ki].indexOf(n) > -1 && n.length > 3) {
+      return 'kruidvat';
+    }
+  }
+  // Check AH
+  for (var ai=0; ai<AH_ITEMS.length; ai++) {
+    if (n.indexOf(AH_ITEMS[ai]) > -1 || AH_ITEMS[ai].indexOf(n) > -1 && n.length > 3) {
+      return 'ah';
+    }
+  }
+  return 'ah'; // standaard AH
+}
+
+var geleerdeWinkels = {};
+
+function fbListenGeleerdeWinkels() {
+  window._onValue(getRef('geleerde_winkels'), function(snap) {
+    geleerdeWinkels = snap.val() || {};
+  });
+}
+
+async function slaGeleerdeWinkelOp(naam, winkel) {
+  var key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  geleerdeWinkels[key] = winkel;
+  await window._set(getRef('geleerde_winkels/' + key), winkel);
+}
+
+async function wisselWinkel(id) {
+  var item = null;
+  for (var i=0; i<items.length; i++) {
+    if (items[i].id === id) { item = items[i]; break; }
+  }
+  if (!item) return;
+  var nieuweWinkel = (item.winkel === 'kruidvat') ? 'ah' : 'kruidvat';
+  // Update lokaal
+  for (var j=0; j<items.length; j++) {
+    if (items[j].id === id) { items[j].winkel = nieuweWinkel; break; }
+  }
+  // Leer op
+  await slaGeleerdeWinkelOp(item.name, nieuweWinkel);
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } finally { setSyncStatus(false); }
 }
 
 function renderList(id, list, isDone) {
@@ -3083,8 +3233,147 @@ document.getElementById('item-input').addEventListener('input', function() {
   zoekAutocomplete(val);
 });
 document.getElementById('item-input').addEventListener('keydown', navigeerAutocomplete);
+// ============================================================
+// VIND DICHTSTBIJZIJNDE WINKEL (GPS + OpenStreetMap)
+// ============================================================
+function vindDichtstbijzijndeWinkel() {
+  var modal = document.getElementById('vw-modal');
+  var inhoud = document.getElementById('vw-inhoud');
+  var sub = document.getElementById('vw-sub');
+  if (!modal || !inhoud) return;
+  modal.className = 'vw-modal open';
+  inhoud.innerHTML = '<div class="vw-loading">&#128225; Locatie ophalen...</div>';
+  if (sub) sub.textContent = 'Even geduld...';
+  if (!navigator.geolocation) {
+    inhoud.innerHTML = '<div class="vw-fout">&#10060; Locatie niet beschikbaar op dit apparaat.</div>';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lon = pos.coords.longitude;
+      if (sub) sub.textContent = 'Winkels zoeken bij jou in de buurt...';
+      zoekWinkelsOpLocatie(lat, lon, inhoud, sub);
+    },
+    function(err) {
+      var msgs = {1:'Locatietoegang geweigerd. Sta locatie toe in je instellingen.',2:'Locatie kon niet worden bepaald.',3:'Timeout bij ophalen locatie.'};
+      inhoud.innerHTML = '<div class="vw-fout">&#10060; ' + (msgs[err.code] || 'Locatiefout.') + '</div>';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+async function zoekWinkelsOpLocatie(lat, lon, inhoud, sub) {
+  var superQ = '[out:json][timeout:15];(node["shop"="supermarket"](around:5000,' + lat + ',' + lon + ');way["shop"="supermarket"](around:5000,' + lat + ',' + lon + '););out center 10;';
+  var drogQ = '[out:json][timeout:15];(node["shop"="chemist"](around:5000,' + lat + ',' + lon + ');node["shop"="drugstore"](around:5000,' + lat + ',' + lon + ');way["shop"="chemist"](around:5000,' + lat + ',' + lon + '););out center 10;';
+  try {
+    var responses = await Promise.all([
+      fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:'data='+encodeURIComponent(superQ)}),
+      fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:'data='+encodeURIComponent(drogQ)})
+    ]);
+    var superData = await responses[0].json();
+    var drogData = await responses[1].json();
+    var supermarkten = verwerkOverpassData(superData.elements, lat, lon);
+    var drogisten = verwerkOverpassData(drogData.elements, lat, lon);
+    var superKetens = ['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar','vomar','deen'];
+    var drogKetens = ['kruidvat','etos','da ','trekpleister'];
+    supermarkten = filterOpKetens(supermarkten, superKetens).sort(function(a,b){return a.afstand-b.afstand;}).slice(0,3);
+    drogisten = filterOpKetens(drogisten, drogKetens).sort(function(a,b){return a.afstand-b.afstand;}).slice(0,3);
+    var ahItems = items.filter(function(i){return !i.done && (i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
+    var kvItems = items.filter(function(i){return !i.done && (i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
+    if (sub) sub.textContent = 'Dichtstbijzijnde winkels:';
+    var html = '';
+    if (supermarkten.length > 0) {
+      html += '<div class="vw-sectie-titel">&#128722; Supermarkt' + (ahItems > 0 ? ' (' + ahItems + ' product' + (ahItems>1?'en':'') + ' op lijst)' : '') + '</div>';
+      for (var si=0; si<supermarkten.length; si++) html += renderWinkelCard(supermarkten[si], '&#128722;', '#ebf3ff', '#003087');
+    }
+    if (drogisten.length > 0) {
+      html += '<div class="vw-sectie-titel">&#128138; Drogisterij' + (kvItems > 0 ? ' (' + kvItems + ' product' + (kvItems>1?'en':'') + ' op lijst)' : '') + '</div>';
+      for (var di=0; di<drogisten.length; di++) html += renderWinkelCard(drogisten[di], '&#128138;', '#f3e8ff', '#6a00c4');
+    }
+    if (!html) html = '<div class="vw-loading">Geen winkels gevonden binnen 5km.</div>';
+    inhoud.innerHTML = html;
+  } catch(e) {
+    inhoud.innerHTML = '<div class="vw-fout">&#10060; Ophalen mislukt. Controleer je internet.</div>';
+  }
+}
+
+function verwerkOverpassData(elementen, userLat, userLon) {
+  var winkels = [];
+  for (var i=0; i<elementen.length; i++) {
+    var el = elementen[i];
+    var elLat = el.lat || (el.center && el.center.lat);
+    var elLon = el.lon || (el.center && el.center.lon);
+    if (!elLat || !elLon) continue;
+    var naam = (el.tags && el.tags.name) ? el.tags.name : 'Onbekende winkel';
+    var straat = '';
+    if (el.tags) {
+      var s = el.tags['addr:street'] || '';
+      var h = el.tags['addr:housenumber'] || '';
+      var p = el.tags['addr:postcode'] || '';
+      var c = el.tags['addr:city'] || '';
+      if (s) straat = s + (h ? ' ' + h : '') + (p ? ', ' + p : '') + (c ? ' ' + c : '');
+    }
+    winkels.push({naam:naam, straat:straat, afstand:berekenAfstand(userLat,userLon,elLat,elLon), lat:elLat, lon:elLon});
+  }
+  return winkels;
+}
+
+function filterOpKetens(winkels, ketens) {
+  var bekend = winkels.filter(function(w) { var n=w.naam.toLowerCase(); return ketens.some(function(k){return n.indexOf(k)>-1;}); });
+  var onbekend = winkels.filter(function(w) { var n=w.naam.toLowerCase(); return !ketens.some(function(k){return n.indexOf(k)>-1;}); });
+  return bekend.concat(onbekend);
+}
+
+function berekenAfstand(lat1, lon1, lat2, lon2) {
+  var R = 6371000;
+  var dLat = (lat2-lat1)*Math.PI/180;
+  var dLon = (lon2-lon1)*Math.PI/180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+function afstandLabel(m) {
+  if (m < 1000) return m + 'm';
+  return (m/1000).toFixed(1).replace('.',',') + 'km';
+}
+
+function renderWinkelCard(winkel, icon, bg, kleur) {
+  var adresTekst = winkel.straat || 'Adres onbekend';
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + winkel.lat + ',' + winkel.lon;
+  return '<div class="vw-winkel-card">'
+    + '<div class="vw-winkel-logo" style="background:' + bg + ';color:' + kleur + '">' + icon + '</div>'
+    + '<div class="vw-winkel-info">'
+    + '<div class="vw-winkel-naam">' + esc(winkel.naam) + '</div>'
+    + '<div class="vw-winkel-adres">' + esc(adresTekst) + '</div>'
+    + '<div class="vw-winkel-afstand">&#128205; ' + afstandLabel(winkel.afstand) + ' verderop</div>'
+    + '</div>'
+    + '<button class="vw-nav-btn" onclick="window.open(' + "'" + mapsUrl + "'" + ',' + "'" + '_blank' + "'" + ')">&#128204; Navigeer</button>'
+    + '</div>';
+}
+
+function sluitVindWinkel() {
+  var modal = document.getElementById('vw-modal');
+  if (modal) modal.className = 'vw-modal';
+}
+
+function sluitVindWinkelBuiten(e) {
+  if (e.target.id === 'vw-modal') sluitVindWinkel();
+}
+
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 </script>
+
+<!-- Vind Winkel Modal -->
+
+<div class="vw-modal" id="vw-modal" onclick="sluitVindWinkelBuiten(event)">
+  <div class="vw-card">
+    <div class="vw-titel">📍 Vind dichtstbijzijnde winkel</div>
+    <div class="vw-sub" id="vw-sub">Locatie bepalen...</div>
+    <div id="vw-inhoud"><div class="vw-loading">📡 Locatie ophalen...</div></div>
+    <button class="vw-sluiten" onclick="sluitVindWinkel()">← Sluiten</button>
+  </div>
+</div>
 
 </body>
 </html>
