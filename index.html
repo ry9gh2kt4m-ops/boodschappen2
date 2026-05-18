@@ -1003,10 +1003,24 @@ function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/
 function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
 
 var _saving = false;
+// Pending items: lokaal toegevoegd maar nog niet bevestigd door Firebase
+var pendingItems = {};
+
 function fbListen() {
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
-    var data = snap.val();
-    items = data ? Object.values(data).sort(function(a,b) { return b.id - a.id; }) : [];
+    var data = snap.val() || {};
+    // Verwijder pending items die Firebase nu kent
+    for (var pid in pendingItems) {
+      if (data[pid]) delete pendingItems[pid];
+    }
+    // Bouw items op: Firebase data + nog niet bevestigde pending items
+    var fbItems = Object.values(data);
+    var pendingList = Object.values(pendingItems);
+    // Voeg pending items toe die nog niet in Firebase data zitten
+    for (var pi=0; pi<pendingList.length; pi++) {
+      fbItems.push(pendingList[pi]);
+    }
+    items = fbItems.sort(function(a,b) { return b.id - a.id; });
     render();
   });
   unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
@@ -1356,22 +1370,26 @@ async function addItem() {
   // Leer patronen
   logAankoopHistorie(name);
   slaGeleerdeCategorie(name, newItem.cat);
-  // Schrijf ALLEEN dit item naar Firebase (geen hele lijst)
-  // Dit voorkomt race conditions met de Firebase listener
+  // Registreer als pending zodat fbListen hem niet weggooit
+  pendingItems[newItem.id] = newItem;
+  // Schrijf naar Firebase
   setSyncStatus(true);
   try {
     await window._set(
       window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newItem.id),
       newItem
     );
+    // Firebase bevestigd - verwijder uit pending
+    delete pendingItems[newItem.id];
   } catch(e) {
-    // Bij fout: probeer nogmaals na 1 seconde
+    // Bij fout: item blijft in pending en dus zichtbaar
+    // Probeer opnieuw na 2 seconden
     setTimeout(function() {
       window._set(
         window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newItem.id),
         newItem
-      );
-    }, 1000);
+      ).then(function() { delete pendingItems[newItem.id]; });
+    }, 2000);
   } finally {
     setSyncStatus(false);
   }
@@ -3281,18 +3299,29 @@ function vindDichtstbijzijndeWinkel() {
     inhoud.innerHTML = '<div class="vw-fout">&#10060; Locatie niet beschikbaar op dit apparaat.</div>';
     return;
   }
+  // Eigen timeout als geolocation niet reageert
+  var geoTimeout = setTimeout(function() {
+    inhoud.innerHTML = '<div class="vw-fout">&#10060; Locatie ophalen duurt te lang. Controleer of locatietoestemming is gegeven in je telefooninstellingen.</div>';
+  }, 12000);
+
   navigator.geolocation.getCurrentPosition(
     function(pos) {
+      clearTimeout(geoTimeout);
       var lat = pos.coords.latitude;
       var lon = pos.coords.longitude;
       if (sub) sub.textContent = 'Winkels zoeken bij jou in de buurt...';
       zoekWinkelsOpLocatie(lat, lon, inhoud, sub);
     },
     function(err) {
-      var msgs = {1:'Locatietoegang geweigerd. Sta locatie toe in je instellingen.',2:'Locatie kon niet worden bepaald.',3:'Timeout bij ophalen locatie.'};
-      inhoud.innerHTML = '<div class="vw-fout">&#10060; ' + (msgs[err.code] || 'Locatiefout.') + '</div>';
+      clearTimeout(geoTimeout);
+      var msgs = {
+        1: 'Locatietoegang geweigerd. Ga naar Instellingen > Safari > Locatie en sta dit toe.',
+        2: 'Locatie kon niet worden bepaald. Zorg dat GPS aan staat.',
+        3: 'Timeout bij ophalen locatie. Probeer opnieuw.'
+      };
+      inhoud.innerHTML = '<div class="vw-fout">&#10060; ' + (msgs[err.code] || 'Locatiefout: ' + err.message) + '</div>';
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
   );
 }
 
