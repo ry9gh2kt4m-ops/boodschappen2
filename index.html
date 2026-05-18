@@ -1333,29 +1333,48 @@ async function voegSuggestie(naam) {
 }
 
 async function addItem() {
-  console.log('[addItem] aangeroepen');
   var inp = document.getElementById('item-input');
   var name = inp ? inp.value.trim() : '';
-  console.log('[addItem] name:', name);
-  // Als input leeg is, check of er een geselecteerde autocomplete item is
-  if (!name) {
-    var selEl = document.querySelector('#autocomplete-dropdown .ac-item.selected, #autocomplete-dropdown .ac-item:first-child');
-    if (selEl) name = selEl.getAttribute('data-naam') || selEl.textContent.trim().split('v.a.')[0].trim();
-  }
   if (!name) return;
   sluitAutocomplete();
-  var newItem = { id: Date.now(), name: name, person: currentPerson, done: false, qty: 1, cat: detectCat(name), winkel: detectWinkel(name) };
-  items.unshift(newItem);
   inp.value = '';
   var dbl = document.getElementById('dubbel-melding');
   if (dbl) dbl.textContent = '';
-  logAankoopHistorie(name);
-  // Leer categorie op als nog niet bekend
-  slaGeleerdeCategorie(name, newItem.cat);
+  // Maak nieuw item aan
+  var newItem = {
+    id: Date.now(),
+    name: name,
+    person: currentPerson,
+    done: false,
+    qty: 1,
+    cat: detectCat(name),
+    winkel: detectWinkel(name)
+  };
+  // Voeg direct toe aan lokale lijst en toon
+  items.unshift(newItem);
   render();
+  // Leer patronen
+  logAankoopHistorie(name);
+  slaGeleerdeCategorie(name, newItem.cat);
+  // Schrijf ALLEEN dit item naar Firebase (geen hele lijst)
+  // Dit voorkomt race conditions met de Firebase listener
   setSyncStatus(true);
-  try { await fbSave(items); } catch(e) { console.log('save fout:', e); }
-  setSyncStatus(false);
+  try {
+    await window._set(
+      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newItem.id),
+      newItem
+    );
+  } catch(e) {
+    // Bij fout: probeer nogmaals na 1 seconde
+    setTimeout(function() {
+      window._set(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newItem.id),
+        newItem
+      );
+    }, 1000);
+  } finally {
+    setSyncStatus(false);
+  }
 }
 
 async function toggleItem(id) {
