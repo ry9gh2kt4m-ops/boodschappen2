@@ -743,12 +743,12 @@ function openPersonenInstellingen() {
   el.innerHTML = personen.map((p, i) => `
     <div class="persoon-rij" id="persoon-rij-${i}">
       <label class="foto-upload-label" title="Foto uploaden" id="foto-label-${i}">
-        ${p.foto ? `<img src="${p.foto}" id="foto-preview-${i}" />` : `<span id="foto-preview-${i}">📷</span>`}
+        <span id="foto-preview-${i}">${p.foto ? '<img src="' + p.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />' : '📷'}</span>
         <input type="file" accept="image/*" onchange="verwerkFoto(event,${i})" />
       </label>
       <input class="persoon-input" value="${p.naam}" placeholder="Naam" maxlength="20" id="persoon-naam-${i}" />
       <input type="color" value="${p.kleur}" class="persoon-kleur" id="persoon-kleur-${i}" />
-      ${personen.length > 1 ? `<button class="persoon-verwijder" onclick="verwijderPersoon(${i})">✕</button>` : ''}
+      <span>${personen.length > 1 ? '<button class="persoon-verwijder" onclick="verwijderPersoon(' + i + ')">&#10005;</button>' : ''}</span>
     </div>`).join('');
   document.getElementById('personen-modal').style.display = 'flex';
 }
@@ -1456,35 +1456,48 @@ function render() {
 }
 
 function renderItem(item) {
-  const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f'};
-  const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-  const borderStyle = !item.done ? `border-left:3px solid ${p.kleur}` : '';
+  var p = null;
+  for (var pi=0; pi<personen.length; pi++) { if (personen[pi].naam === item.person) { p = personen[pi]; break; } }
+  if (!p) p = {naam: item.person, kleur: '#3d6b4f', foto: null};
+  var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+  var borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
   var winkel = item.winkel || detectWinkel(item.name);
   var winkelBadge = winkel === 'kruidvat'
     ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
     : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
-  const allCats = [...BOODSCHAP_CATS.map(c=>({key:c.key,label:c.label,icon:c.icon})), {key:'overig',label:'Overig',icon:'📦'}];
-  const catSelect = `<select onchange="changeCat(${item.id},this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">
-    ${allCats.map(c=>`<option value="${c.key}" ${(item.cat||'overig')===c.key?'selected':''}>${c.icon} ${c.label}</option>`).join('')}
-  </select>`;
-  return `
-  <div class="item ${item.done?'done':''}" style="${borderStyle}">
-    <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
-    <div class="item-main">
-      <div class="item-name">${esc(item.name)}</div>
-      <div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-        ${winkelBadge}
-        <span class="item-person" style="background:${bg};color:${p.kleur};display:inline-flex;align-items:center;gap:3px">${p.foto ? `<img src="${p.foto}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />` : '👤'} ${esc(item.person)}</span>
-        ${catSelect}
-      </div>
-    </div>
-    <div class="qty-controls">
-      <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
-      <span class="qty-num">${item.qty||1}</span>
-      <button class="qty-btn" onclick="changeQty(${item.id},+1)">+</button>
-    </div>
-    <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
-  </div>`;
+  // Foto zonder geneste template literal
+  var fotoHtml = p.foto
+    ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />'
+    : '&#128100;';
+  // Categorie select zonder geneste template literal
+  var catOptions = '';
+  var allCats = BOODSCHAP_CATS.concat([{key:'overig',label:'Overig',icon:'&#128230;'}]);
+  for (var ci=0; ci<allCats.length; ci++) {
+    var c = allCats[ci];
+    var sel = (item.cat||'overig') === c.key ? ' selected' : '';
+    catOptions += '<option value="' + c.key + '"' + sel + '>' + c.icon + ' ' + c.label + '</option>';
+  }
+  var catSelect = '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
+  var checkBtn = '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
+  var personSpan = '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + ';display:inline-flex;align-items:center;gap:3px">' + fotoHtml + ' ' + esc(item.person) + '</span>';
+  var qty = item.qty || 1;
+  var html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
+  html += checkBtn;
+  html += '<div class="item-main">';
+  html += '<div class="item-name">' + esc(item.name) + '</div>';
+  html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
+  html += winkelBadge;
+  html += personSpan;
+  html += catSelect;
+  html += '</div></div>';
+  html += '<div class="qty-controls">';
+  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">&#8722;</button>';
+  html += '<span class="qty-num">' + qty + '</span>';
+  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>';
+  html += '</div>';
+  html += '<button class="delete-btn" onclick="deleteItem(' + item.id + ')">&#10005;</button>';
+  html += '</div>';
+  return html;
 }
 
 
@@ -1607,32 +1620,44 @@ async function wisselWinkel(id) {
 }
 
 function renderList(id, list, isDone) {
-  const el = document.getElementById(id);
-  if (!list.length && !isDone) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>'; return; }
-
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!list.length && !isDone) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">&#127807;</div><div>Lijstje is leeg!</div></div>';
+    return;
+  }
+  if (!list.length) { el.innerHTML = ''; return; }
   // Groepeer op categorie
-  const catOrder = [...BOODSCHAP_CATS.map(c=>c.key), 'overig'];
-  const groups = {};
-  catOrder.forEach(k => groups[k] = []);
-  list.forEach(item => {
-    const cat = item.cat || detectCat(item.name);
+  var groups = {};
+  var catKeys = [];
+  for (var bci=0; bci<BOODSCHAP_CATS.length; bci++) {
+    groups[BOODSCHAP_CATS[bci].key] = [];
+    catKeys.push(BOODSCHAP_CATS[bci].key);
+  }
+  groups['overig'] = [];
+  catKeys.push('overig');
+  for (var li=0; li<list.length; li++) {
+    var item = list[li];
+    var cat = item.cat || detectCat(item.name);
     if (groups[cat]) groups[cat].push(item);
     else groups['overig'].push(item);
-  });
-
-  const allCatDefs = [...BOODSCHAP_CATS, {key:'overig',label:'Overig',icon:'📦'}];
-  let html = '';
-  allCatDefs.forEach(cat => {
-    const groep = groups[cat.key];
-    if (!groep || !groep.length) return;
-    html += `<div class="cat-header">
-      <span style="font-size:0.9rem">${cat.icon}</span>
-      <span class="cat-header-label">${cat.label}</span>
-      <div class="cat-header-line"></div>
-      <span style="font-size:0.68rem;color:var(--muted)">${groep.length}</span>
-    </div>`;
-    html += groep.map(item => renderItem(item)).join('');
-  });
+  }
+  var allCatDefs = BOODSCHAP_CATS.concat([{key:'overig', label:'Overig', icon:'&#128230;'}]);
+  var html = '';
+  for (var cdi=0; cdi<allCatDefs.length; cdi++) {
+    var catDef = allCatDefs[cdi];
+    var groep = groups[catDef.key];
+    if (!groep || !groep.length) continue;
+    html += '<div class="cat-header">';
+    html += '<span style="font-size:0.9rem">' + catDef.icon + '</span>';
+    html += '<span class="cat-header-label">' + catDef.label + '</span>';
+    html += '<div class="cat-header-line"></div>';
+    html += '<span style="font-size:0.68rem;color:var(--muted)">' + groep.length + '</span>';
+    html += '</div>';
+    for (var gi=0; gi<groep.length; gi++) {
+      html += renderItem(groep[gi]);
+    }
+  }
   el.innerHTML = html;
 }
 
@@ -1778,7 +1803,7 @@ function renderReceptPicker(i) {
     const vidId = getYouTubeId(r.youtube);
     const thumb = vidId ? getYouTubeThumbnail(vidId) : null;
     return `<div class="recept-keuze" onclick="kiesRecept(${i},'${esc(r.naam)}','${r.id}')">
-      ${thumb ? `<img class="recept-keuze-thumb" src="${thumb}" />` : `<div class="recept-keuze-thumb" style="background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem">${catLabel[r.categorie]||'🍽️'}</div>`}
+      <span class="recept-keuze-thumb-wrap">${thumb ? '<img class="recept-keuze-thumb" src="' + thumb + '" />' : '<div class="recept-keuze-thumb" style="background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem">' + (catLabel[r.categorie]||'&#127869;') + '</div>'}</span>
       <div>
         <div class="recept-keuze-naam">${esc(r.naam)}</div>
         <div class="recept-keuze-cat">${catLabel[r.categorie]||'📦'} ${r.categorie||'overig'}${r.tijd?' · ⏱ '+esc(r.tijd):''}</div>
@@ -1954,7 +1979,7 @@ function renderRecepten() {
             </button>
           </div>` : ''}
         <div class="recept-acties">
-          ${vidId ? `<button class="recept-btn" onclick="speelAf('${r.id}','${vidId}')">▶ Afspelen</button>` : r.youtube ? `<a href="${esc(r.youtube)}" target="_blank" class="recept-btn" style="text-decoration:none">${platformLabel} Openen</a>` : ''}
+          <span>${vidId ? '<button class="recept-btn" onclick="speelAf(\'' + r.id + '\',\'' + vidId + '\')">&#9654; Afspelen</button>' : r.youtube ? '<a href="' + esc(r.youtube) + '" target="_blank" class="recept-btn" style="text-decoration:none">' + platformLabel + ' Openen</a>' : ''}</span>
           <button class="recept-btn edit" onclick="bewerkRecept('${r.id}')">✏️ Bewerken</button>
           <button class="recept-btn del" onclick="verwijderRecept('${r.id}')">🗑 Verwijderen</button>
         </div>
