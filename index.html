@@ -3278,8 +3278,9 @@ function vindDichtstbijzijndeWinkel() {
 }
 
 async function zoekWinkelsOpLocatie(lat, lon, inhoud, sub) {
-  var superQ = '[out:json][timeout:15];(node["shop"="supermarket"](around:5000,' + lat + ',' + lon + ');way["shop"="supermarket"](around:5000,' + lat + ',' + lon + '););out center 10;';
-  var drogQ = '[out:json][timeout:15];(node["shop"="chemist"](around:5000,' + lat + ',' + lon + ');node["shop"="drugstore"](around:5000,' + lat + ',' + lon + ');way["shop"="chemist"](around:5000,' + lat + ',' + lon + '););out center 10;';
+  // Zoek breed: op type EN op naam van bekende ketens
+  var superQ = '[out:json][timeout:20];(node["shop"="supermarket"](around:5000,' + lat + ',' + lon + ');way["shop"="supermarket"](around:5000,' + lat + ',' + lon + ');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar|AH",i](around:5000,' + lat + ',' + lon + ');way["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:5000,' + lat + ',' + lon + '););out center 20;';
+  var drogQ = '[out:json][timeout:20];(node["shop"="chemist"](around:5000,' + lat + ',' + lon + ');node["shop"="drugstore"](around:5000,' + lat + ',' + lon + ');way["shop"="chemist"](around:5000,' + lat + ',' + lon + ');node["name"~"Kruidvat|Etos|Trekpleister|DA drogist",i](around:5000,' + lat + ',' + lon + ');way["name"~"Kruidvat|Etos|Trekpleister",i](around:5000,' + lat + ',' + lon + '););out center 20;';
   try {
     var responses = await Promise.all([
       fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:'data='+encodeURIComponent(superQ)}),
