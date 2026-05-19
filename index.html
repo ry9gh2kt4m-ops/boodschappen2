@@ -99,7 +99,9 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 /* Item */
 .item{background:white;border-radius:12px;padding:11px 12px;margin-bottom:7px;display:flex;align-items:center;gap:8px;border:1px solid var(–border)}
 .item.done{opacity:0.55}
-.check-btn{width:24px;height:24px;border-radius:50%;border:2px solid var(–border);background:white;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(–green)}
+.check-btn{width:24px;height:24px;border-radius:50%;border:2px solid var(–border);background:white;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(–green);transition:all 0.15s}
+.item.done .check-btn{background:#3d6b4f;border-color:#3d6b4f;color:white}
+.check-btn:not(.done-btn):hover{border-color:#3d6b4f}
 .item.done .check-btn{background:var(–green);border-color:var(–green);color:white}
 .item-main{flex:1;min-width:0}
 .item-name{font-size:0.92rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -117,7 +119,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 
 /* Done sectie */
 .done-header{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;color:var(–muted);font-size:0.82rem;border-top:1px solid var(–border);margin-top:8px}
-.clear-btn{margin-left:auto;padding:4px 10px;border-radius:8px;border:none;background:var(–red);color:white;font-family:‘DM Sans’,sans-serif;font-size:0.72rem;cursor:pointer}
+.clear-btn{margin-left:auto;padding:6px 14px;border-radius:8px;border:none;background:#c4473a;color:white;font-family:‘DM Sans’,sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(196,71,58,0.3)}
 #done-list-wrap{display:none}
 
 /* Slimme suggesties */
@@ -379,7 +381,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     <input class="item-input" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
     <button class="btn-mic" id="mic-btn" title="Spraak">🎙️</button>
     <button class="btn-prijs" id="prijs-btn" onclick="zoekLivePrijs()">prijs</button>
-    <button class="btn-add" onclick="addItem()">＋</button>
+    <button class="btn-add" onclick="addItem()" style="background:#3d6b4f;color:white;border:none;width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1.3rem;flex-shrink:0">＋</button>
   </div>
   <div class="mic-status" id="mic-status"></div>
   <div class="dubbel-melding" id="dubbel-melding"></div>
@@ -502,15 +504,25 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
       <div class="admin-stat"><div class="admin-stat-num" id="admin-wachtend">0</div><div class="admin-stat-lbl">Wachtend</div></div>
       <div class="admin-stat"><div class="admin-stat-num" id="admin-totaal">0</div><div class="admin-stat-lbl">Totaal</div></div>
     </div>
-    <div style="font-family:'Playfair Display',serif;font-size:0.95rem;margin-bottom:10px">Aanmeldingen</div>
-    <div id="admin-regs"></div>
-    <div style="font-family:'Playfair Display',serif;font-size:0.95rem;margin:16px 0 10px">Ideeën</div>
-    <div id="admin-ideeen"></div>
-    <button onclick="wisselGezin()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;margin-top:16px;color:var(--muted)">
-      🔄 Van gezin wisselen
-    </button>
-    <button onclick="deelApp()" class="deel-btn">📲 Deel app-link</button>
-    <div id="deel-ok" style="color:var(--green);font-size:0.8rem;text-align:center;margin-top:6px;display:none">✅ Link gekopieerd!</div>
+    <div onclick="toggleAdminSectie('regs')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <span style="font-family:'Playfair Display',serif;font-size:0.95rem">Aanmeldingen</span>
+      <span id="regs-arrow">▶</span>
+    </div>
+    <div id="admin-regs-wrap" style="display:none"><div id="admin-regs"></div></div>
+
+```
+<div onclick="toggleAdminSectie('ideeen')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;margin-top:8px">
+  <span style="font-family:'Playfair Display',serif;font-size:0.95rem">Ideeën</span>
+  <span id="ideeen-arrow">▶</span>
+</div>
+<div id="admin-ideeen-wrap" style="display:none"><div id="admin-ideeen"></div></div>
+<button onclick="wisselGezin()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;margin-top:16px;color:var(--muted)">
+  🔄 Van gezin wisselen
+</button>
+<button onclick="deelApp()" class="deel-btn">📲 Deel app-link</button>
+<div id="deel-ok" style="color:var(--green);font-size:0.8rem;text-align:center;margin-top:6px;display:none">✅ Link gekopieerd!</div>
+```
+
   </div>
 
 </div>
@@ -602,7 +614,7 @@ var menu = {};
 var gezinsCode = '';
 var currentPerson = '';
 var currentFilter = 'alle';
-var personen = [{naam:'Jij',kleur:'#3d6b4f',foto:null},{naam:'Partner',kleur:'#c4678a',foto:null}];
+var personen = [];
 var recepten = [];
 var geleerdeCategorieen = {};
 var geleerdeWinkels = {};
@@ -769,7 +781,7 @@ function fbListen() {
   window._onValue(getRef('geleerde_winkels'), function(snap) {
     geleerdeWinkels = snap.val() || {};
   });
-  window._onValue(window._ref(window._db, 'recepten/' + gezinsCode), function(snap) {
+  window._onValue(getRef('recepten'), function(snap) {
     var d = snap.val() || {};
     recepten = Object.values(d).sort(function(a,b){return b.aangemaakt-a.aangemaakt;});
     renderRecepten();
@@ -921,10 +933,14 @@ function wisselGezin() {
 // PERSONEN
 // ============================================================
 function laadPersonen() {
+  var geladen = false;
   try {
     var op = localStorage.getItem('pers_' + gezinsCode);
-    if (op) personen = JSON.parse(op);
+    if (op) { personen = JSON.parse(op); geladen = true; }
   } catch(e) {}
+  if (!geladen || !personen.length) {
+    personen = [{naam:'Jij',kleur:'#3d6b4f',foto:null},{naam:'Partner',kleur:'#c4678a',foto:null}];
+  }
   if (!currentPerson || !personen.find(function(p){return p.naam===currentPerson;})) {
     currentPerson = personen[0] ? personen[0].naam : '';
   }
@@ -979,7 +995,8 @@ function openPersonenModal() {
     var p = personen[i];
     var fotoH = p.foto ? '<img src="'+p.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : '📷';
     html += '<div class="persoon-rij">';
-    html += '<label class="foto-label" id="foto-prev-'+i+'" title="Foto uploaden">'+fotoH+'<input type="file" accept="image/*" onchange="verwerkFoto(event,'+i+')" /></label>';
+    html += '<div class="foto-label" id="foto-prev-'+i+'" onclick="document.getElementById(\'foto-inp-'+i+'\').click()" title="Foto uploaden" style="cursor:pointer">'+fotoH+'</div>';
+    html += '<input type="file" id="foto-inp-'+i+'" accept="image/*" onchange="verwerkFoto(event,'+i+')" style="display:none;position:absolute;left:-9999px" />';
     html += '<input class="persoon-naam-inp" id="pnaam-'+i+'" value="'+esc(p.naam)+'" placeholder="Naam" maxlength="20" />';
     html += '<input type="color" class="persoon-kleur-inp" id="pkleur-'+i+'" value="'+p.kleur+'" />';
     if (personen.length > 1) html += '<button class="persoon-del" onclick="verwijderPersoon('+i+')">✕</button>';
@@ -1004,7 +1021,7 @@ function verwerkFoto(e, i) {
       var data = canvas.toDataURL('image/jpeg', 0.7);
       if (personen[i]) personen[i].foto = data;
       var prev = document.getElementById('foto-prev-'+i);
-      if (prev) prev.innerHTML = '<img src="'+data+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%"><input type="file" accept="image/*" onchange="verwerkFoto(event,'+i+')" style="display:none" />';
+      if (prev) prev.innerHTML = '<img src="'+data+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />';
     };
     img.src = ev.target.result;
   };
@@ -1160,6 +1177,11 @@ async function toggleItem(id) {
 }
 
 async function deleteItem(id) {
+  var item = null;
+  for (var i=0; i<items.length; i++) { if(items[i].id===id){item=items[i];break;} }
+  if (item && !item.done) {
+    if (!confirm('"'+item.name+'" verwijderen?')) return;
+  }
   items = items.filter(function(i){return i.id!==id;});
   render();
   setSyncStatus(true);
@@ -1727,7 +1749,7 @@ async function slaReceptOp() {
   var id=editId||('r-'+Date.now());
   var bestaand=editId?recepten.find(function(r){return r.id===editId;}):null;
   var ing=tempIng.filter(function(x){return x.trim();});
-  await window._set(window._ref(window._db,'recepten/'+gezinsCode+'/'+id), {
+  await window._set(getRef('recepten/'+id), {
     id:id, naam:naam, url:url, cat:document.getElementById('recept-cat').value,
     omschr:document.getElementById('recept-beschr').value.trim(),
     pers:document.getElementById('recept-pers').value||null,
@@ -1739,18 +1761,31 @@ async function slaReceptOp() {
 
 async function verwijderRecept(id) {
   if(!confirm('Recept verwijderen?')) return;
-  await window._remove(window._ref(window._db,'recepten/'+gezinsCode+'/'+id));
+  await window._remove(getRef('recepten/'+id));
 }
 
 // ============================================================
 // PRIJSVERGELIJKING
 // ============================================================
 var WINKELS = {
-  ah:{n:'Albert Heijn',i:'🔵',f:1.00,super:true}, jumbo:{n:'Jumbo',i:'🟡',f:0.95,super:true},
-  lidl:{n:'Lidl',i:'🔴',f:0.82,super:true}, aldi:{n:'Aldi',i:'🟢',f:0.78,super:true},
-  plus:{n:'Plus',i:'🟩',f:0.97,super:true}, dirk:{n:'Dirk',i:'🟠',f:0.88,super:true},
-  etos:{n:'Etos',i:'🩷',f:1.05,drogist:true}, kruidvat:{n:'Kruidvat',i:'🟣',f:0.95,drogist:true},
-  gall:{n:'Gall & Gall',i:'🍷',f:0.92,slijterij:true}, mitra:{n:'Mitra',i:'🥃',f:0.90,slijterij:true}
+  ah:{n:'Albert Heijn',i:'🔵',f:1.00,super:true,merken:['heineken','hertog jan','grolsch','amstel','bavaria','duvel']},
+  jumbo:{n:'Jumbo',i:'🟡',f:0.95,super:true,merken:['heineken','hertog jan','grolsch','amstel','bavaria']},
+  lidl:{n:'Lidl',i:'🔴',f:0.82,super:true,merken:['heineken','amstel']},
+  aldi:{n:'Aldi',i:'🟢',f:0.78,super:true,merken:['heineken']},
+  plus:{n:'Plus',i:'🟩',f:0.97,super:true,merken:['heineken','hertog jan','grolsch','amstel']},
+  dirk:{n:'Dirk',i:'🟠',f:0.88,super:true,merken:['heineken','amstel','grolsch']},
+  etos:{n:'Etos',i:'🩷',f:1.05,drogist:true,merken:[]},
+  kruidvat:{n:'Kruidvat',i:'🟣',f:0.95,drogist:true,merken:[]},
+  gall:{n:'Gall & Gall',i:'🍷',f:0.92,slijterij:true,merken:['heineken','hertog jan','grolsch','amstel','bavaria','wijn','prosecco','champagne','vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','cognac']},
+  mitra:{n:'Mitra',i:'🥃',f:0.90,slijterij:true,merken:['heineken','hertog jan','wijn','prosecco','champagne','vodka','gin','rum','whisky']}
+};
+// Producten die ALLEEN bij specifieke winkeltypen verkrijgbaar zijn
+var WINKEL_EXCLUSIEF = {
+  'hertog jan': ['ah','jumbo','plus','gall','mitra'],
+  'grolsch': ['ah','jumbo','plus','dirk','gall','mitra'],
+  'duvel': ['ah','jumbo','gall','mitra'],
+  'westmalle': ['ah','jumbo','gall','mitra'],
+  'la trappe': ['ah','jumbo','gall','mitra']
 };
 
 function toggleCat(cat) {
@@ -1782,14 +1817,18 @@ async function vergelijkPrijzen() {
     }
     if(ahP!==null) {
       var pr={naam:item.name};
-      for(var wi=0;wi<actW.length;wi++) pr[actW[wi]]=Math.round(ahP*(WINKELS[actW[wi]].f)*(item.qty||1)*100)/100;
+      for(var wi=0;wi<actW.length;wi++) {
+        var wk=actW[wi], excl=WINKEL_EXCLUSIEF[n];
+        if(excl && excl.indexOf(wk)<0) { pr[wk]=null; } // niet beschikbaar
+        else pr[wk]=Math.round(ahP*(WINKELS[wk].f)*(item.qty||1)*100)/100;
+      }
       gevonden.push(pr);
     } else { nietGev.push(item.name); }
   }
   if(!gevonden.length) { res.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Geen prijzen beschikbaar.</div>'; return; }
   var tot={};
   for(var wi2=0;wi2<actW.length;wi2++) { tot[actW[wi2]]=0; }
-  for(var gi=0;gi<gevonden.length;gi++) for(var wj=0;wj<actW.length;wj++) tot[actW[wj]]+=(gevonden[gi][actW[wj]]||0);
+  for(var gi=0;gi<gevonden.length;gi++) for(var wj=0;wj<actW.length;wj++) { if(gevonden[gi][actW[wj]]!==null) tot[actW[wj]]+=(gevonden[gi][actW[wj]]||0); }
   var gest=actW.slice().sort(function(a,b){return tot[a]-tot[b];});
   var best=gest[0], worst=gest[gest.length-1];
   var besp=Math.round((tot[worst]-tot[best])*100)/100;
@@ -1838,15 +1877,15 @@ function vindWinkel() {
     function(err) {
       clearTimeout(geoTimer);
       var msgs={1:'Locatietoegang geweigerd. Sta locatie toe in instellingen.',2:'Locatie kon niet bepaald worden.',3:'Timeout.'};
-      inh.innerHTML='<div style="color:var(--red);padding:10px">❌ '+(msgs[err.code]||'Locatiefout.')+'</div>';
+      inh.innerHTML='<div style="color:var(--red);padding:10px">❌ '+(msgs[err.code]||'Locatiefout.')+'<br><small>Ga naar Instellingen > Privacy > Locatievoorzieningen > Safari en zet op Tijdens gebruik.</small></div>';
     },
     {enableHighAccuracy:false, timeout:10000, maximumAge:300000}
   );
 }
 
 async function zoekWinkels(lat, lon, inh, sub) {
-  var sq='[out:json][timeout:20];(node["shop"="supermarket"](around:5000,'+lat+','+lon+');way["shop"="supermarket"](around:5000,'+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:5000,'+lat+','+lon+'););out center 20;';
-  var dq='[out:json][timeout:20];(node["shop"="chemist"](around:5000,'+lat+','+lon+');node["shop"="drugstore"](around:5000,'+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister",i](around:5000,'+lat+','+lon+'););out center 20;';
+  var sq='[out:json][timeout:25];(node["shop"="supermarket"](around:5000,'+lat+','+lon+');way["shop"="supermarket"](around:5000,'+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:5000,'+lat+','+lon+'););out center 20;';
+  var dq='[out:json][timeout:25];(node["shop"="chemist"](around:5000,'+lat+','+lon+');node["shop"="drugstore"](around:5000,'+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister",i](around:5000,'+lat+','+lon+'););out center 20;';
   try {
     var rs = await Promise.all([
       fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(sq)}),
@@ -2071,6 +2110,15 @@ function sluitModals(e, id) {
   if(e && e.target.id !== id && !e.target.classList.contains('modal')) return;
   var modal=document.getElementById(id);
   if(modal) modal.classList.remove('open');
+}
+
+function toggleAdminSectie(id) {
+  var wrap = document.getElementById('admin-'+id+'-wrap');
+  var arrow = document.getElementById(id+'-arrow');
+  if (!wrap) return;
+  var open = wrap.style.display === 'block';
+  wrap.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▶' : '▼';
 }
 
 // ============================================================
