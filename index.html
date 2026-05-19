@@ -679,9 +679,15 @@
 </div>
 
 <script>
-let items = [], menu = {}, gezinsCode = '', currentPerson = 'jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+let items = [], menu = {}, gezinsCode = '', currentPerson = 'Jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+let personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
+let geleerdeCategorieen = {}, geleerdeWinkels = {}, recepten = [], weekOffset = 0, isBeheerder = false, toonVerleden = false, receptCatFilter = 'alle', acSelectedIdx = -1, tempIngredienten = [];
+const KLEUR_BG = {'#3d6b4f':'#e8f0ea','#c4678a':'#fce8f0','#1a56a0':'#e8f0fa','#c47a2a':'#fdf0e0','#7a4db5':'#f0e8fa','#c4473a':'#faeae9'};
 let autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
+var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
+var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
 let unsubItems = null, unsubMenu = null;
+var unsubGeleerd = null, unsubRegistraties = null, unsubIdeeen = null, unsubRecepten = null;
 const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
 // ---- Gezinscode ----
@@ -974,6 +980,10 @@ document.getElementById('mic-btn').onclick=async()=>{
 };
 document.getElementById('add-btn').onclick=addItem;
 document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
+
+function bewerkRecept(id) { openReceptForm(id); }
+function setCatFilter(el, cat) { setReceptCat(el, cat); }
+
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function renderItem(item) {
@@ -1022,24 +1032,27 @@ const BOODSCHAP_CATS = [
   {key:'drank', label:'Drank', icon:'🥤', items:['bier','wijn','water','cola','fanta','sprite','limonade','koffie','thee','heineken','hertog jan','prosecco','vodka','gin','rum','whisky']},
   {key:'nonfood', label:'Non Food', icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines']}
 ];
-var geleerdeCategorieen = {};
-var geleerdeWinkels = {};
 const KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 
 
 function detectCat(naam) {
-  const n = naam.toLowerCase().trim();
-  // 1. Check geleerde categorieën eerst
-  const key = n.replace(/[^a-z0-9]/g, '_');
+  var n = naam.toLowerCase().trim();
+  var key = n.replace(/[^a-z0-9]/g, '_');
+  // Check geleerde categorieën
   if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
-  // Gedeeltelijke match in geleerde categorieën
-  var _gk=Object.keys(geleerdeCategorieen),_gi2=0;for(;_gi2<_gk.length;_gi2++) {
-    const woord = gelKey.replace(/_/g, ' ');
-    if (n.includes(woord) || woord.includes(n) && n.length > 3) return gelCat;
+  for (var gk in geleerdeCategorieen) {
+    var woord = gk.replace(/_/g, ' ');
+    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
+      return geleerdeCategorieen[gk];
+    }
   }
-  // 2. Standaard detectie
-  for (const cat of BOODSCHAP_CATS) {
-    if (cat.items.some(w => n.includes(w) || w.includes(n) && n.length > 3)) return cat.key;
+  // Standaard detectie op basis van BOODSCHAP_CATS
+  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
+    var cat = BOODSCHAP_CATS[ci];
+    for (var wi = 0; wi < cat.items.length; wi++) {
+      var w = cat.items[wi];
+      if (n.indexOf(w) > -1 || (w.indexOf(n) > -1 && n.length > 3)) return cat.key;
+    }
   }
   return 'overig';
 }
@@ -1112,9 +1125,11 @@ async function changeCat(id, cat) {
 }
 
 function fbListenGeleerd() {
-  if (unsubGeleerd) unsubGeleerd();
-  unsubGeleerd = window._onValue(getRef('geleerde_cats'), snap => {
+  window._onValue(getRef('geleerde_cats'), function(snap) {
     geleerdeCategorieen = snap.val() || {};
+  });
+  window._onValue(getRef('geleerde_winkels'), function(snap) {
+    geleerdeWinkels = snap.val() || {};
   });
 }
 
@@ -1129,7 +1144,7 @@ function fbListenRecepten() {
 
 function fbListenIdeeen() {
   if (unsubIdeeen) unsubIdeeen();
-  unsubIdeeen = window._onValue(fbIdeeRef(), snap => {
+  unsubIdeeen = window._onValue(window._ref(window._db, 'ideeen'), snap => {
     const data = snap.val() || {};
     const ideeen = Object.values(data).sort((a,b) => b.timestamp - a.timestamp);
     renderIdeeen(ideeen);
@@ -1152,61 +1167,94 @@ function fbListenRegistraties() {
   });
 }
 
+
+// ---- PRODUCTEN DATABASE ----
+var PRODUCTEN_DB = [
+  {n:'Melk halfvolle 1L',c:'koeling',p:1.09},{n:'Melk volle 1L',c:'koeling',p:1.19},
+  {n:'Yoghurt naturel 500g',c:'koeling',p:1.09},{n:'Kwark mager 500g',c:'koeling',p:1.49},
+  {n:'Boter 250g',c:'koeling',p:2.49},{n:'Eieren 6st',c:'koeling',p:1.99},
+  {n:'Eieren 10st',c:'koeling',p:2.99},{n:'Kaas jong 500g',c:'koeling',p:3.49},
+  {n:'Kaas belegen 500g',c:'koeling',p:3.79},{n:'Mozzarella 125g',c:'koeling',p:1.29},
+  {n:'Feta 200g',c:'koeling',p:1.79},{n:'Slagroom 250ml',c:'koeling',p:1.39},
+  {n:'Vla vanille 1L',c:'koeling',p:1.19},{n:'Karnemelk 1L',c:'koeling',p:0.99},
+  {n:'Sinaasappelsap 1L',c:'koeling',p:1.99},
+  {n:'Kipfilet 600g',c:'vlees',p:5.99},{n:'Rundergehakt 500g',c:'vlees',p:4.49},
+  {n:'Half-om-half gehakt 500g',c:'vlees',p:3.99},{n:'Speklapjes 400g',c:'vlees',p:3.99},
+  {n:'Bacon 150g',c:'vlees',p:2.49},{n:'Ham gekookt 150g',c:'vlees',p:2.29},
+  {n:'Zalm filet 2st',c:'vlees',p:5.99},{n:'Garnalen gepeld 150g',c:'vlees',p:4.99},
+  {n:'Rookworst 300g',c:'vlees',p:2.99},{n:'Worst 4st',c:'vlees',p:3.49},
+  {n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},
+  {n:'Sinaasappels 6st',c:'agf',p:2.49},{n:'Blauwe bessen 125g',c:'agf',p:2.49},
+  {n:'Frambozen 125g',c:'agf',p:2.99},{n:'Aardbeien 400g',c:'agf',p:2.99},
+  {n:'Mango 1st',c:'agf',p:1.49},{n:'Avocado 2st',c:'agf',p:1.99},
+  {n:'Tomaten 500g',c:'agf',p:1.99},{n:'Komkommer 1st',c:'agf',p:0.89},
+  {n:'Paprika rood 3st',c:'agf',p:1.49},{n:'Uien 1kg',c:'agf',p:0.99},
+  {n:'Knoflook bol',c:'agf',p:0.49},{n:'Wortelen 1kg',c:'agf',p:0.99},
+  {n:'Broccoli 1st',c:'agf',p:1.49},{n:'Sla 1st',c:'agf',p:0.99},
+  {n:'Spinazie 300g',c:'agf',p:1.99},{n:'Champignons 250g',c:'agf',p:1.79},
+  {n:'Aardappelen 1.5kg',c:'agf',p:1.99},{n:'Courgette 2st',c:'agf',p:1.29},
+  {n:'Prei 2st',c:'agf',p:1.29},{n:'Bosui 1 bos',c:'agf',p:0.79},
+  {n:'Spaghetti 500g',c:'kruidenierswaren',p:0.99},{n:'Penne 500g',c:'kruidenierswaren',p:0.99},
+  {n:'Fusilli 500g',c:'kruidenierswaren',p:0.99},{n:'Rijst basmati 1kg',c:'kruidenierswaren',p:2.49},
+  {n:'Rijst witte 1kg',c:'kruidenierswaren',p:1.99},{n:'Couscous 500g',c:'kruidenierswaren',p:1.79},
+  {n:'Havermout 500g',c:'kruidenierswaren',p:1.49},{n:'Cruesli 500g',c:'kruidenierswaren',p:2.99},
+  {n:'Granola 400g',c:'kruidenierswaren',p:3.49},{n:'Muesli 500g',c:'kruidenierswaren',p:2.49},
+  {n:'Cornflakes 375g',c:'kruidenierswaren',p:1.99},{n:'Brood volkoren 800g',c:'kruidenierswaren',p:2.09},
+  {n:'Brood wit 800g',c:'kruidenierswaren',p:1.49},{n:'Pindakaas 350g',c:'kruidenierswaren',p:1.99},
+  {n:'Nutella 400g',c:'kruidenierswaren',p:3.49},{n:'Jam aardbei 450g',c:'kruidenierswaren',p:1.99},
+  {n:'Honing 350g',c:'kruidenierswaren',p:3.49},{n:'Hagelslag 400g',c:'kruidenierswaren',p:1.99},
+  {n:'Tomatenpuree 200g',c:'kruidenierswaren',p:0.99},{n:'Passata 690g',c:'kruidenierswaren',p:1.09},
+  {n:'Olijfolie 500ml',c:'kruidenierswaren',p:4.99},{n:'Zonnebloemolie 1L',c:'kruidenierswaren',p:2.49},
+  {n:'Ketchup 600g',c:'kruidenierswaren',p:2.99},{n:'Mayonaise 500ml',c:'kruidenierswaren',p:1.99},
+  {n:'Pesto 190g',c:'kruidenierswaren',p:2.49},{n:'Sambal 200g',c:'kruidenierswaren',p:1.99},
+  {n:'Kikkererwten blik 400g',c:'kruidenierswaren',p:0.99},
+  {n:'Friet 1kg',c:'diepvries',p:2.49},{n:'Doperwten 450g',c:'diepvries',p:1.29},
+  {n:'Kroketten 8st',c:'diepvries',p:2.99},{n:'Ijs 900ml',c:'diepvries',p:2.99},
+  {n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},
+  {n:'Koffie 250g',c:'drank',p:3.99},{n:'Thee 40st',c:'drank',p:2.49},
+  {n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},
+  {n:'Wijn rood 75cl',c:'drank',p:5.99},{n:'Wijn wit 75cl',c:'drank',p:5.99},
+  {n:'Toiletpapier 16st',c:'nonfood',p:4.99},{n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},
+  {n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},{n:'Afwasmiddel 750ml',c:'nonfood',p:2.49},
+  {n:'Shampoo 250ml',c:'nonfood',p:3.99},{n:'Douchegel 300ml',c:'nonfood',p:1.49},
+  {n:'Deodorant 150ml',c:'nonfood',p:3.49},{n:'Tandpasta 75ml',c:'nonfood',p:2.49},
+  {n:'Paracetamol 30st',c:'nonfood',p:2.99},{n:'Waterontharder 1kg',c:'nonfood',p:4.99},
+  {n:'Schoonmaakmiddel 1L',c:'nonfood',p:3.49},{n:'Zeep vloeibaar 250ml',c:'nonfood',p:1.99}
+];
+
+function kiesProduct(naam, cat) {
+  var inp = document.getElementById('item-input');
+  if (inp) inp.value = naam;
+  sluitAutocomplete();
+  if (cat) slaGeleerdeCategorie(naam, cat);
+}
+
 function zoekAutocomplete(val) {
-  if (!val || val.length < 2) { sluitAutocomplete(); return; }
-  const n = val.toLowerCase().trim();
-  const woorden = n.split(/\s+/).filter(w => w.length > 1);
-
-  const resultaten = PRODUCTEN_DB.filter(p => {
-    const naam = p.n.toLowerCase();
-    // Exacte substring match
-    if (naam.includes(n)) return true;
-    // Alle woorden moeten voorkomen
-    if (woorden.length > 1 && woorden.every(w => naam.includes(w))) return true;
-    // Elk woord afzonderlijk
-    if (woorden.some(w => naam.includes(w) && w.length > 2)) return true;
-    return false;
-  })
-  .sort((a, b) => {
-    // Sorteer: exacte match eerst, dan begint-met, dan bevat
-    const an = a.n.toLowerCase(), bn = b.n.toLowerCase();
-    if (an.startsWith(n) && !bn.startsWith(n)) return -1;
-    if (!an.startsWith(n) && bn.startsWith(n)) return 1;
-    if (an.includes(n) && !bn.includes(n)) return -1;
-    if (!an.includes(n) && bn.includes(n)) return 1;
-    return 0;
-  })
-  .slice(0, 10);
-
-  const dropdown = document.getElementById('autocomplete-dropdown');
+  var dropdown = document.getElementById('autocomplete-dropdown');
   if (!dropdown) return;
+  if (!val || val.length < 2) { sluitAutocomplete(); return; }
+  var n = val.toLowerCase().trim();
+  var resultaten = [];
+  for (var pi = 0; pi < PRODUCTEN_DB.length; pi++) {
+    var p = PRODUCTEN_DB[pi];
+    if (p.n.toLowerCase().indexOf(n) > -1) resultaten.push(p);
+    if (resultaten.length >= 8) break;
+  }
   if (!resultaten.length) { sluitAutocomplete(); return; }
-
   acSelectedIdx = -1;
-  const catLabels = {agf:'🥦 AGF', vlees:'🥩 Vlees & Vis', kruidenierswaren:'🛒 Kruiden.', koeling:'🧊 Koeling', diepvries:'❄️ Diepvries', drank:'🥤 Drank', nonfood:'🧴 Non Food', overig:'📦 Overig'};
-
-  // Groepeer per categorie
-  const groepen = {};
-  resultaten.forEach(p => {
-    if (!groepen[p.c]) groepen[p.c] = [];
-    groepen[p.c].push(p);
-  });
-
-  let html = '';
-  Object.entries(groepen).forEach(([cat, producten]) => {
-    html += `<div class="ac-header">${catLabels[cat]||cat}</div>`;
-    producten.forEach(function(p) {
-      var vn = p.n.split("'").join("\'");
-      html += '<div class="ac-item" onclick="kiesProduct(' + "'" + vn + "'" + ',' + "'" + p.c + "'" + ')">'
-        + '<span class="ac-naam">' + esc(p.n) + '</span>'
-        + '<span class="ac-prijs">v.a. €' + p.p.toFixed(2) + '</span>'
-        + '</div>';
-    });
-  });
-
+  var html = '';
+  for (var ri = 0; ri < resultaten.length; ri++) {
+    var r = resultaten[ri];
+    var vn = r.n.replace(/\\/g,'').replace(/'/g,'\u0027');
+    html += '<div class="ac-item" onclick="kiesProduct(\'' + vn + '\',\'' + r.c + '\')">';
+    html += '<span class="ac-naam">' + esc(r.n) + '</span>';
+    html += '<span class="ac-prijs">v.a. \u20ac' + r.p.toFixed(2) + '</span>';
+    html += '</div>';
+  }
   dropdown.innerHTML = html;
   dropdown.style.display = 'block';
 }
+
 
 function sluitAutocomplete() {
   const dropdown = document.getElementById('autocomplete-dropdown');
@@ -2461,5 +2509,6 @@ function kopieerAppLink() {
   </div>
 </div>
 
+</div>
 </body>
 </html>
