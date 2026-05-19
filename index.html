@@ -679,12 +679,671 @@
 </div>
 
 <script>
-let items = [], menu = {}, gezinsCode = '', currentPerson = '', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+let items = [], menu = {}, gezinsCode = '', currentPerson = 'jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+let autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
+let unsubItems = null, unsubMenu = null;
+const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
-// ---- Personen ----
-const KLEUREN = ['#3d6b4f','#c4678a','#1a56a0','#c47a2a','#7a4db5','#c4473a'];
-const KLEUR_BG = {'#3d6b4f':'#e8f0ea','#c4678a':'#fce8f0','#1a56a0':'#e8f0fa','#c47a2a':'#fdf0e0','#7a4db5':'#f0e8fa','#c4473a':'#faeae9'};
-let personen = [{naam:'Jij', kleur:'#3d6b4f'},{naam:'Partner', kleur:'#c4678a'}];
+// ---- Gezinscode ----
+function sanitizeCode(code) { return code.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
+
+function startMetCode() {
+  const raw = document.getElementById('setup-code').value.trim();
+  const code = sanitizeCode(raw);
+  if (code.length < 3) { toonFout('Kies een code van minimaal 3 tekens.'); return; }
+  localStorage.setItem('gezinscode', code);
+  gezinsCode = code;
+  document.getElementById('setup-screen').style.display = 'none';
+  initApp();
+}
+
+function wijzigCode() {
+  if (!confirm('Wil je van gezinscode wisselen? Je huidige lijst blijft bewaard onder de oude code.')) return;
+  if (unsubItems) unsubItems(); if (unsubMenu) unsubMenu();
+  localStorage.removeItem('gezinscode');
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'block';
+  document.getElementById('setup-code').value = '';
+}
+
+function toonFout(msg) { const el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; }
+
+document.getElementById('setup-code').addEventListener('keydown', e => { if (e.key === 'Enter') startMetCode(); });
+
+// ---- Firebase per gezin ----
+function getRef(pad) { return window._ref(window._db, `gezinnen/${gezinsCode}/${pad}`); }
+
+function fbSave(items) {
+  const obj = {}; items.forEach(i => { obj[i.id] = i; });
+  return window._set(getRef('boodschappen'), obj);
+}
+function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/boodschappen/${id}`)); }
+function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
+
+function fbListen() {
+  unsubItems = window._onValue(getRef('boodschappen'), snap => {
+    const data = snap.val();
+    items = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+    render();
+  });
+  unsubMenu = window._onValue(getRef('weekmenu'), snap => {
+    menu = snap.val() || {};
+    renderMenu();
+  });
+}
+
+// ---- Init ----
+function initApp() {
+  document.getElementById('gezin-naam').textContent = gezinsCode;
+  document.getElementById('main-app').style.display = 'block';
+  isBeheerder = localStorage.getItem('beheerder')==='1' || gezinsCode==='familie-de-jong';
+  if (isBeheerder) { var adminBtn=document.getElementById('tab-admin'); if(adminBtn) adminBtn.style.display='flex'; }
+  fbListen();
+  fbListenGeleerd();
+  fbListenRecepten();
+  fbListenIdeeen();
+  if (isBeheerder) fbListenRegistraties();
+  setupMic();
+  setSyncStatus(false);
+}
+
+document.addEventListener('fb-ready', () => {
+  document.getElementById('loading-screen').style.display = 'none';
+  const opgeslagen = localStorage.getItem('gezinscode');
+  if (opgeslagen) { gezinsCode = opgeslagen; initApp(); }
+  else { document.getElementById('setup-screen').style.display = 'block'; }
+});
+
+// ---- Sync ----
+function setSyncStatus(saving) {
+  document.getElementById('sync-dot').className = 'dot' + (saving ? ' saving' : '');
+  document.getElementById('sync-label').textContent = saving ? 'Opslaan…' : 'Live verbonden 🔗';
+}
+
+// ---- Tabs ----
+function switchTab(tab) {
+  document.getElementById('view-boodschappen').style.display = tab === 'boodschappen' ? 'block' : 'none';
+  document.getElementById('view-menu').style.display = tab === 'menu' ? 'block' : 'none';
+  document.getElementById('tab-boodschappen').className = 'tab' + (tab === 'boodschappen' ? ' active' : '');
+  document.getElementById('tab-menu').className = 'tab' + (tab === 'menu' ? ' active' : '');
+}
+
+// ---- Boodschappen ----
+function setPerson(p) {
+  currentPerson = p;
+  document.getElementById('btn-jij').className = 'person-btn' + (p==='jij' ? ' active-jij' : '');
+  document.getElementById('btn-vrouw').className = 'person-btn' + (p==='vrouw' ? ' active-vrouw' : '');
+}
+
+function setFilter(el, f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active'); render();
+}
+
+async function addItem() {
+  const name = document.getElementById('item-input').value.trim();
+  if (!name) return;
+  const _newItem = { id: Date.now(), name, person: currentPerson, done: false, qty: 1, cat: typeof detectCat==='function'?detectCat(name):'overig', winkel: typeof detectWinkel==='function'?detectWinkel(name):'ah' };
+  items.unshift(_newItem);
+  if (typeof slaGeleerdeCategorie==='function') slaGeleerdeCategorie(name, _newItem.cat);
+  document.getElementById('item-input').value = '';
+  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+}
+
+async function toggleItem(id) {
+  items = items.map(i => i.id===id ? {...i, done: !i.done} : i);
+  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+}
+
+async function deleteItem(id) {
+  items = items.filter(i => i.id!==id);
+  setSyncStatus(true); await fbDelete(id); setSyncStatus(false);
+}
+
+async function changeQty(id, delta) {
+  items = items.map(i => i.id===id ? {...i, qty: Math.max(1,(i.qty||1)+delta)} : i);
+  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+}
+
+async function clearDone() {
+  const del = items.filter(i => i.done); items = items.filter(i => !i.done);
+  setSyncStatus(true); for (const i of del) await fbDelete(i.id); setSyncStatus(false);
+}
+
+function toggleDone() {
+  doneVisible = !doneVisible;
+  document.getElementById('done-section').style.display = doneVisible ? 'block' : 'none';
+  document.getElementById('done-arrow').textContent = doneVisible ? '▼' : '▶';
+}
+
+function render() {
+  const filtered = currentFilter==='alle' ? items : items.filter(i => i.person===currentFilter);
+  const todo = filtered.filter(i => !i.done), done = filtered.filter(i => i.done);
+  document.getElementById('stat-total').textContent = items.length;
+  document.getElementById('stat-todo').textContent = items.filter(i => !i.done).length;
+  document.getElementById('stat-done').textContent = items.filter(i => i.done).length;
+  document.getElementById('done-count').textContent = done.length;
+  renderList('todo-list', todo, false); renderList('done-list', done, true);
+}
+
+function renderList(id, list, isDone) {
+  const el = document.getElementById(id);
+  if (!list.length && !isDone) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>'; return; }
+  el.innerHTML = list.map(item => `
+    <div class="item ${item.done?'done':''} person-${item.person}">
+      <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
+      <div class="item-main">
+        <div class="item-name">${esc(item.name)}</div>
+        <div style="margin-top:2px"><span class="item-person">${item.person==='jij'?'👤 Jij':'👤 Vrouw'}</span></div>
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
+        <span class="qty-num">${item.qty||1}</span>
+        <button class="qty-btn" onclick="changeQty(${item.id},+1)">+</button>
+      </div>
+      <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
+    </div>`).join('');
+}
+
+// ---- Weekmenu ----
+function getDagKey(i) {
+  const now = new Date(), day = now.getDay(), monday = new Date(now);
+  monday.setDate(now.getDate() - (day===0 ? 6 : day-1));
+  const d = new Date(monday); d.setDate(monday.getDate()+i);
+  return d.toISOString().split('T')[0];
+}
+function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
+function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
+
+function renderMenu() {
+  const grid = document.getElementById('week-grid');
+  const todayIdx = getTodayIndex();
+  grid.innerHTML = DAGEN.map((dag, i) => {
+    const key = getDagKey(i), gerecht = menu[key]||'', isToday = i===todayIdx;
+    return `<div class="dag-card ${isToday?'dag-vandaag':''}">
+      <div class="dag-header" onclick="toggleDag(${i})">
+        <div style="flex-shrink:0">
+          <div class="dag-naam">${dag}${isToday?'<span class="dag-label">Vandaag</span>':''}</div>
+          <div class="dag-datum">${getDatumLabel(i)}</div>
+        </div>
+        <div class="dag-preview ${gerecht?'gevuld':''}">${gerecht||'Nog niet ingevuld…'}</div>
+        <span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>
+      </div>
+      <div class="dag-body" id="dag-body-${i}">
+        <div class="dag-gerecht">${gerecht?'🍽️ '+esc(gerecht):'Nog niets gepland.'}</div>
+        <div class="dag-input-row">
+          <input class="dag-input" id="dag-input-${i}" type="text" placeholder="bijv. Pasta bolognese" value="${esc(gerecht)}" />
+          <button class="dag-save-btn" onclick="saveDag(${i})">Opslaan</button>
+          ${gerecht?`<button class="dag-clear-btn" onclick="clearDag(${i})">✕</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDag(i) {
+  const body = document.getElementById('dag-body-'+i), isOpen = body.classList.contains('open');
+  document.querySelectorAll('.dag-body').forEach(b => b.classList.remove('open'));
+  if (!isOpen) { body.classList.add('open'); setTimeout(function(){ var _di=document.getElementById('dag-input-'+i); if(_di) _di.focus(); },100); }
+}
+
+async function saveDag(i) {
+  menu[getDagKey(i)] = document.getElementById('dag-input-'+i).value.trim();
+  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+}
+
+async function clearDag(i) {
+  delete menu[getDagKey(i)];
+  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+}
+
+// ---- Voice ----
+function setupMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
+  recognition = new SR(); recognition.lang='nl-NL'; recognition.continuous=false; recognition.interimResults=true;
+
+  recognition.onstart = () => {
+    isListening=true;
+    document.getElementById('mic-btn').classList.add('listening');
+    document.getElementById('mic-btn').textContent='🔴';
+    setMicStatus('Luisteren… spreek nu','active');
+  };
+
+  recognition.onresult = (e) => {
+    let interim='', final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      e.results[i].isFinal?(final+=t):(interim+=t);
+    }
+    document.getElementById('item-input').value = final||interim;
+
+    // Als eindresultaat: start afteller voor automatisch toevoegen
+    if (final) {
+      clearAutoAdd();
+      startCountdown(final.trim());
+    } else {
+      setMicStatus('Horen: "'+interim+'"','active');
+    }
+  };
+
+  recognition.onerror=(e)=>{
+    clearAutoAdd();
+    const m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
+    setMicStatus(m[e.error]||'Fout.','active');
+    stopMic(false);
+  };
+  recognition.onend=()=>{ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
+}
+
+function startCountdown(text) {
+  let secs = autoAddSeconds;
+  setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+  countdownTimer = setInterval(() => {
+    secs--;
+    if (secs > 0) {
+      setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+    }
+  }, 1000);
+  autoAddTimer = setTimeout(() => {
+    clearInterval(countdownTimer);
+    addItem();
+    setMicStatus('✅ Toegevoegd!', 'success');
+    setTimeout(()=>setMicStatus(''), 2000);
+  }, autoAddSeconds * 1000);
+}
+
+function clearAutoAdd() {
+  clearTimeout(autoAddTimer);
+  clearInterval(countdownTimer);
+  autoAddTimer = null; countdownTimer = null;
+}
+
+function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(()=>setMicStatus(''),3000); }
+function setMicStatus(m,c=''){const el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
+
+document.getElementById('mic-btn').onclick=async()=>{
+  if(!recognition)return;
+  // Als afteller bezig: annuleer
+  if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(()=>setMicStatus(''),1500); return; }
+  if(isListening){recognition.stop();return;}
+  try{await navigator.mediaDevices.getUserMedia({audio:true});}catch{setMicStatus('🚫 Microfoon geweigerd.','active');return;}
+  document.getElementById('item-input').value='';
+  try{recognition.start();}catch{setMicStatus('Start mislukt.','active');}
+};
+document.getElementById('add-btn').onclick=addItem;
+document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderItem(item) {
+  const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f', foto: null};
+  const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+  const borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
+  const winkel = item.winkel || detectWinkel(item.name);
+  const winkelBadge = winkel === 'kruidvat'
+    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
+    : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
+  const fotoHtml = p.foto
+    ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:2px;vertical-align:middle" />'
+    : '&#128100;';
+  let catOptions = '';
+  for (let ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
+    const cc = BOODSCHAP_CATS[ci];
+    catOptions += '<option value="' + cc.key + '"' + ((item.cat||'kruidenierswaren')===cc.key?' selected':'') + '>' + cc.icon + ' ' + cc.label + '</option>';
+  }
+  let html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
+  html += '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
+  html += '<div class="item-main">';
+  html += '<div class="item-name">' + esc(item.name) + '</div>';
+  html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
+  html += winkelBadge;
+  html += '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + '">' + fotoHtml + ' ' + esc(item.person) + '</span>';
+  html += '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
+  html += '</div></div>';
+  html += '<div class="qty-controls">';
+  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">&#8722;</button>';
+  html += '<span class="qty-num">' + (item.qty || 1) + '</span>';
+  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>';
+  html += '</div>';
+  html += '<button class="delete-btn" onclick="deleteItem(' + item.id + ')">&#10005;</button>';
+  html += '</div>';
+  return html;
+}
+
+// ---- Nieuwe features ----
+
+const BOODSCHAP_CATS = [
+  {key:'agf', label:'AGF', icon:'🥦', items:['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','bosbes','framboos','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','courgette','prei','peterselie','basilicum','bloemkool']},
+  {key:'vlees', label:'Vlees & Vis', icon:'🥩', items:['gehakt','kip','kipfilet','spek','bacon','ham','salami','worst','rookworst','biefstuk','zalm','tonijn','garnalen','vis','schnitzel']},
+  {key:'kruidenierswaren', label:'Kruidenierswaren', icon:'🛒', items:['pasta','spaghetti','rijst','couscous','quinoa','havermout','cruesli','muesli','cornflakes','granola','brood','bloem','suiker','zout','peper','olie','ketchup','mayonaise','pesto','sambal','jam','pindakaas','nutella','honing','bonen','soep','bouillon','chips','koekjes','chocolade','waterontharder','ontkalker']},
+  {key:'koeling', label:'Koeling', icon:'🧊', items:['melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk','sap']},
+  {key:'diepvries', label:'Diepvries', icon:'❄️', items:['friet','pizza','kroketten','ijs','diepvries','doperwten']},
+  {key:'drank', label:'Drank', icon:'🥤', items:['bier','wijn','water','cola','fanta','sprite','limonade','koffie','thee','heineken','hertog jan','prosecco','vodka','gin','rum','whisky']},
+  {key:'nonfood', label:'Non Food', icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines']}
+];
+var geleerdeCategorieen = {};
+var geleerdeWinkels = {};
+const KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
+
+
+function detectCat(naam) {
+  const n = naam.toLowerCase().trim();
+  // 1. Check geleerde categorieën eerst
+  const key = n.replace(/[^a-z0-9]/g, '_');
+  if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
+  // Gedeeltelijke match in geleerde categorieën
+  var _gk=Object.keys(geleerdeCategorieen),_gi2=0;for(;_gi2<_gk.length;_gi2++) {
+    const woord = gelKey.replace(/_/g, ' ');
+    if (n.includes(woord) || woord.includes(n) && n.length > 3) return gelCat;
+  }
+  // 2. Standaard detectie
+  for (const cat of BOODSCHAP_CATS) {
+    if (cat.items.some(w => n.includes(w) || w.includes(n) && n.length > 3)) return cat.key;
+  }
+  return 'overig';
+}
+
+function detectWinkel(naam) {
+  var n = naam.toLowerCase().trim();
+  // Check geleerde winkel eerst
+  var geleerdeKey = n.replace(/[^a-z0-9]/g, '_');
+  if (geleerdeWinkels[geleerdeKey]) return geleerdeWinkels[geleerdeKey];
+  // Check op gedeeltelijke match
+  for (var gk in geleerdeWinkels) {
+    var woord = gk.replace(/_/g, ' ');
+    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
+      return geleerdeWinkels[gk];
+    }
+  }
+  // Check Kruidvat eerst (specifieker)
+  for (var ki=0; ki<KRUIDVAT_ITEMS.length; ki++) {
+    if (n.indexOf(KRUIDVAT_ITEMS[ki]) > -1 || KRUIDVAT_ITEMS[ki].indexOf(n) > -1 && n.length > 3) {
+      return 'kruidvat';
+    }
+  }
+  // Check AH
+  for (var ai=0; ai<AH_ITEMS.length; ai++) {
+    if (n.indexOf(AH_ITEMS[ai]) > -1 || AH_ITEMS[ai].indexOf(n) > -1 && n.length > 3) {
+      return 'ah';
+    }
+  }
+  return 'ah'; // standaard AH
+}
+
+async function slaGeleerdeCategorie(naam, cat) {
+  const key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  geleerdeCategorieen[key] = cat;
+  await window._set(getRef('geleerde_cats/' + key), cat);
+}
+
+async function wisselWinkel(id) {
+  var item = null;
+  for (var i=0; i<items.length; i++) {
+    if (items[i].id === id) { item = items[i]; break; }
+  }
+  if (!item) return;
+  var nieuweWinkel = (item.winkel === 'kruidvat') ? 'ah' : 'kruidvat';
+  // Update lokaal
+  for (var j=0; j<items.length; j++) {
+    if (items[j].id === id) { items[j].winkel = nieuweWinkel; break; }
+  }
+  // Leer op
+  await slaGeleerdeWinkelOp(item.name, nieuweWinkel);
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } finally { setSyncStatus(false); }
+}
+
+async function changeCat(id, cat) {
+  var gewijzigd = null;
+  items = items.map(function(i) {
+    if (i.id===id) {
+      var n={}; for(var k in i){n[k]=i[k];} n.cat=cat;
+      gewijzigd = n; return n;
+    }
+    return i;
+  });
+  render();
+  if (gewijzigd) {
+    setSyncStatus(true); try { await fbSaveItem(gewijzigd); } finally { setSyncStatus(false); }
+    slaGeleerdeCategorie(gewijzigd.name, cat);
+  }
+}
+
+function fbListenGeleerd() {
+  if (unsubGeleerd) unsubGeleerd();
+  unsubGeleerd = window._onValue(getRef('geleerde_cats'), snap => {
+    geleerdeCategorieen = snap.val() || {};
+  });
+}
+
+function fbListenRecepten() {
+  if (unsubRecepten) unsubRecepten();
+  unsubRecepten = window._onValue(window._ref(window._db, `gezinnen/${gezinsCode}/recepten`), snap => {
+    const data = snap.val() || {};
+    recepten = Object.values(data).sort((a,b) => b.aangemaakt - a.aangemaakt);
+    renderRecepten();
+  });
+}
+
+function fbListenIdeeen() {
+  if (unsubIdeeen) unsubIdeeen();
+  unsubIdeeen = window._onValue(fbIdeeRef(), snap => {
+    const data = snap.val() || {};
+    const ideeen = Object.values(data).sort((a,b) => b.timestamp - a.timestamp);
+    renderIdeeen(ideeen);
+  });
+}
+
+function fbListenRegistraties() {
+  if (unsubRegistraties) unsubRegistraties();
+  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), function(snap) {
+    var data = snap.val() || {};
+    var regs = Object.values(data).sort(function(a,b) { return b.aangemeld - a.aangemeld; });
+    // Update stats
+    var actief = regs.filter(function(r){return r.status==='goedgekeurd';}).length;
+    var wachtend = regs.filter(function(r){return r.status==='wachtend';}).length;
+    var ae = document.getElementById('admin-actief'); if(ae) ae.textContent = actief;
+    var aw = document.getElementById('admin-wachtend'); if(aw) aw.textContent = wachtend;
+    var at = document.getElementById('admin-totaal'); if(at) at.textContent = regs.length;
+    // Render lijst
+    renderAdminRegistraties(regs);
+  });
+}
+
+function zoekAutocomplete(val) {
+  if (!val || val.length < 2) { sluitAutocomplete(); return; }
+  const n = val.toLowerCase().trim();
+  const woorden = n.split(/\s+/).filter(w => w.length > 1);
+
+  const resultaten = PRODUCTEN_DB.filter(p => {
+    const naam = p.n.toLowerCase();
+    // Exacte substring match
+    if (naam.includes(n)) return true;
+    // Alle woorden moeten voorkomen
+    if (woorden.length > 1 && woorden.every(w => naam.includes(w))) return true;
+    // Elk woord afzonderlijk
+    if (woorden.some(w => naam.includes(w) && w.length > 2)) return true;
+    return false;
+  })
+  .sort((a, b) => {
+    // Sorteer: exacte match eerst, dan begint-met, dan bevat
+    const an = a.n.toLowerCase(), bn = b.n.toLowerCase();
+    if (an.startsWith(n) && !bn.startsWith(n)) return -1;
+    if (!an.startsWith(n) && bn.startsWith(n)) return 1;
+    if (an.includes(n) && !bn.includes(n)) return -1;
+    if (!an.includes(n) && bn.includes(n)) return 1;
+    return 0;
+  })
+  .slice(0, 10);
+
+  const dropdown = document.getElementById('autocomplete-dropdown');
+  if (!dropdown) return;
+  if (!resultaten.length) { sluitAutocomplete(); return; }
+
+  acSelectedIdx = -1;
+  const catLabels = {agf:'🥦 AGF', vlees:'🥩 Vlees & Vis', kruidenierswaren:'🛒 Kruiden.', koeling:'🧊 Koeling', diepvries:'❄️ Diepvries', drank:'🥤 Drank', nonfood:'🧴 Non Food', overig:'📦 Overig'};
+
+  // Groepeer per categorie
+  const groepen = {};
+  resultaten.forEach(p => {
+    if (!groepen[p.c]) groepen[p.c] = [];
+    groepen[p.c].push(p);
+  });
+
+  let html = '';
+  Object.entries(groepen).forEach(([cat, producten]) => {
+    html += `<div class="ac-header">${catLabels[cat]||cat}</div>`;
+    producten.forEach(function(p) {
+      var vn = p.n.split("'").join("\'");
+      html += '<div class="ac-item" onclick="kiesProduct(' + "'" + vn + "'" + ',' + "'" + p.c + "'" + ')">'
+        + '<span class="ac-naam">' + esc(p.n) + '</span>'
+        + '<span class="ac-prijs">v.a. €' + p.p.toFixed(2) + '</span>'
+        + '</div>';
+    });
+  });
+
+  dropdown.innerHTML = html;
+  dropdown.style.display = 'block';
+}
+
+function sluitAutocomplete() {
+  const dropdown = document.getElementById('autocomplete-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  acSelectedIdx = -1;
+}
+
+function navigeerAutocomplete(e) {
+  const dropdown = document.getElementById('autocomplete-dropdown');
+  if (!dropdown || dropdown.style.display === 'none') return;
+  const items = dropdown.querySelectorAll('.ac-item');
+  if (!items.length) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acSelectedIdx = Math.min(acSelectedIdx + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acSelectedIdx = Math.max(acSelectedIdx - 1, -1);
+  } else if (e.key === 'Escape') {
+    sluitAutocomplete(); return;
+  } else if (e.key === 'Enter' && acSelectedIdx >= 0) {
+    e.preventDefault();
+    items[acSelectedIdx].click(); return;
+  } else { return; }
+
+  items.forEach((item, i) => item.classList.toggle('selected', i === acSelectedIdx));
+  if (acSelectedIdx >= 0) items[acSelectedIdx].scrollIntoView({block:'nearest'});
+}
+
+async function zoekLivePrijs() {
+  var naam = document.getElementById('item-input').value.trim();
+  if (!naam || naam.length < 2) { alert('Typ eerst een artikel in het invoerveld.'); return; }
+  var btn = document.getElementById('live-prijs-btn');
+  var resultaat = document.getElementById('live-prijs-resultaat');
+  var inhoud = document.getElementById('live-prijs-inhoud');
+  btn.textContent = '...'; btn.disabled = true;
+  resultaat.style.display = 'block';
+  inhoud.innerHTML = 'Zoeken naar beste prijs voor <strong>' + esc(naam) + '</strong>...';
+  try {
+    var response = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artikel: naam })
+    });
+    var data = await response.json();
+    if (!response.ok) throw new Error('Worker fout');
+    var tekst = data.resultaat || '';
+    var regels = tekst.split('\n').filter(function(r) { return r.trim(); });
+    inhoud.innerHTML = regels.join('<br>') || 'Geen resultaten gevonden.';
+  } catch(e) {
+    inhoud.innerHTML = 'Zoeken mislukt. Controleer je verbinding.';
+  }
+  btn.textContent = 'prijs'; btn.disabled = false;
+}
+
+function sluitLivePrijs() {
+  document.getElementById('live-prijs-resultaat').style.display = 'none';
+}
+
+function toonSlimmeVoorstellenStil() {
+  if (!gezinsCode) return;
+  var hist = {};
+  try { hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}'); } catch(e) { return; }
+  var nu = Date.now();
+  var dag = new Date().getDay();
+  var MINI_PRIJZEN = {'melk':1.09,'brood':2.09,'eieren':1.99,'boter':2.49,'kaas':3.49,'yoghurt':1.09,'pasta':0.99,'rijst':1.99,'tomaten':1.99,'bananen':1.49,'appels':1.99,'kipfilet':5.99,'gehakt':4.49};
+  var voorstellen = [];
+  for (var naam in hist) {
+    var data = hist[naam];
+    if (!data.laats || !data.laats.length) continue;
+    var laats = data.laats[data.laats.length-1];
+    var verstreken = nu - laats;
+    var interval = data.gem_interval || (7*24*60*60*1000);
+    if (verstreken > interval * 0.8) {
+      var alOp = false;
+      for (var ii=0; ii<items.length; ii++) { if (items[ii].name.toLowerCase() === naam && !items[ii].done) { alOp=true; break; } }
+      if (!alOp) voorstellen.push({naam:naam, prijs:MINI_PRIJZEN[naam]||null, score:verstreken/interval});
+    }
+  }
+  var dagelijks = ['melk','brood','eieren'];
+  if (dag >= 1 && dag <= 5) {
+    for (var di=0; di<dagelijks.length; di++) {
+      var dn = dagelijks[di];
+      var alOp2 = false; var alVoor = false;
+      for (var ii2=0; ii2<items.length; ii2++) { if (items[ii2].name.toLowerCase().indexOf(dn)>-1 && !items[ii2].done) { alOp2=true; break; } }
+      for (var vi=0; vi<voorstellen.length; vi++) { if (voorstellen[vi].naam.indexOf(dn)>-1) { alVoor=true; break; } }
+      if (!alOp2 && !alVoor) voorstellen.push({naam:dn, prijs:MINI_PRIJZEN[dn]||null, score:0.5});
+    }
+  }
+  voorstellen.sort(function(a,b){return b.score-a.score;});
+  voorstellen = voorstellen.slice(0,5);
+  var box = document.getElementById('wow-box');
+  var chips = document.getElementById('wow-chips');
+  var sub = document.getElementById('wow-sub');
+  if (!box || !chips) return;
+  if (!voorstellen.length) { box.style.display='none'; return; }
+  box.style.display = 'block';
+  var html = '';
+  for (var vi2=0; vi2<voorstellen.length; vi2++) {
+    var v = voorstellen[vi2];
+    var prijsHtml = v.prijs ? ' <span style="font-size:0.68rem;opacity:0.8">v.a. €'+v.prijs.toFixed(2)+'</span>' : '';
+    var _vn = v.naam.split("'").join("&#39;");
+    html += '<button class="wow-chip" onclick="voegSuggestie(&quot;' + _vn + '&quot;")>＋ ' + esc(v.naam) + prijsHtml + '</button>';
+  }
+  chips.innerHTML = html;
+  if (sub) {
+    var heeftPatroon = false;
+    for (var pi=0; pi<voorstellen.length; pi++) { if (voorstellen[pi].score > 0.5) { heeftPatroon=true; break; } }
+    sub.textContent = heeftPatroon ? 'Tijd om dit weer in te slaan:' : 'Vergeet je dit niet?';
+  }
+}
+
+async function voegSuggestie(naam) {
+  var newItem = {id:Date.now(), name:naam, person:currentPerson, done:false, qty:1, cat:detectCat(naam)};
+  items.unshift(newItem);
+  render();
+  logAankoopHistorie(naam);
+  setSyncStatus(true);
+  await fbSave(items);
+  setSyncStatus(false);
+  toonSlimmeVoorstellenStil();
+}
+
+function logAankoopHistorie(naam) {
+  try {
+    var hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}');
+    var n = naam.toLowerCase().trim();
+    var nu = Date.now();
+    if (!hist[n]) hist[n] = {count:0, laats:[]};
+    hist[n].count++;
+    hist[n].laats.push(nu);
+    if (hist[n].laats.length > 10) hist[n].laats = hist[n].laats.slice(-10);
+    hist[n].gem_interval = berekenGemInterval(hist[n].laats);
+    localStorage.setItem('aankoop_hist_' + gezinsCode, JSON.stringify(hist));
+  } catch(e) {}
+}
 
 function laadPersonen() {
   const opgeslagen = localStorage.getItem('personen_' + gezinsCode);
@@ -738,6 +1397,17 @@ function renderPersonenKnoppen() {
   }
 }
 
+function setPerson(p) {
+  currentPerson = p;
+  renderPersonenKnoppen();
+}
+
+function setFilter(el, f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active'); render();
+}
+
 function openPersonenInstellingen() {
   const el = document.getElementById('personen-invoer');
   el.innerHTML = personen.map((p, i) => `
@@ -751,6 +1421,10 @@ function openPersonenInstellingen() {
       <span>${personen.length > 1 ? '<button class="persoon-verwijder" onclick="verwijderPersoon(' + i + ')">&#10005;</button>' : ''}</span>
     </div>`).join('');
   document.getElementById('personen-modal').style.display = 'flex';
+}
+
+function sluitPersonenModal(e) {
+  if (e.target.id === 'personen-modal') document.getElementById('personen-modal').style.display = 'none';
 }
 
 function verwerkFoto(event, i) {
@@ -786,10 +1460,6 @@ function verwerkFoto(event, i) {
   reader.readAsDataURL(file);
 }
 
-function sluitPersonenModal(e) {
-  if (e.target.id === 'personen-modal') document.getElementById('personen-modal').style.display = 'none';
-}
-
 function voegPersoonToe() {
   if (personen.length >= 4) { alert('Maximum 4 personen.'); return; }
   personen.push({naam: 'Persoon ' + (personen.length+1), kleur: KLEUREN[personen.length] || '#3d6b4f'});
@@ -813,973 +1483,23 @@ function slaPersonenOp() {
   document.getElementById('personen-modal').style.display = 'none';
   render();
 }
-let autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
-let unsubItems = null, unsubMenu = null;
-const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
-// ---- Gezinscode ----
-function sanitizeCode(code) { return code.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
-
-// ---- Setup navigatie ----
-function toonKeuze() {
-  document.getElementById('setup-keuze').style.display = 'block';
-  document.getElementById('setup-inloggen').style.display = 'none';
-  document.getElementById('setup-registreren').style.display = 'none';
-  document.getElementById('setup-wachten').style.display = 'none';
-}
-function toonInloggen() {
-  document.getElementById('setup-keuze').style.display = 'none';
-  document.getElementById('setup-inloggen').style.display = 'block';
-  document.getElementById('setup-registreren').style.display = 'none';
-  document.getElementById('setup-wachten').style.display = 'none';
-}
-function toonRegistreren() {
-  document.getElementById('setup-keuze').style.display = 'none';
-  document.getElementById('setup-inloggen').style.display = 'none';
-  document.getElementById('setup-registreren').style.display = 'block';
-  document.getElementById('setup-wachten').style.display = 'none';
-}
-
-// ---- Registratie ----
-async function registreerGezin() {
-  const naam = document.getElementById('reg-naam').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const errEl = document.getElementById('reg-error');
-  errEl.style.display = 'none';
-
-  if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
-  if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
-
-  // Auto-genereer code vanuit naam
-  var code = sanitizeCode(naam);
-
-  // Tel bestaande registraties
-  var allSnap = await new Promise(function(res) { window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}); });
-  var bestaande = allSnap.val() || {};
-  var volgnummer = Object.keys(bestaande).length + 1;
-
-  // Check of code OF naam al bestaat (case-insensitive)
-  var naamLower = naam.toLowerCase().trim();
-  var codeAlGebruikt = !!bestaande[code];
-  var naamAlGebruikt = false;
-  var bestaandeStatus = 'wachtend';
-  for (var bk in bestaande) {
-    if ((bestaande[bk].naam || '').toLowerCase().trim() === naamLower) {
-      naamAlGebruikt = true;
-      bestaandeStatus = bestaande[bk].status || 'wachtend';
-      break;
-    }
-  }
-  if (codeAlGebruikt || naamAlGebruikt) {
-    var statusTekst = bestaandeStatus === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
-    errEl.textContent = 'De naam "' + naam + '" is ' + statusTekst + '. Kies een andere naam, bijv. "' + naam + ' Thuis" of "' + naam + ' 2".';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  // Wis eventuele eerdere gezinscode op dit apparaat zodat opnieuw registreren werkt
-  try { localStorage.removeItem('gezinscode'); } catch(e) {}
-  try { sessionStorage.removeItem('gezinscode'); } catch(e) {}
-  try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
-
-  // Sla registratie op
-  await window._set(window._ref(window._db, 'registraties/' + code), {
-    code: code, naam: naam, email: email,
-    volgnummer: volgnummer,
-    status: 'wachtend',
-    aangemeld: Date.now(),
-    goedgekeurd: false
-  });
-
-  // Update globale teller
-  await window._set(window._ref(window._db, 'meta/totaal_aanmeldingen'), volgnummer);
-
-  document.getElementById('setup-keuze').style.display = 'none';
-  document.getElementById('setup-registreren').style.display = 'none';
-  document.getElementById('setup-wachten').style.display = 'block';
-}
-
-// ---- Inloggen ----
-async function startMetCode() {
-  const raw = document.getElementById('setup-code').value.trim();
-  const code = sanitizeCode(raw);
-  const errEl = document.getElementById('setup-error');
-  errEl.style.display = 'none';
-  if (code.length < 3) { errEl.textContent = 'Kies een code van minimaal 3 tekens.'; errEl.style.display = 'block'; return; }
-
-  // Beheerder check via localStorage (gezet door Face ID)
-  if (localStorage.getItem('beheerder') === '1') {
-    localStorage.setItem('gezinscode', code);
-    try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
-    gezinsCode = code;
-    document.getElementById('setup-screen').style.display = 'none';
-    initApp();
-    return;
-  }
-
-  // Check registratie status
-  errEl.textContent = 'Controleren…';
-  errEl.style.display = 'block';
-  errEl.style.color = 'var(--muted)';
-
-  const snap = await new Promise(res =>
-    window._onValue(window._ref(window._db, `registraties/${code}`), res, {onlyOnce: true})
-  );
-  const reg = snap.val();
-
-  if (!reg) {
-    // Geen registratie gevonden — direct inloggen (bestaande gezinnen)
-    localStorage.setItem('gezinscode', code);
-    try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
-    gezinsCode = code;
-    document.getElementById('setup-screen').style.display = 'none';
-    errEl.style.display = 'none';
-    initApp();
-    return;
-  }
-
-  if (reg.status === 'wachtend') {
-    errEl.textContent = '⏳ Je aanmelding wacht nog op goedkeuring.';
-    errEl.style.color = 'var(--red)';
-    return;
-  }
-  if (reg.status === 'afgewezen') {
-    errEl.textContent = '❌ Je aanmelding is afgewezen. Neem contact op.';
-    errEl.style.color = 'var(--red)';
-    return;
-  }
-  if (reg.status === 'geblokkeerd') {
-    errEl.textContent = '🔒 Toegang geblokkeerd. Neem contact op.';
-    errEl.style.color = 'var(--red)';
-    return;
-  }
-
-  // Goedgekeurd!
-  localStorage.setItem('gezinscode', code);
-  try { sessionStorage.setItem('gezinscode', code); } catch(e) {}
-  try { document.cookie = 'gezinscode=' + code + ';max-age=31536000;path=/'; } catch(e) {}
-  gezinsCode = code;
-  document.getElementById('setup-screen').style.display = 'none';
-  errEl.style.display = 'none';
-  initApp();
-}
-
-function wijzigCode() {
-  if (!confirm('Wil je van gezinscode wisselen?')) return;
-  if (unsubItems) unsubItems(); if (unsubMenu) unsubMenu();
-  localStorage.removeItem('gezinscode'); try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
-  document.getElementById('main-app').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'block';
-  toonKeuze();
-}
-
-function toonFout(msg) { const el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; el.style.color = 'var(--red)'; }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const inp = document.getElementById('setup-code');
-  if (inp) {
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') startMetCode(); });
-    // Vul beheerderscode automatisch in
-    if (localStorage.getItem('beheerder') === '1') {
-      inp.value = 'familie-de-jong'; // jouw gezinscode
-    }
-  }
-});
-
-// ---- Firebase per gezin ----
-function getRef(pad) { return window._ref(window._db, `gezinnen/${gezinsCode}/${pad}`); }
-
-function fbSave(itemsArr) {
-  // Schrijf de volledige lijst als object (atomisch)
-  var obj = {};
-  for (var si=0; si<itemsArr.length; si++) { obj[itemsArr[si].id] = itemsArr[si]; }
-  return window._set(getRef('boodschappen'), obj);
-}
-function fbSaveItem(item) {
-  // Schrijf één item zonder de rest te raken
-  return window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + item.id), item);
-}
-function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/boodschappen/${id}`)); }
-function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
-
-var _saving = false;
-// Pending items: lokaal toegevoegd maar nog niet bevestigd door Firebase
-var pendingItems = {};
-
-function fbListen() {
-  unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
-    var data = snap.val() || {};
-    // Verwijder pending items die Firebase nu kent
-    for (var pid in pendingItems) {
-      if (data[pid]) delete pendingItems[pid];
-    }
-    // Bouw items op: Firebase data + nog niet bevestigde pending items
-    var fbItems = Object.values(data);
-    var pendingList = Object.values(pendingItems);
-    // Voeg pending items toe die nog niet in Firebase data zitten
-    for (var pi=0; pi<pendingList.length; pi++) {
-      fbItems.push(pendingList[pi]);
-    }
-    items = fbItems.sort(function(a,b) { return b.id - a.id; });
-    render();
-  });
-  unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
-    menu = snap.val() || {};
-    renderMenu();
-  });
-}
-
-// ---- Init ----
-function initApp() {
-  // Toon gezinsnaam uit registratie ipv ruwe code
-  window._onValue(window._ref(window._db, `registraties/${gezinsCode}/naam`), snap => {
-    const naam = snap.val();
-    const el = document.getElementById('gezin-naam');
-    if (el) el.textContent = naam || gezinsCode;
-  }, {onlyOnce: true});
-  document.getElementById('main-app').style.display = 'block';
-  laadPersonen();
-  fbListen();
-  isBeheerder = localStorage.getItem('beheerder') === '1' || gezinsCode === 'familie-de-jong';
-  if (isBeheerder) {
-    var btnAdmin = document.getElementById('tab-admin');
-    if (btnAdmin) btnAdmin.style.display = 'flex';
-    fbListenRegistraties();
-  }
-  fbListenIdeeen();
-  fbListenRecepten();
-  fbListenGeleerd();
-  fbListenGeleerdeWinkels();
-  setupMic();
-  setSyncStatus(false);
-  // Bind event handlers veilig na DOM init
-  bindInputEvents();
-  bindMicBtn();
-}
-
-function startAppMet(opgeslagen) {
-  // Probeer ook cookie als localStorage leeg is
-  if (!opgeslagen) {
-    try {
-      var cookies = document.cookie.split(';');
-      for (var ci=0; ci<cookies.length; ci++) {
-        var c = cookies[ci].trim();
-        if (c.indexOf('gezinscode=') === 0) {
-          opgeslagen = c.substring('gezinscode='.length);
-          break;
-        }
-      }
-    } catch(e) {}
-  }
-  document.getElementById('loading-screen').style.display = 'none';
-  if (opgeslagen) {
-    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
-    try { sessionStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
-    gezinsCode = opgeslagen;
-    initApp();
-  } else {
-    document.getElementById('setup-screen').style.display = 'block';
-    toonKeuze();
-  }
-}
-
-document.addEventListener('fb-ready', function() {
-  document.getElementById('loading-screen').style.display = 'none';
-  var opgeslagen = null;
-  try { opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode'); } catch(e) {}
-  if (opgeslagen) {
-    gezinsCode = opgeslagen;
-    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
-    try { sessionStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
-    initApp();
-  } else {
-    document.getElementById('setup-screen').style.display = 'block';
-    toonKeuze();
-  }
-});
-
-// Fallback als fb-ready al eerder afgevuurd is
-if (window._fbReady) {
-  document.getElementById('loading-screen').style.display = 'none';
-  var _opgeslagen = null;
-  try { _opgeslagen = localStorage.getItem('gezinscode') || sessionStorage.getItem('gezinscode'); } catch(e) {}
-  if (_opgeslagen) {
-    gezinsCode = _opgeslagen;
-    initApp();
-  } else {
-    document.getElementById('setup-screen').style.display = 'block';
-    toonKeuze();
-  }
-}
-
-// Timeout: na 10 seconden foutmelding tonen
-setTimeout(function() {
-  var ld = document.getElementById('loading-screen');
-  if (ld && ld.style.display !== 'none') {
-    ld.innerHTML = '<div style="text-align:center;padding:20px"><div style="font-size:2rem;margin-bottom:10px">⚠️</div><div style="color:#c4473a;font-size:0.9rem;margin-bottom:16px">Verbinding mislukt.<br>Controleer je internet.</div><button onclick="location.reload()" style="background:#3d6b4f;color:white;border:none;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:0.9rem">🔄 Opnieuw proberen</button></div>';
-  }
-}, 10000);
-
-// ---- Sync ----
-function setSyncStatus(saving) {
-  _saving = saving;
-  document.getElementById('sync-dot').className = 'dot' + (saving ? ' saving' : '');
-  var lbl = document.getElementById('sync-label');
-  if (lbl) lbl.textContent = saving ? 'Opslaan...' : 'Live verbonden';
-}
-
-
-// ---- Tabs ----
-function switchTab(tab) {
-  ['boodschappen','menu','ideeen','kookboek','prijzen','admin'].forEach(t => {
-    const v = document.getElementById('view-' + t);
-    const b = document.getElementById('tab-' + t);
-    if (v) v.style.display = tab === t ? 'block' : 'none';
-    if (b) b.className = 'tab' + (tab === t ? ' active' : '');
-  });
-  if (tab === 'admin') updateAdminStats();
-}
-
-// ---- Boodschappen ----
-function setPerson(p) {
-  currentPerson = p;
-  renderPersonenKnoppen();
-}
-
-function setFilter(el, f) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active'); render();
-}
-
-// ---- Boodschap categorisering ----
-const BOODSCHAP_CATS = [
-  {
-    key: 'agf', label: 'AGF', icon: '🥦',
-    items: ['appel','peer','banaan','sinaasappel','citroen','druif','aardbei','mango','avocado','kiwi','mandarijn',
-      'tomaat','tomaten','komkommer','sla','paprika','ui','uien','knoflook','wortel','wortelen','broccoli',
-      'bloemkool','spinazie','courgette','aubergine','champignon','aardappel','prei','ijsbergsla','selderij',
-      'peterselie','basilicum','munt','gember','mais','asperge','venkel','radicchio','rucola','witlof',
-      'spruitjes','boerenkool','savooiekool','rode kool','witte kool','bieslook','radijs','pastinaak',
-      'biet','pompoen','zoete aardappel','yam','watermeloen','meloen','ananas','papaja','lychee','vijg',
-      'pruim','kers','perzik','nectarine','abrikoos','granaatappel']
-  },
-  {
-    key: 'vlees', label: 'Vlees & Vis', icon: '🥩',
-    items: ['gehakt','kip','kipfilet','kipschnitzel','spek','bacon','ham','salami','worst','rookworst',
-      'biefstuk','tartaar','lamsrack','lam','varken','varkenshaas','ossenhaas','ribeye','entrecote',
-      'schnitzels','schnitzel','hamburger','kipdrumstick','kippenpoot','kalkoen','eend','konijn',
-      'zalm','tonijn','visstick','kabeljauw','tilapia','garnalen','mosselen','inktvis','haring',
-      'makreel','forel','pangasius','scampi','kreeft','vis','zeevruchten']
-  },
-  {
-    key: 'kruidenierswaren', label: 'Kruidenierswaren', icon: '🛒',
-    items: ['pasta','spaghetti','penne','fusilli','macaroni','tagliatelle','lasagne','orzo','rijst',
-      'basmati','couscous','quinoa','havermout','brood','crackers','beschuit','muesli','cornflakes',
-      'granola','bloem','suiker','zout','peper','olie','azijn','saus','tomatenpuree','passata',
-      'ketchup','mayonaise','mosterd','pesto','sambal','sojasaus','ketjap','jam','pindakaas',
-      'nutella','honing','hagelslag','blikje','bonen','kikkererwten','linzen','soep','bouillon',
-      'chips','koekjes','chocolade','noten','rozijnen','thee','koffie','bakpoeder','vanillesuiker',
-      'kaneel','paprikapoeder','curry','oregano','nootmuskaat','kurkuma','chili','kruidenmix']
-  },
-  {
-    key: 'koeling', label: 'Koeling', icon: '🧊',
-    items: ['melk','halfvolle melk','volle melk','karnemelk','yoghurt','kwark','slagroom','crème fraîche',
-      'zure room','boter','margarine','kaas','gouda','edam','brie','camembert','feta','mozzarella',
-      'parmezaan','roomkaas','smeerkaas','eieren','vla','pudding','sap','sinaasappelsap','appelsap',
-      'verse soep','verse pasta','tofu','tempeh','hummus','dip','tzatziki','pâté','geraspte kaas']
-  },
-  {
-    key: 'diepvries', label: 'Diepvries', icon: '❄️',
-    items: ['diepvries','doperwten','spinazie','friet','pizza','kroketten','bitterballen','visstaaf',
-      'garnalen diepvries','ijsje','ijs','sorbet','smoothie mix','fruit diepvries','groenten mix',
-      'edamame','sojaboontjes','bladerdeeg','deeg','wafels','pannenkoeken']
-  },
-  {
-    key: 'drank', label: 'Drank', icon: '🥤',
-    items: ['water','spa','cola','fanta','sprite','7up','redbull','energiedrank','frisdrank',
-      'limonade','siroop','tonic','bier','heineken','grolsch','amstel','hertog jan','bavaria',
-      'wijn','rode wijn','witte wijn','rosé','prosecco','champagne','cava','port','sherry',
-      'vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','koffiemelk']
-  },
-  {
-    key: 'nonfood', label: 'Non Food', icon: '🧴',
-    items: ['wasmiddel','afwasmiddel','vaatwas','toiletpapier','keukenpapier','aluminiumfolie',
-      'huishoudfolie','schoonmaakmiddel','allesreiniger','wc-eend','bleek','soda','schuurmiddel',
-      'wasverzachter','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta',
-      'tandenborstel','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband',
-      'tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines',
-      'parfum','nagellak','make-up','mascara','foundation','lippenstift']
-  }
-];
-
-// ---- Zelflerend categorieën ----
-let geleerdeCategorieen = {}; // { 'melk': 'koeling', 'dettol': 'nonfood', ... }
-let unsubGeleerd = null;
-
-function fbListenGeleerd() {
-  if (unsubGeleerd) unsubGeleerd();
-  unsubGeleerd = window._onValue(getRef('geleerde_cats'), snap => {
-    geleerdeCategorieen = snap.val() || {};
-  });
-}
-
-async function slaGeleerdeCategorie(naam, cat) {
-  const key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  geleerdeCategorieen[key] = cat;
-  await window._set(getRef('geleerde_cats/' + key), cat);
-}
-
-function detectCat(naam) {
-  const n = naam.toLowerCase().trim();
-  // 1. Check geleerde categorieën eerst
-  const key = n.replace(/[^a-z0-9]/g, '_');
-  if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
-  // Gedeeltelijke match in geleerde categorieën
-  var _gk=Object.keys(geleerdeCategorieen),_gi2=0;for(;_gi2<_gk.length;_gi2++) {
-    const woord = gelKey.replace(/_/g, ' ');
-    if (n.includes(woord) || woord.includes(n) && n.length > 3) return gelCat;
-  }
-  // 2. Standaard detectie
-  for (const cat of BOODSCHAP_CATS) {
-    if (cat.items.some(w => n.includes(w) || w.includes(n) && n.length > 3)) return cat.key;
-  }
-  return 'overig';
-}
-
-async function changeCat(id, cat) {
-  var gewijzigd = null;
-  items = items.map(function(i) {
-    if (i.id===id) {
-      var n={}; for(var k in i){n[k]=i[k];} n.cat=cat;
-      gewijzigd = n; return n;
-    }
-    return i;
-  });
-  render();
-  if (gewijzigd) {
-    setSyncStatus(true); try { await fbSaveItem(gewijzigd); } finally { setSyncStatus(false); }
-    slaGeleerdeCategorie(gewijzigd.name, cat);
-  }
-}
-
-
-// ============================================================
-// SLIMME SUGGESTIES
-// ============================================================
-function logAankoopHistorie(naam) {
-  try {
-    var hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}');
-    var n = naam.toLowerCase().trim();
-    var nu = Date.now();
-    if (!hist[n]) hist[n] = {count:0, laats:[]};
-    hist[n].count++;
-    hist[n].laats.push(nu);
-    if (hist[n].laats.length > 10) hist[n].laats = hist[n].laats.slice(-10);
-    hist[n].gem_interval = berekenGemInterval(hist[n].laats);
-    localStorage.setItem('aankoop_hist_' + gezinsCode, JSON.stringify(hist));
-  } catch(e) {}
-}
-function berekenGemInterval(tijden) {
-  if (tijden.length < 2) return null;
-  var som = 0;
-  for (var i=1; i<tijden.length; i++) som += tijden[i] - tijden[i-1];
-  return som / (tijden.length - 1);
-}
-function toonSlimmeVoorstellenStil() {
-  if (!gezinsCode) return;
-  var hist = {};
-  try { hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}'); } catch(e) { return; }
-  var nu = Date.now();
-  var dag = new Date().getDay();
-  var MINI_PRIJZEN = {'melk':1.09,'brood':2.09,'eieren':1.99,'boter':2.49,'kaas':3.49,'yoghurt':1.09,'pasta':0.99,'rijst':1.99,'tomaten':1.99,'bananen':1.49,'appels':1.99,'kipfilet':5.99,'gehakt':4.49};
-  var voorstellen = [];
-  for (var naam in hist) {
-    var data = hist[naam];
-    if (!data.laats || !data.laats.length) continue;
-    var laats = data.laats[data.laats.length-1];
-    var verstreken = nu - laats;
-    var interval = data.gem_interval || (7*24*60*60*1000);
-    if (verstreken > interval * 0.8) {
-      var alOp = false;
-      for (var ii=0; ii<items.length; ii++) { if (items[ii].name.toLowerCase() === naam && !items[ii].done) { alOp=true; break; } }
-      if (!alOp) voorstellen.push({naam:naam, prijs:MINI_PRIJZEN[naam]||null, score:verstreken/interval});
-    }
-  }
-  var dagelijks = ['melk','brood','eieren'];
-  if (dag >= 1 && dag <= 5) {
-    for (var di=0; di<dagelijks.length; di++) {
-      var dn = dagelijks[di];
-      var alOp2 = false; var alVoor = false;
-      for (var ii2=0; ii2<items.length; ii2++) { if (items[ii2].name.toLowerCase().indexOf(dn)>-1 && !items[ii2].done) { alOp2=true; break; } }
-      for (var vi=0; vi<voorstellen.length; vi++) { if (voorstellen[vi].naam.indexOf(dn)>-1) { alVoor=true; break; } }
-      if (!alOp2 && !alVoor) voorstellen.push({naam:dn, prijs:MINI_PRIJZEN[dn]||null, score:0.5});
-    }
-  }
-  voorstellen.sort(function(a,b){return b.score-a.score;});
-  voorstellen = voorstellen.slice(0,5);
-  var box = document.getElementById('wow-box');
-  var chips = document.getElementById('wow-chips');
-  var sub = document.getElementById('wow-sub');
-  if (!box || !chips) return;
-  if (!voorstellen.length) { box.style.display='none'; return; }
-  box.style.display = 'block';
-  var html = '';
-  for (var vi2=0; vi2<voorstellen.length; vi2++) {
-    var v = voorstellen[vi2];
-    var prijsHtml = v.prijs ? ' <span style="font-size:0.68rem;opacity:0.8">v.a. €'+v.prijs.toFixed(2)+'</span>' : '';
-    var _vn = v.naam.split("'").join("&#39;");
-    html += '<button class="wow-chip" onclick="voegSuggestie(&quot;' + _vn + '&quot;")>＋ ' + esc(v.naam) + prijsHtml + '</button>';
-  }
-  chips.innerHTML = html;
-  if (sub) {
-    var heeftPatroon = false;
-    for (var pi=0; pi<voorstellen.length; pi++) { if (voorstellen[pi].score > 0.5) { heeftPatroon=true; break; } }
-    sub.textContent = heeftPatroon ? 'Tijd om dit weer in te slaan:' : 'Vergeet je dit niet?';
-  }
-}
-async function voegSuggestie(naam) {
-  var newItem = {id:Date.now(), name:naam, person:currentPerson, done:false, qty:1, cat:detectCat(naam)};
-  items.unshift(newItem);
-  render();
-  logAankoopHistorie(naam);
-  setSyncStatus(true);
-  await fbSave(items);
-  setSyncStatus(false);
-  toonSlimmeVoorstellenStil();
-}
-
-async function addItem() {
-  var inp = document.getElementById('item-input');
-  var name = inp ? inp.value.trim() : '';
-  if (!name) return;
-  sluitAutocomplete();
-  inp.value = '';
-  var dbl = document.getElementById('dubbel-melding');
-  if (dbl) dbl.textContent = '';
-  // Maak nieuw item aan
-  var newItem = {
-    id: Date.now(),
-    name: name,
-    person: currentPerson,
-    done: false,
-    qty: 1,
-    cat: detectCat(name),
-    winkel: detectWinkel(name)
-  };
-  // Voeg direct toe aan lokale lijst en toon
-  items.unshift(newItem);
-  render();
-  // Leer patronen
-  logAankoopHistorie(name);
-  slaGeleerdeCategorie(name, newItem.cat);
-  // Registreer als pending zodat fbListen hem niet weggooit
-  pendingItems[newItem.id] = newItem;
-  // Schrijf naar Firebase
-  setSyncStatus(true);
-  try {
-    await window._set(
-      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newItem.id),
-      newItem
-    );
-    // Firebase bevestigd - verwijder uit pending
-    delete pendingItems[newItem.id];
-  } catch(e) {
-    // Bij fout: item blijft in pending en dus zichtbaar
-    // Probeer opnieuw na 2 seconden
-    setTimeout(function() {
-      window._set(
-        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newItem.id),
-        newItem
-      ).then(function() { delete pendingItems[newItem.id]; });
-    }, 2000);
-  } finally {
-    setSyncStatus(false);
-  }
-}
-
-async function toggleItem(id) {
-  var gewijzigd = null;
-  items = items.map(function(i) {
-    if (i.id===id) {
-      var n={}; for(var k in i){n[k]=i[k];} n.done=!i.done;
-      gewijzigd = n; return n;
-    }
-    return i;
-  });
-  render();
-  if (gewijzigd) { setSyncStatus(true); await fbSaveItem(gewijzigd); setSyncStatus(false); }
-}
-
-async function deleteItem(id) {
-  items = items.filter(function(i) { return i.id !== id; });
-  render();
-  setSyncStatus(true); await fbDelete(id); setSyncStatus(false);
-}
-
-async function changeQty(id, delta) {
-  var gewijzigd = null;
-  items = items.map(function(i) {
-    if (i.id===id) {
-      var n={}; for(var k in i){n[k]=i[k];} n.qty=Math.max(1,(i.qty||1)+delta);
-      gewijzigd = n; return n;
-    }
-    return i;
-  });
-  render();
-  if (gewijzigd) { setSyncStatus(true); await fbSaveItem(gewijzigd); setSyncStatus(false); }
-}
-
-async function clearDone() {
-  var del = items.filter(function(i) { return i.done; });
-  if (!del.length) return;
-  if (!confirm(del.length + ' afgevinkt' + (del.length>1?'e items':' item') + ' verwijderen uit het mandje?')) return;
-  items = items.filter(function(i) { return !i.done; });
-  render();
-  setSyncStatus(true);
-  for (var di=0; di<del.length; di++) { await fbDelete(del[di].id); }
-  setSyncStatus(false);
-}
-
-function toggleDone() {
-  doneVisible = !doneVisible;
-  document.getElementById('done-section').style.display = doneVisible ? 'block' : 'none';
-  document.getElementById('done-arrow').textContent = doneVisible ? '▼' : '▶';
-}
-
-function render() {
-  const filtered = currentFilter==='alle' ? items : items.filter(i => i.person===currentFilter);
-  const todo = filtered.filter(i => !i.done), done = filtered.filter(i => i.done);
-  document.getElementById('stat-total').textContent = items.length;
-  document.getElementById('stat-todo').textContent = items.filter(i => !i.done).length;
-  document.getElementById('stat-done').textContent = items.filter(i => i.done).length;
-  document.getElementById('done-count').textContent = done.length;
-  renderList('todo-list', todo, false); renderList('done-list', done, true);
-  updatePrijsKnop();
-}
-
-function renderItem(item) {
-  var p = null;
-  for (var pi=0; pi<personen.length; pi++) { if (personen[pi].naam === item.person) { p = personen[pi]; break; } }
-  if (!p) p = {naam: item.person, kleur: '#3d6b4f', foto: null};
-  var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-  var borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
-  var winkel = item.winkel || detectWinkel(item.name);
-  var winkelBadge = winkel === 'kruidvat'
-    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
-    : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
-  // Foto zonder geneste template literal
-  var fotoHtml = p.foto
-    ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover" />'
-    : '&#128100;';
-  // Categorie select zonder geneste template literal
-  var catOptions = '';
-  var allCats = BOODSCHAP_CATS.concat([{key:'overig',label:'Overig',icon:'&#128230;'}]);
-  for (var ci=0; ci<allCats.length; ci++) {
-    var c = allCats[ci];
-    var sel = (item.cat||'overig') === c.key ? ' selected' : '';
-    catOptions += '<option value="' + c.key + '"' + sel + '>' + c.icon + ' ' + c.label + '</option>';
-  }
-  var catSelect = '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
-  var checkBtn = '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
-  var personSpan = '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + ';display:inline-flex;align-items:center;gap:3px">' + fotoHtml + ' ' + esc(item.person) + '</span>';
-  var qty = item.qty || 1;
-  var html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
-  html += checkBtn;
-  html += '<div class="item-main">';
-  html += '<div class="item-name">' + esc(item.name) + '</div>';
-  html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
-  html += winkelBadge;
-  html += personSpan;
-  html += catSelect;
-  html += '</div></div>';
-  html += '<div class="qty-controls">';
-  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">&#8722;</button>';
-  html += '<span class="qty-num">' + qty + '</span>';
-  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>';
-  html += '</div>';
-  html += '<button class="delete-btn" onclick="deleteItem(' + item.id + ')">&#10005;</button>';
-  html += '</div>';
-  return html;
-}
-
-
-// ============================================================
-// WINKEL DETECTIE: AH vs Kruidvat
-// ============================================================
-var AH_ITEMS = [
-  // Vers & AGF
-  'appel','peer','banaan','sinaasappel','citroen','druif','aardbei','mango','avocado',
-  'tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie',
-  'champignon','aardappel','courgette','prei','bloemkool','peterselie','basilicum',
-  // Vlees & vis
-  'kip','gehakt','spek','ham','bacon','zalm','garnalen','vis','biefstuk','worst',
-  // Zuivel
-  'melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk',
-  // Kruidenierswaren
-  'brood','pasta','rijst','havermout','muesli','cornflakes','crackers','beschuit',
-  'bloem','suiker','olie','azijn','ketchup','mayonaise','mosterd','pesto','sambal',
-  'soep','bouillon','blik','bonen','tomatenpuree','passata','jam','honing','pindakaas',
-  'nutella','hagelslag','chips','chocolade','noten','koekjes','cracker',
-  'koffie','thee','frisdrank','cola','water','sap','limonade',
-  'friet','pizza','kroketten','ijs','diepvries',
-  // Dranken
-  'bier','wijn','prosecco','heineken','hertog jan','grolsch','amstel',
-  // Huishouden food
-  'zout','peper','kruiden','specerijen','bakpoeder','vanille',
-  // Non-food die AH verkoopt
-  'toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak',
-  // Ontbijt
-  'cruesli','granola','muesli','cornflakes','brinta','sultana',
-  // Extra
-  'kaas','feta','mozzarella','brie','gouda'
-];
-
-var KRUIDVAT_ITEMS = [
-  // Verzorging
-  'shampoo','conditioner','douchegel','zeep','handzeep','bodylotion','handcreme',
-  'deodorant','antitranspirant','parfum','aftershave','scheermesje','scheerschuim',
-  'scheergel','tandpasta','tandenborstel','floss','mondwater','whitening',
-  // Make-up & huid
-  'zonnebrand','aftersun','lippenbalsem','lippenstift','mascara','foundation',
-  'concealer','blush','oogschaduw','nagellak','nagelvijl','wattenschijfjes','watten',
-  // Haar
-  'haargel','haarspray','haarkleuring','haarmasker','droogshampoo',
-  // Gezondheid
-  'paracetamol','ibuprofen','aspirine','neusdruppels','hoestdrank','keeltabletten',
-  'vitamines','vitamine','omega','multivitamine','probiotica','zink','magnesium',
-  'pleisters','verband','ontsmettingsmiddel','thermometer','bloeddrukmeter',
-  // Baby & kind
-  'luiers','babydoekjes','babylotion','speen','fles',
-  // Vrouwelijke hygiëne
-  'maandverband','tampons','inlegkruisje','menstruatie',
-  // Schoonmaak (meer drogisterij gericht)
-  'schoonmaakmiddel','allesreiniger','vaatwastabletten','wasmiddel','wasverzachter',
-  'afwasmiddel','wc-reiniger','badkamerreiniger','schuurmiddel','soda','bleek',
-  'ontkalk','waterontharder','gootsteenontstopper',
-  // Huisdier
-  'kattenvoer','hondenvoer','kattenbak','vlooienband',
-  // Overig drogisterij
-  'condoom','glijmiddel','anticonceptie','zwangerschapstest','bloedsuiker'
-];
-
-function detectWinkel(naam) {
-  var n = naam.toLowerCase().trim();
-  // Check geleerde winkel eerst
-  var geleerdeKey = n.replace(/[^a-z0-9]/g, '_');
-  if (geleerdeWinkels[geleerdeKey]) return geleerdeWinkels[geleerdeKey];
-  // Check op gedeeltelijke match
-  for (var gk in geleerdeWinkels) {
-    var woord = gk.replace(/_/g, ' ');
-    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
-      return geleerdeWinkels[gk];
-    }
-  }
-  // Check Kruidvat eerst (specifieker)
-  for (var ki=0; ki<KRUIDVAT_ITEMS.length; ki++) {
-    if (n.indexOf(KRUIDVAT_ITEMS[ki]) > -1 || KRUIDVAT_ITEMS[ki].indexOf(n) > -1 && n.length > 3) {
-      return 'kruidvat';
-    }
-  }
-  // Check AH
-  for (var ai=0; ai<AH_ITEMS.length; ai++) {
-    if (n.indexOf(AH_ITEMS[ai]) > -1 || AH_ITEMS[ai].indexOf(n) > -1 && n.length > 3) {
-      return 'ah';
-    }
-  }
-  return 'ah'; // standaard AH
-}
-
-var geleerdeWinkels = {};
-
-function fbListenGeleerdeWinkels() {
-  window._onValue(getRef('geleerde_winkels'), function(snap) {
-    geleerdeWinkels = snap.val() || {};
-  });
-}
-
-async function slaGeleerdeWinkelOp(naam, winkel) {
-  var key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  geleerdeWinkels[key] = winkel;
-  await window._set(getRef('geleerde_winkels/' + key), winkel);
-}
-
-async function wisselWinkel(id) {
-  var item = null;
-  for (var i=0; i<items.length; i++) {
-    if (items[i].id === id) { item = items[i]; break; }
-  }
-  if (!item) return;
-  var nieuweWinkel = (item.winkel === 'kruidvat') ? 'ah' : 'kruidvat';
-  // Update lokaal
-  for (var j=0; j<items.length; j++) {
-    if (items[j].id === id) { items[j].winkel = nieuweWinkel; break; }
-  }
-  // Leer op
-  await slaGeleerdeWinkelOp(item.name, nieuweWinkel);
-  render();
-  setSyncStatus(true);
-  try { await fbSave(items); } finally { setSyncStatus(false); }
-}
-
-function renderList(id, list, isDone) {
-  var el = document.getElementById(id);
-  if (!el) return;
-  if (!list.length && !isDone) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">&#127807;</div><div>Lijstje is leeg!</div></div>';
-    return;
-  }
-  if (!list.length) { el.innerHTML = ''; return; }
-  // Groepeer op categorie
-  var groups = {};
-  var catKeys = [];
-  for (var bci=0; bci<BOODSCHAP_CATS.length; bci++) {
-    groups[BOODSCHAP_CATS[bci].key] = [];
-    catKeys.push(BOODSCHAP_CATS[bci].key);
-  }
-  groups['overig'] = [];
-  catKeys.push('overig');
-  for (var li=0; li<list.length; li++) {
-    var item = list[li];
-    var cat = item.cat || detectCat(item.name);
-    if (groups[cat]) groups[cat].push(item);
-    else groups['overig'].push(item);
-  }
-  var allCatDefs = BOODSCHAP_CATS.concat([{key:'overig', label:'Overig', icon:'&#128230;'}]);
-  var html = '';
-  for (var cdi=0; cdi<allCatDefs.length; cdi++) {
-    var catDef = allCatDefs[cdi];
-    var groep = groups[catDef.key];
-    if (!groep || !groep.length) continue;
-    html += '<div class="cat-header">';
-    html += '<span style="font-size:0.9rem">' + catDef.icon + '</span>';
-    html += '<span class="cat-header-label">' + catDef.label + '</span>';
-    html += '<div class="cat-header-line"></div>';
-    html += '<span style="font-size:0.68rem;color:var(--muted)">' + groep.length + '</span>';
-    html += '</div>';
-    for (var gi=0; gi<groep.length; gi++) {
-      html += renderItem(groep[gi]);
-    }
-  }
-  el.innerHTML = html;
-}
-
-// ---- Weekmenu ----
-let weekOffset = 0; // 0 = huidige week, 1 = volgende week
-
-function getDagKey(i) {
-  const now = new Date(), day = now.getDay(), monday = new Date(now);
-  monday.setDate(now.getDate() - (day===0 ? 6 : day-1) + (weekOffset * 7));
-  const d = new Date(monday); d.setDate(monday.getDate()+i);
-  return d.toISOString().split('T')[0];
-}
-function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
-function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
-
-function wisselWeek(offset) {
-  weekOffset = offset;
-  renderMenu();
-}
-
-let toonVerledenDagen = false;
-
-function toggleVerledenDagen() {
-  toonVerledenDagen = !toonVerledenDagen;
-  renderMenu();
-}
-
-function renderMenu() {
-  const grid = document.getElementById('week-grid');
-  const todayIdx = getTodayIndex();
-  const aantalVerleden = DAGEN.filter((_, i) => i < todayIdx).length;
-
-  // Week navigatie header
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const isFridayOrLater = dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0;
-  const maandag = new Date(now);
-  maandag.setDate(now.getDate() - (dayOfWeek===0?6:dayOfWeek-1) + (weekOffset*7));
-  // ISO 8601 weeknummer berekening
-  function getISOWeek(d) {
+function getISOWeek(d) {
     var date = new Date(d.getTime());
     date.setHours(0, 0, 0, 0);
     date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
     var week1 = new Date(date.getFullYear(), 0, 4);
     return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
   }
-  var weekNr = getISOWeek(maandag);
-  var vandaag = new Date();
-  var vandaagStr = vandaag.toLocaleDateString('nl-NL', {day:'numeric', month:'long'});
-  var weekNrLabel = ' • week ' + weekNr;
-  const weekLabel = (weekOffset === 0 ? 'Deze week' : weekOffset === 1 ? 'Volgende week' : 'Week +' + weekOffset) + weekNrLabel;
 
-  let header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:white;border:1px solid var(--border);border-radius:12px;padding:10px 14px">
-    <button onclick="wisselWeek(${weekOffset-1})" ${weekOffset<=0?'disabled style="opacity:0.3"':''} style="background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px">◀</button>
-    <div style="text-align:center">
-      <div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--green)">${weekLabel}</div>
-      <div style="font-size:0.72rem;color:var(--muted)">${maandag.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</div>
-    </div>
-    <button onclick="wisselWeek(${weekOffset+1})" style="background:none;border:none;cursor:pointer;font-size:1.2rem;padding:4px">▶</button>
-  </div>`;
-
-  // Toon knop voor verleden dagen (alleen huidige week)
-  if (weekOffset === 0 && aantalVerleden > 0) {
-    header += `<div style="text-align:center;margin-bottom:12px">
-      <button onclick="toggleVerledenDagen()" style="background:none;border:1.5px solid var(--border);border-radius:20px;padding:5px 14px;font-family:'DM Sans',sans-serif;font-size:0.75rem;color:var(--muted);cursor:pointer">
-        ${toonVerledenDagen ? '▲ Verberg' : '▼ Toon'} ${aantalVerleden} verlopen dag${aantalVerleden>1?'en':''}
-      </button>
-    </div>`;
-  }
-
-  grid.innerHTML = header + DAGEN.map((dag, i) => {
-    const key = getDagKey(i), gerecht = menu[key]||'', isToday = i===todayIdx;
-    const isVerleden = i < todayIdx;
-
-    // Verberg verleden dagen tenzij toggle aan staat
-    if (isVerleden && !toonVerledenDagen) return '';
-
-    return `<div class="dag-card ${isToday?'dag-vandaag':''}" style="${isVerleden?'opacity:0.5':''}">
-      <div class="dag-header" onclick="toggleDag(${i})">
-        <div style="flex-shrink:0">
-          <div class="dag-naam">${dag}${isToday?'<span class="dag-label">Vandaag</span>':''}</div>
-          <div class="dag-datum">${getDatumLabel(i)}</div>
-        </div>
-        <div class="dag-preview ${gerecht?'gevuld':''}">${(() => {
-          const rid = menu[key+'_receptId'];
-          const hasRecept = rid && recepten.find(x => x.id===rid);
-          return (hasRecept ? '📖 ' : '') + (gerecht||'Nog niet ingevuld…');
-        })()}</div>
-        <span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>
-      </div>
-      <div class="dag-body" id="dag-body-${i}">
-        <div class="dag-gerecht" id="dag-gerecht-${i}">${(() => {
-          const rid = menu[key+'_receptId'];
-          const r = rid ? recepten.find(x => x.id===rid) : null;
-          if (!gerecht) return 'Nog niets gepland.';
-          if (r && r.youtube) return `🍽️ <a href="${esc(r.youtube)}" target="_blank" style="color:var(--green);font-weight:600">${esc(gerecht)} ↗</a>`;
-          return '🍽️ ' + esc(gerecht);
-        })()}</div>
-        <div class="dag-input-row">
-          <input class="dag-input" id="dag-input-${i}" type="text" placeholder="bijv. Pasta bolognese" value="${esc(gerecht)}" />
-          <button class="dag-save-btn" onclick="saveDag(${i})">Opslaan</button>
-          ${gerecht?`<button class="dag-clear-btn" onclick="clearDag(${i})">✕</button>`:''}
-        </div>
-        <button onclick="toggleReceptPicker(${i})" style="width:100%;margin-top:8px;padding:7px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted)">
-          📖 Kies uit kookboek
-        </button>
-        <div class="recept-picker" id="recept-picker-${i}">
-          <div class="recept-picker-title">Kies een recept</div>
-          <div id="recept-picker-lijst-${i}"></div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+function wisselWeek(offset) {
+  weekOffset = offset;
+  renderMenu();
 }
 
-function toggleDag(i) {
-  const body = document.getElementById('dag-body-'+i), isOpen = body.classList.contains('open');
-  document.querySelectorAll('.dag-body').forEach(b => b.classList.remove('open'));
-  if (!isOpen) { body.classList.add('open'); setTimeout(function(){var _di=document.getElementById('dag-input-'+i);if(_di)_di.focus();},100); }
+function toggleVerledenDagen() {
+  toonVerledenDagen = !toonVerledenDagen;
+  renderMenu();
 }
 
 function toggleReceptPicker(i) {
@@ -1828,97 +1548,72 @@ async function kiesRecept(dagIdx, naam, receptId) {
   document.querySelectorAll('.recept-picker').forEach(p => p.classList.remove('open'));
 }
 
-async function saveDag(i) {
-  menu[getDagKey(i)] = document.getElementById('dag-input-'+i).value.trim();
-  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
-}
-
-async function clearDag(i) {
-  delete menu[getDagKey(i)];
-  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
-}
-
-// ---- Kookboek ----
-let recepten = [];
-let receptCatFilter = 'alle';
-let unsubRecepten = null;
-
-function fbListenRecepten() {
-  if (unsubRecepten) unsubRecepten();
-  unsubRecepten = window._onValue(window._ref(window._db, `gezinnen/${gezinsCode}/recepten`), snap => {
-    const data = snap.val() || {};
-    recepten = Object.values(data).sort((a,b) => b.aangemaakt - a.aangemaakt);
-    renderRecepten();
-  });
-}
-
-// ---- Platform detectie ----
-function detectPlatformInfo(url) {
-  if (!url) return null;
-  const u = url.toLowerCase();
-  if (u.includes('youtube.com') || u.includes('youtu.be')) {
-    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
-    return { type: 'youtube', id: (match ? match[1] : null), label: '🎬 YouTube', kleur: '#ff0000', embedbaar: !!match };
-  }
-  if (u.includes('tiktok.com')) {
-    return { type: 'tiktok', label: '🎵 TikTok', kleur: '#010101', embedbaar: false };
-  }
-  if (u.includes('pinterest.')) {
-    return { type: 'pinterest', label: '📌 Pinterest', kleur: '#e60023', embedbaar: false };
-  }
-  if (u.includes('instagram.com')) {
-    return { type: 'instagram', label: '📸 Instagram', kleur: '#c13584', embedbaar: false };
-  }
-  if (u.includes('facebook.com') || u.includes('fb.com') || u.includes('fb.watch')) {
-    return { type: 'facebook', label: '📘 Facebook', kleur: '#1877f2', embedbaar: false };
-  }
-  if (u.includes('google.com')) {
-    return { type: 'google', label: '🔍 Google', kleur: '#4285f4', embedbaar: false };
-  }
-  if (u.startsWith('http')) {
-    return { type: 'overig', label: '🔗 Link', kleur: '#7a8c7e', embedbaar: false };
-  }
-  return null;
-}
-
-function detectPlatform() {
-  const url = (document.getElementById('recept-youtube') ? document.getElementById('recept-youtube').value.trim() : '');
-  const el = document.getElementById('platform-detect');
-  if (!el) return;
-  const info = detectPlatformInfo(url);
-  if (info) {
-    el.innerHTML = `<span style="color:${info.kleur};font-weight:600">${info.label} herkend ✓</span>`;
-  } else {
-    el.innerHTML = url ? '<span style="color:var(--muted)">Voer een geldige link in</span>' : '';
-  }
-}
-
 function getYouTubeId(url) {
   const info = detectPlatformInfo(url);
   return (info && info.type === 'youtube' && info.embedbaar) ? info.id : null;
 }
 
-function getYouTubeThumbnail(videoId) {
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+function openReceptForm(id) {
+  document.getElementById('recept-modal-titel').textContent = id ? '✏️ Recept bewerken' : '📖 Nieuw recept';
+  document.getElementById('recept-edit-id').value = id || '';
+  document.getElementById('recept-naam').value = '';
+  document.getElementById('recept-youtube').value = '';
+  const pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
+  document.getElementById('recept-beschrijving').value = '';
+  document.getElementById('recept-personen').value = '';
+  document.getElementById('recept-tijd').value = '';
+  document.getElementById('recept-cat').value = 'diner';
+  tempIngredienten = [];
+  document.getElementById('recept-error').style.display = 'none';
+
+  if (id) {
+    const r = recepten.find(x => x.id === id);
+    if (r) {
+      document.getElementById('recept-naam').value = r.naam || '';
+      document.getElementById('recept-youtube').value = r.youtube || '';
+      document.getElementById('recept-beschrijving').value = r.beschrijving || '';
+      document.getElementById('recept-personen').value = r.personen || '';
+      document.getElementById('recept-tijd').value = r.tijd || '';
+      document.getElementById('recept-cat').value = r.categorie || 'diner';
+      tempIngredienten = r.ingredienten ? [...r.ingredienten] : [];
+    }
+  }
+  document.getElementById('recept-modal').style.display = 'flex';
 }
 
-function getPlatformThumbnail(platform) {
-  const thumbs = {
-    tiktok: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/TikTok_logo.svg/100px-TikTok_logo.svg.png',
-    pinterest: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Pinterest_Logo.svg/100px-Pinterest_Logo.svg.png',
-    instagram: null, facebook: null, google: null
-  };
-  return thumbs[platform] || null;
+function sluitReceptFormulier() {
+  document.getElementById('recept-modal').style.display = 'none';
 }
 
-function setCatFilter(el, cat) {
-  receptCatFilter = cat;
-  document.querySelectorAll('#view-kookboek .filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  renderRecepten();
+function sluitReceptModal(e) {
+  if (e.target.id === 'recept-modal') document.getElementById('recept-modal').style.display = 'none';
 }
 
-function filterRecepten() { renderRecepten(); }
+function voegIngredientToe(waarde) {
+  tempIngredienten.push(waarde || '');
+  renderIngredientenInvoer();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.ingredient-input');
+    if (inputs.length) inputs[inputs.length-1].focus();
+  }, 50);
+}
+
+function verwijderIngredient(i) {
+  tempIngredienten.splice(i, 1);
+  renderIngredientenInvoer();
+}
+
+function renderIngredientenInvoer() {
+  const el = document.getElementById('ingredienten-invoer');
+  if (!el) return;
+  el.innerHTML = tempIngredienten.map((ing, i) => `
+    <div class="ingredient-input-rij">
+      <input class="ingredient-input" value="${esc(ing)}" placeholder="bijv. 200g spaghetti"
+        oninput="tempIngredienten[${i}]=this.value"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();voegIngredientToe()}" />
+      <button onclick="verwijderIngredient(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>
+    </div>`).join('');
+}
 
 function renderRecepten() {
   const zoek = (document.getElementById('recept-zoek') ? document.getElementById('recept-zoek').value : '').toLowerCase();
@@ -2005,72 +1700,6 @@ function speelAf(receptId, videoId) {
     </div>`;
 }
 
-// ---- Ingrediënten beheer ----
-let tempIngredienten = [];
-
-function voegIngredientToe(waarde) {
-  tempIngredienten.push(waarde || '');
-  renderIngredientenInvoer();
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('.ingredient-input');
-    if (inputs.length) inputs[inputs.length-1].focus();
-  }, 50);
-}
-
-function verwijderIngredient(i) {
-  tempIngredienten.splice(i, 1);
-  renderIngredientenInvoer();
-}
-
-function renderIngredientenInvoer() {
-  const el = document.getElementById('ingredienten-invoer');
-  if (!el) return;
-  el.innerHTML = tempIngredienten.map((ing, i) => `
-    <div class="ingredient-input-rij">
-      <input class="ingredient-input" value="${esc(ing)}" placeholder="bijv. 200g spaghetti"
-        oninput="tempIngredienten[${i}]=this.value"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();voegIngredientToe()}" />
-      <button onclick="verwijderIngredient(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>
-    </div>`).join('');
-}
-
-function openReceptForm(id) {
-  document.getElementById('recept-modal-titel').textContent = id ? '✏️ Recept bewerken' : '📖 Nieuw recept';
-  document.getElementById('recept-edit-id').value = id || '';
-  document.getElementById('recept-naam').value = '';
-  document.getElementById('recept-youtube').value = '';
-  const pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
-  document.getElementById('recept-beschrijving').value = '';
-  document.getElementById('recept-personen').value = '';
-  document.getElementById('recept-tijd').value = '';
-  document.getElementById('recept-cat').value = 'diner';
-  tempIngredienten = [];
-  document.getElementById('recept-error').style.display = 'none';
-
-  if (id) {
-    const r = recepten.find(x => x.id === id);
-    if (r) {
-      document.getElementById('recept-naam').value = r.naam || '';
-      document.getElementById('recept-youtube').value = r.youtube || '';
-      document.getElementById('recept-beschrijving').value = r.beschrijving || '';
-      document.getElementById('recept-personen').value = r.personen || '';
-      document.getElementById('recept-tijd').value = r.tijd || '';
-      document.getElementById('recept-cat').value = r.categorie || 'diner';
-      tempIngredienten = r.ingredienten ? [...r.ingredienten] : [];
-    }
-  }
-  document.getElementById('recept-modal').style.display = 'flex';
-}
-
-function bewerkRecept(id) { openReceptForm(id); }
-
-function sluitReceptModal(e) {
-  if (e.target.id === 'recept-modal') document.getElementById('recept-modal').style.display = 'none';
-}
-function sluitReceptFormulier() {
-  document.getElementById('recept-modal').style.display = 'none';
-}
-
 async function slaReceptOp() {
   const naam = document.getElementById('recept-naam').value.trim();
   const youtube = document.getElementById('recept-youtube').value.trim();
@@ -2096,6 +1725,11 @@ async function slaReceptOp() {
   });
 
   document.getElementById('recept-modal').style.display = 'none';
+}
+
+async function verwijderRecept(id) {
+  if (!confirm('Recept verwijderen?')) return;
+  await window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/recepten/${id}`));
 }
 
 function toggleIngCheck(receptId, idx) {
@@ -2124,75 +1758,40 @@ async function voegAlleIngredientenToe(receptId) {
   setTimeout(() => switchTab('boodschappen'), 1500);
 }
 
-async function verwijderRecept(id) {
-  if (!confirm('Recept verwijderen?')) return;
-  await window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/recepten/${id}`));
+async function stuurIdee() {
+  const tekst = document.getElementById('idee-tekst').value.trim();
+  if (!tekst) return;
+  // Gebruik registratienaam als beschikbaar, anders gezinscode
+  const regSnap = await new Promise(res => window._onValue(window._ref(window._db, `registraties/${gezinsCode}/naam`), res, {onlyOnce:true}));
+  const naam = regSnap.val() || gezinsCode;
+  const id = 'idee-' + Date.now();
+  await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam, tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
+  document.getElementById('idee-tekst').value = '';
+  document.getElementById('idee-bevestiging').style.display = 'block';
+  setTimeout(() => document.getElementById('idee-bevestiging').style.display = 'none', 3000);
 }
 
-// ---- Registratiebeheer ----
-let unsubRegistraties = null;
-
-function fbListenRegistraties() {
-  if (unsubRegistraties) unsubRegistraties();
-  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), function(snap) {
-    var data = snap.val() || {};
-    var regs = Object.values(data).sort(function(a,b) { return b.aangemeld - a.aangemeld; });
-    // Update stats
-    var actief = regs.filter(function(r){return r.status==='goedgekeurd';}).length;
-    var wachtend = regs.filter(function(r){return r.status==='wachtend';}).length;
-    var ae = document.getElementById('admin-actief'); if(ae) ae.textContent = actief;
-    var aw = document.getElementById('admin-wachtend'); if(aw) aw.textContent = wachtend;
-    var at = document.getElementById('admin-totaal'); if(at) at.textContent = regs.length;
-    // Render lijst
-    renderAdminRegistraties(regs);
-  });
-}
-
-function renderRegistraties(regs) {
-  const el = document.getElementById('registraties-lijst');
+function renderIdeeen(ideeen) {
+  document.getElementById('beheer-sectie').style.display = 'none';
+  document.getElementById('publiek-sectie').style.display = 'block';
+  const goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
+  const el = document.getElementById('ideeen-publiek');
   if (!el) return;
-  if (!regs.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen aanmeldingen.</div>'; return; }
-
-  const statusKleur = { wachtend:'#c47a2a', goedgekeurd:'#3d6b4f', afgewezen:'#c4473a', geblokkeerd:'#7a4db5' };
-  const statusLabel = { wachtend:'⏳ Wachtend', goedgekeurd:'✅ Goedgekeurd', afgewezen:'❌ Afgewezen', geblokkeerd:'🔒 Geblokkeerd' };
-
-  el.innerHTML = regs.map(reg => `
-    <div class="idee-card status-${reg.status==='goedgekeurd'?'goedgekeurd':reg.status==='wachtend'?'nieuw':'afgewezen'}" style="margin-bottom:8px">
-      <div class="idee-header">
-        <div>
-          <div style="font-weight:600;font-size:0.9rem">${esc(reg.naam||'Onbekend')}</div>
-          <div style="font-size:0.75rem;color:var(--muted)">${esc(reg.email||'')} · code: <strong>${esc(reg.code)}</strong></div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <span class="idee-status-badge" style="background:${statusKleur[reg.status]||'#ccc'}20;color:${statusKleur[reg.status]||'#ccc'}">${statusLabel[reg.status]||reg.status}</span>
-          <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">${new Date(reg.aangemeld).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</div>
-        </div>
-      </div>
-      <div class="idee-acties">
-        ${reg.status !== 'goedgekeurd' ? `<button class="idee-btn goedkeuren" onclick="updateRegistratieStatus('${reg.code}','goedgekeurd')">✅ Goedkeuren</button>` : ''}
-        ${reg.status === 'goedgekeurd' ? `<button class="idee-btn behandeling" onclick="updateRegistratieStatus('${reg.code}','geblokkeerd')">🔒 Blokkeren</button>` : ''}
-        ${reg.status !== 'afgewezen' && reg.status !== 'goedgekeurd' ? `<button class="idee-btn afwijzen" onclick="updateRegistratieStatus('${reg.code}','afgewezen')">❌ Afwijzen</button>` : ''}
-        ${reg.status === 'geblokkeerd' ? `<button class="idee-btn goedkeuren" onclick="updateRegistratieStatus('${reg.code}','goedgekeurd')">🔓 Deblokkeren</button>` : ''}
-        <button class="idee-btn verwijder" onclick="verwijderRegistratie('${reg.code}')">🗑</button>
-      </div>
-    </div>`).join('');
+  if (!goedgekeurd.length) {
+    el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>';
+    return;
+  }
+  el.innerHTML = goedgekeurd.map(function(idee) {
+    return '<div class="idee-card status-goedgekeurd">' +
+      '<div class="idee-header">' +
+        '<span class="idee-naam">👤 ' + esc(idee.naam||'Anoniem') + '</span>' +
+        '<span class="idee-datum">' + new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + '</span>' +
+      '</div>' +
+      '<div class="idee-tekst">' + esc(idee.tekst) + '</div>' +
+    '</div>';
+  }).join('');
 }
 
-async function updateRegistratieStatus(code, status) {
-  await window._set(window._ref(window._db, 'registraties/' + code + '/status'), status);
-  await window._set(window._ref(window._db, 'registraties/' + code + '/goedgekeurd'), status === 'goedgekeurd');
-}
-
-async function verwijderRegistratie(code) {
-  if (!confirm('Aanmelding van ' + code + ' verwijderen?')) return;
-  await window._remove(window._ref(window._db, 'registraties/' + code));
-}
-
-// ---- Ideeënbus ----
-let isBeheerder = false;
-let unsubAdminRegs = null;
-
-// ---- Face ID / Biometrie ----
 async function openAdminTab() {
   if (isBeheerder) { switchTab('admin'); return; }
   if (!window.PublicKeyCredential) {
@@ -2279,18 +1878,6 @@ function activeerBeheerder() {
   switchTab('admin');
 }
 
-// ---- Admin stats & beheer ----
-function updateAdminStats() {
-  // Registraties worden live bijgehouden door fbListenRegistraties
-  // Laad alleen ideeen (onlyOnce is ok want die veranderen minder vaak)
-  window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
-    var data = snap.val() || {};
-    var ai = document.getElementById('admin-ideeen-count');
-    if (ai) ai.textContent = Object.keys(data).length;
-    renderAdminIdeeen(Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;}));
-  }, {onlyOnce: true});
-}
-
 function renderAdminRegistraties(regs) {
   var el = document.getElementById('admin-registraties-lijst');
   if (!el) return;
@@ -2362,56 +1949,26 @@ function renderAdminIdeeen(ideeen) {
     })(btns2[bj]);
   }
 }
-let unsubIdeeen = null;
 
-function fbIdeeRef() { return window._ref(window._db, 'ideeen'); }
-
-function fbListenIdeeen() {
-  if (unsubIdeeen) unsubIdeeen();
-  unsubIdeeen = window._onValue(fbIdeeRef(), snap => {
-    const data = snap.val() || {};
-    const ideeen = Object.values(data).sort((a,b) => b.timestamp - a.timestamp);
-    renderIdeeen(ideeen);
-  });
+function updateAdminStats() {
+  // Registraties worden live bijgehouden door fbListenRegistraties
+  // Laad alleen ideeen (onlyOnce is ok want die veranderen minder vaak)
+  window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
+    var data = snap.val() || {};
+    var ai = document.getElementById('admin-ideeen-count');
+    if (ai) ai.textContent = Object.keys(data).length;
+    renderAdminIdeeen(Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;}));
+  }, {onlyOnce: true});
 }
 
-function renderIdeeen(ideeen) {
-  document.getElementById('beheer-sectie').style.display = 'none';
-  document.getElementById('publiek-sectie').style.display = 'block';
-  const goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
-  const el = document.getElementById('ideeen-publiek');
-  if (!el) return;
-  if (!goedgekeurd.length) {
-    el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>';
-    return;
-  }
-  el.innerHTML = goedgekeurd.map(function(idee) {
-    return '<div class="idee-card status-goedgekeurd">' +
-      '<div class="idee-header">' +
-        '<span class="idee-naam">👤 ' + esc(idee.naam||'Anoniem') + '</span>' +
-        '<span class="idee-datum">' + new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + '</span>' +
-      '</div>' +
-      '<div class="idee-tekst">' + esc(idee.tekst) + '</div>' +
-    '</div>';
-  }).join('');
+async function updateRegistratieStatus(code, status) {
+  await window._set(window._ref(window._db, 'registraties/' + code + '/status'), status);
+  await window._set(window._ref(window._db, 'registraties/' + code + '/goedgekeurd'), status === 'goedgekeurd');
 }
 
-function statusLabel(status) {
-  const labels = { nieuw:'🆕 Nieuw', behandeling:'🔄 In behandeling', goedgekeurd:'✅ Goedgekeurd', afgewezen:'❌ Afgewezen' };
-  return labels[status] || '🆕 Nieuw';
-}
-
-async function stuurIdee() {
-  const tekst = document.getElementById('idee-tekst').value.trim();
-  if (!tekst) return;
-  // Gebruik registratienaam als beschikbaar, anders gezinscode
-  const regSnap = await new Promise(res => window._onValue(window._ref(window._db, `registraties/${gezinsCode}/naam`), res, {onlyOnce:true}));
-  const naam = regSnap.val() || gezinsCode;
-  const id = 'idee-' + Date.now();
-  await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam, tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
-  document.getElementById('idee-tekst').value = '';
-  document.getElementById('idee-bevestiging').style.display = 'block';
-  setTimeout(() => document.getElementById('idee-bevestiging').style.display = 'none', 3000);
+async function verwijderRegistratie(code) {
+  if (!confirm('Aanmelding van ' + code + ' verwijderen?')) return;
+  await window._remove(window._ref(window._db, 'registraties/' + code));
 }
 
 async function updateIdeeStatus(id, status) {
@@ -2423,326 +1980,109 @@ async function verwijderIdee(id) {
   await window._remove(window._ref(window._db, 'ideeen/' + id));
 }
 
-function kopieerAppLink() {
-  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  navigator.clipboard.writeText(link).then(() => {
-    const el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
-  }).catch(() => {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = link; document.body.appendChild(ta);
-    ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta);
-    const el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
-  });
+function toonInloggen() {
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-inloggen').style.display = 'block';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'none';
 }
 
-function deelAppLink() {
-  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  const tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
-  if (navigator.share) {
-    navigator.share({ title: 'Boodschappen App', text: tekst });
-  } else {
-    navigator.clipboard.writeText(tekst).then(() => {
-      const el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
-    });
-  }
+function toonRegistreren() {
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-inloggen').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'block';
+  document.getElementById('setup-wachten').style.display = 'none';
 }
 
-
-
-// ---- Prijsvergelijking met statische database ----
-
-// ---- Winkeldefinities ----
-const WINKELS_DEF = {
-  ah:     { naam:'Albert Heijn', logo:'🔵', kleur:'winkel-ah',     link:'https://www.ah.nl/zoeken?query=',                osm:'Albert Heijn' },
-  jumbo:  { naam:'Jumbo',        logo:'🟡', kleur:'winkel-jumbo',  link:'https://www.jumbo.com/zoeken?searchTerms=',       osm:'Jumbo' },
-  lidl:   { naam:'Lidl',         logo:'🔴', kleur:'winkel-lidl',   link:'https://www.lidl.nl/p/zoeken?query=',             osm:'Lidl' },
-  aldi:   { naam:'Aldi',         logo:'🟦', kleur:'winkel-aldi',   link:'https://www.aldi.nl/producten.html?q=',           osm:'Aldi' },
-  picnic: { naam:'Picnic',       logo:'🟢', kleur:'winkel-picnic', link:'https://picnic.app/nl/search?search=',            osm:null },
-  plus:   { naam:'Plus',         logo:'🟠', kleur:'winkel-plus',   link:'https://www.plus.nl/zoekresultaten?SearchTerm=',  osm:'Plus' },
-  dirk:   { naam:'Dirk',         logo:'🟥', kleur:'winkel-dirk',   link:'https://www.dirk.nl/boodschappen/?search=',       osm:'Dirk' },
-  coop:   { naam:'Coop',         logo:'🔷', kleur:'winkel-coop',   link:'https://www.coop.nl/zoeken?zoekterm=',            osm:'Coop' },
-  etos:   { naam:'Etos',         logo:'🩷', kleur:'winkel-etos',   link:'https://www.etos.nl/zoeken?query=',               osm:'Etos', drogist:true },
-  kruidvat:  { naam:'Kruidvat',        logo:'🟣', kleur:'winkel-kruidvat',  link:'https://www.kruidvat.nl/search?text=',                    osm:'Kruidvat', drogist:true },
-  da:        { naam:'DA',               logo:'🔶', kleur:'winkel-da',         link:'https://www.da.nl/zoeken?query=',                         osm:'DA', drogist:true },
-  plein:     { naam:'Plein.nl',         logo:'🌐', kleur:'winkel-plein',      link:'https://www.plein.nl/search?q=',                          osm:null, drogist:true },
-  online:    { naam:'Online Drogisterij', logo:'💊', kleur:'winkel-online',   link:'https://www.online.nl/search?q=',                         osm:null, drogist:true },
-  schoon:    { naam:'123schoon',        logo:'🧹', kleur:'winkel-schoon',     link:'https://www.123schoon.nl/search?q=',                      osm:null, drogist:true },
-  gall:      { naam:'Gall & Gall',      logo:'🍷', kleur:'winkel-gall',       link:'https://www.gall.nl/assortiment/search?searchTerm=',      osm:'Gall & Gall', slijterij:true },
-  mitra:     { naam:'Mitra',            logo:'🥃', kleur:'winkel-mitra',      link:'https://www.mitra.nl/search?q=',                          osm:'Mitra', slijterij:true },
-  dirck3:    { naam:'Dirck III',        logo:'🍺', kleur:'winkel-dirck3',     link:'https://www.dirck3.nl/search?q=',                         osm:'Dirck III', slijterij:true },
-  deslijterij:  { naam:'De Slijterij',    logo:'🌿', kleur:'winkel-deslijterij',  link:'https://www.deslijterij.com/search?q=',              osm:null, slijterij:true },
-  craftbeer:    { naam:'Craftbeer.shop',  logo:'🍺', kleur:'winkel-craftbeer',    link:'https://www.craftbeer.shop/search?q=',               osm:null, speciaal:true },
-  caigny:       { naam:'De Caigny',       logo:'🏺', kleur:'winkel-caigny',       link:'https://www.decaigny.be/search?q=',                  osm:null, speciaal:true },
-  hopshop:      { naam:'De Hopshop',      logo:'🌾', kleur:'winkel-hopshop',      link:'https://www.dehopshop.nl/search?q=',                 osm:null, speciaal:true },
-  hophops:      { naam:'Hops & Hopes',    logo:'🍻', kleur:'winkel-hophops',      link:'https://www.hopsandhopes.nl/search?q=',              osm:null, speciaal:true },
-  bierloods:    { naam:'Bierloods',       logo:'🚢', kleur:'winkel-bierloods',    link:'https://www.bierloods.nl/search?q=',                 osm:null, speciaal:true },
-  misterhop:    { naam:'Mr.Hop',          logo:'🎩', kleur:'winkel-misterhop',    link:'https://www.misterhop.nl/search?q=',                 osm:null, speciaal:true },
-};
-
-// Prijsfactoren per winkel t.o.v. AH (basis)
-// AH=1.0, Jumbo=0.95, Lidl=0.82, Aldi=0.78, Picnic=0.91, Plus=0.97, Dirk=0.88, Coop=0.96
-const FACTOR = { ah:1.00, jumbo:0.95, lidl:0.82, aldi:0.78, picnic:0.91, plus:0.97, dirk:0.88, coop:0.96, etos:1.05, kruidvat:0.95, da:1.02, plein:0.88, online:0.85, schoon:0.82, gall:0.92, mitra:0.90, dirck3:0.88, deslijterij:0.85, craftbeer:1.15, caigny:1.10, hopshop:1.12, hophops:1.08, bierloods:1.05, misterhop:1.10 };
-
-const PRIJSDB = {
-  'melk': {ah:1.19}, 'volle melk': {ah:1.19}, 'halfvolle melk': {ah:1.09},
-  'magere melk': {ah:1.05}, 'karnemelk': {ah:0.99},
-  'boter': {ah:2.49}, 'roomboter': {ah:2.49}, 'margarine': {ah:1.49},
-  'kaas': {ah:3.49}, 'jonge kaas': {ah:3.29}, 'oude kaas': {ah:3.99}, 'gouda': {ah:3.49},
-  'eieren': {ah:2.99}, 'yoghurt': {ah:1.29}, 'kwark': {ah:1.49},
-  'slagroom': {ah:1.39}, 'crème fraîche': {ah:1.49}, 'zure room': {ah:0.99},
-  'brood': {ah:1.89}, 'wit brood': {ah:1.49}, 'bruin brood': {ah:1.79},
-  'volkoren brood': {ah:2.09}, 'croissants': {ah:1.99}, 'beschuit': {ah:1.39}, 'crackers': {ah:1.49},
-  'gehakt': {ah:3.99}, 'rundergehakt': {ah:4.49}, 'kipfilet': {ah:5.99},
-  'kip': {ah:4.99}, 'kipschnitzel': {ah:4.49}, 'spek': {ah:2.49}, 'bacon': {ah:2.99},
-  'ham': {ah:2.29}, 'salami': {ah:1.99}, 'worst': {ah:2.49}, 'rookworst': {ah:2.99},
-  'zalm': {ah:5.99}, 'tonijn': {ah:1.49}, 'vissticks': {ah:2.99},
-  'tomaten': {ah:1.99}, 'komkommer': {ah:0.89}, 'sla': {ah:0.99},
-  'paprika': {ah:1.49}, 'ui': {ah:0.99}, 'uien': {ah:0.99}, 'knoflook': {ah:0.79},
-  'wortel': {ah:0.99}, 'wortelen': {ah:0.99}, 'broccoli': {ah:1.49},
-  'bloemkool': {ah:1.99}, 'spinazie': {ah:1.99}, 'courgette': {ah:1.29},
-  'aubergine': {ah:1.49}, 'champignons': {ah:1.79}, 'aardappelen': {ah:1.99},
-  'aardappels': {ah:1.99}, 'ijsbergsla': {ah:0.99}, 'prei': {ah:1.29},
-  'appels': {ah:1.99}, 'bananen': {ah:1.49}, 'sinaasappels': {ah:2.49},
-  'druiven': {ah:2.99}, 'aardbeien': {ah:2.99}, 'mandarijnen': {ah:2.49},
-  'mango': {ah:1.49}, 'avocado': {ah:1.29}, 'citroen': {ah:0.49},
-  'citroenen': {ah:0.99}, 'peer': {ah:0.79}, 'peren': {ah:1.99}, 'kiwi': {ah:0.49},
-  'pasta': {ah:1.29}, 'spaghetti': {ah:1.29}, 'penne': {ah:1.29},
-  'fusilli': {ah:1.29}, 'macaroni': {ah:1.29}, 'tagliatelle': {ah:1.49},
-  'lasagnebladen': {ah:1.49}, 'rijst': {ah:1.99}, 'basmatirijst': {ah:2.49},
-  'zilvervliesrijst': {ah:2.29}, 'couscous': {ah:1.79}, 'quinoa': {ah:3.49},
-  'orzo': {ah:1.49}, 'havermout': {ah:1.49},
-  'tomatenpuree': {ah:0.89}, 'passata': {ah:1.09}, 'tomatensaus': {ah:1.49},
-  'bolognesesaus': {ah:2.49}, 'pesto': {ah:2.49}, 'ketchup': {ah:1.99},
-  'mayonaise': {ah:2.29}, 'mosterd': {ah:1.29}, 'sambal': {ah:1.99},
-  'sojasaus': {ah:1.79}, 'ketjap': {ah:1.79}, 'olijfolie': {ah:4.99},
-  'zonnebloemolie': {ah:2.49}, 'azijn': {ah:0.99},
-  'blikje tonijn': {ah:1.49}, 'blikje mais': {ah:0.99}, 'kikkererwten': {ah:1.09},
-  'bruine bonen': {ah:0.99}, 'witte bonen': {ah:0.99}, 'linzen': {ah:1.29},
-  'cornflakes': {ah:2.49}, 'muesli': {ah:2.99}, 'granola': {ah:3.49},
-  'jam': {ah:2.29}, 'pindakaas': {ah:2.99}, 'nutella': {ah:3.49},
-  'hagelslag': {ah:1.99}, 'honing': {ah:3.49},
-  'water': {ah:0.49}, 'spa blauw': {ah:0.79}, 'cola': {ah:1.99},
-  'frisdrank': {ah:1.79}, 'sinaasappelsap': {ah:2.49}, 'appelsap': {ah:1.99},
-  'koffie': {ah:5.99}, 'thee': {ah:2.49}, 'bier': {ah:6.99}, 'wijn': {ah:6.99},
-  'zout': {ah:0.79}, 'peper': {ah:1.49}, 'suiker': {ah:1.49}, 'bloem': {ah:0.99},
-  'bakpoeder': {ah:0.99}, 'vanillesuiker': {ah:0.79}, 'kaneel': {ah:1.49},
-  'paprikapoeder': {ah:1.29}, 'currypoeder': {ah:1.49}, 'oregano': {ah:1.29}, 'basilicum': {ah:1.29},
-  'diepvriesgroenten': {ah:1.99}, 'doperwten': {ah:1.49}, 'friet': {ah:2.49},
-  'pizza': {ah:3.99}, 'ijsje': {ah:2.99},
-  'chips': {ah:1.99}, 'koekjes': {ah:1.99}, 'chocolade': {ah:1.99},
-  'noten': {ah:3.49}, 'rozijnen': {ah:1.99},
-  'wasmiddel': {ah:7.99}, 'afwasmiddel': {ah:1.99}, 'toiletpapier': {ah:4.99},
-  'keukenpapier': {ah:2.49}, 'aluminiumfolie': {ah:1.99}, 'huishoudfolie': {ah:1.79},
-  // Drogisterij
-  'scheermesjes': {ah:8.99}, 'scheerschuim': {ah:3.99}, 'scheermes': {ah:8.99},
-  'tandpasta': {ah:2.49}, 'tandenborstel': {ah:3.99},
-  'shampoo': {ah:3.99}, 'conditioner': {ah:3.99}, 'douchegel': {ah:2.99},
-  'zeep': {ah:1.99}, 'deodorant': {ah:3.49},
-  'lippenstift': {ah:5.99}, 'mascara': {ah:7.99}, 'foundation': {ah:9.99},
-  'zonnebrandcrème': {ah:8.99}, 'zonnebrand': {ah:8.99}, 'aftersun': {ah:6.99},
-  'bodylotion': {ah:4.99}, 'handcrème': {ah:3.99}, 'gezichtscrème': {ah:7.99},
-  'watten': {ah:1.99}, 'wattenstaafjes': {ah:1.99},
-  'maandverband': {ah:3.99}, 'tampons': {ah:3.99},
-  'condoom': {ah:7.99}, 'condooms': {ah:7.99},
-  'ibuprofen': {ah:4.99}, 'paracetamol': {ah:2.99},
-  'vitamine c': {ah:5.99}, 'vitamines': {ah:8.99},
-  'hoestdrank': {ah:6.99}, 'neusdruppels': {ah:5.99}, 'oogdruppels': {ah:6.99},
-  'pleisters': {ah:3.49}, 'verbandgaas': {ah:3.99},
-  'luiers': {ah:14.99}, 'babydoekjes': {ah:3.99}, 'babyolie': {ah:4.99},
-  'haargel': {ah:3.99}, 'haarspray': {ah:4.99}, 'wax': {ah:5.99},
-  'parfum': {ah:29.99}, 'nagellak': {ah:4.99},
-  // Speciaalbier
-  'speciaalbier': {ah:3.49}, 'craft beer': {ah:3.49}, 'craftbeer': {ah:3.49},
-  'ipa': {ah:3.49}, 'pale ale': {ah:3.49}, 'stout': {ah:3.99},
-  'porter': {ah:3.79}, 'tripel': {ah:4.49}, 'dubbel': {ah:3.99},
-  'quadrupel': {ah:5.49}, 'saison': {ah:3.99}, 'witbier': {ah:2.99},
-  'weizen': {ah:2.99}, 'hefeweizen': {ah:2.99}, 'pilsner': {ah:1.99},
-  'lager': {ah:1.99}, 'sour beer': {ah:4.49}, 'lambic': {ah:4.99},
-  'geuze': {ah:4.99}, 'kriek': {ah:4.99}, 'fruit beer': {ah:3.49},
-  'barleywine': {ah:5.99}, 'imperial stout': {ah:5.49}, 'session ipa': {ah:2.99},
-  'neipa': {ah:4.49}, 'hazy ipa': {ah:4.49}, 'west coast ipa': {ah:3.99},
-  'amber ale': {ah:3.49}, 'red ale': {ah:3.49}, 'brown ale': {ah:3.29},
-  'bockbier': {ah:3.49}, 'märzen': {ah:3.29}, 'dunkel': {ah:3.29},
-  'duvel': {ah:2.49}, 'la trappe': {ah:2.99}, 'hertog jan': {ah:1.89},
-  'westmalle': {ah:2.99}, 'chimay': {ah:2.99}, 'orval': {ah:3.49},
-  'rochefort': {ah:3.99}, 'westvleteren': {ah:8.99},
-
-  // Alcoholische dranken
-  'bier': {ah:6.99}, 'biertje': {ah:6.99}, 'sixpack': {ah:6.99},
-  'hertog jan': {ah:7.99}, 'heineken': {ah:7.49}, 'amstel': {ah:6.99},
-  'grolsch': {ah:7.49}, 'jupiler': {ah:6.49}, 'bavaria': {ah:5.99},
-  'corona': {ah:9.99}, 'la trappe': {ah:8.99}, 'duvel': {ah:9.99},
-  'craft beer': {ah:3.49}, 'ipa': {ah:3.49},
-  'wijn': {ah:6.99}, 'rode wijn': {ah:6.99}, 'witte wijn': {ah:6.99},
-  'rosé': {ah:6.99}, 'prosecco': {ah:7.99}, 'cava': {ah:6.99},
-  'champagne': {ah:24.99}, 'port': {ah:8.99}, 'sherry': {ah:7.99},
-  'vodka': {ah:14.99}, 'gin': {ah:16.99}, 'rum': {ah:14.99},
-  'whisky': {ah:19.99}, 'whiskey': {ah:19.99}, 'bourbon': {ah:19.99},
-  'cognac': {ah:24.99}, 'jenever': {ah:12.99}, 'advocaat': {ah:9.99},
-  'baileys': {ah:14.99}, 'tequila': {ah:16.99}, 'aperol': {ah:14.99},
-  'campari': {ah:14.99}, 'pimms': {ah:12.99}, 'limoncello': {ah:11.99},
-  'amaretto': {ah:12.99}, 'sambuca': {ah:11.99},
-
-  // Schoonmaak (ook voor 123schoon)
-  'schoonmaakmiddel': {ah:2.99}, 'allesreiniger': {ah:2.49},
-  'wc-eend': {ah:2.49}, 'bleek': {ah:1.99}, 'soda': {ah:1.99},
-  'schuurmiddel': {ah:1.99}, 'vaatwastabletten': {ah:6.99},
-  'wasverzachter': {ah:4.99}, 'ontkalk': {ah:3.99},
-  'vloeibaar wasmiddel': {ah:8.99}, 'vlekkenverwijderaar': {ah:4.99},
-};
-
-// Bereken prijzen voor alle winkels op basis van AH-prijs * factor
-function berekenPrijzen(ahPrijs) {
-  const result = {};
-  var _fks=Object.keys(FACTOR);
-  for (var _fki=0;_fki<_fks.length;_fki++) {
-    var w=_fks[_fki]; var f=FACTOR[w];
-    result[w] = +( ahPrijs * f ).toFixed(2);
-  }
-  return result;
+function toonKeuze() {
+  document.getElementById('setup-keuze').style.display = 'block';
+  document.getElementById('setup-inloggen').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'none';
 }
 
-function zoekPrijs(naam) {
-  const n = naam.toLowerCase().trim();
-  let ahPrijs = null;
-  if (PRIJSDB[n]) { ahPrijs = PRIJSDB[n].ah; }
-  else {
-    var _pk=Object.keys(PRIJSDB);for(var _pi=0;_pi<_pk.length;_pi++) {
-      if (n.includes(_pk[_pi]) || _pk[_pi].includes(n)) { ahPrijs = PRIJSDB[_pk[_pi]].ah; break; }
-    }
-    if (!ahPrijs) {
-      const woorden = n.split(/\s+/);
-      for (const woord of woorden) {
-        if (woord.length < 3) continue;
-        var _pk=Object.keys(PRIJSDB);for(var _pi=0;_pi<_pk.length;_pi++) {
-          if (_pk[_pi].includes(woord) || woord.includes(_pk[_pi])) { ahPrijs = PRIJSDB[_pk[_pi]].ah; break; }
-        }
-        if (ahPrijs) break;
-      }
-    }
-  }
-  if (!ahPrijs) return null;
-  return { naam, ...berekenPrijzen(ahPrijs) };
-}
-
-// ---- Locatie & dichtstbijzijnde winkels ----
-let dichtstbijWinkels = null;
-
-async function zoekDichtstbijzijndeWinkels(lat, lon) {
-  const winkelNamen = Object.values(WINKELS_DEF).filter(w => w.osm).map(w => w.osm);
-  const query = `
-    [out:json][timeout:10];
-    (
-      node["shop"="supermarket"](around:5000,${lat},${lon});
-      way["shop"="supermarket"](around:5000,${lat},${lon});
-    );
-    out center 50;
-  `;
-  try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST', body: 'data=' + encodeURIComponent(query)
-    });
-    const data = await res.json();
-    const gevondenWinkels = new Set();
-    data.elements.forEach(el => {
-      const naam = (el.tags && el.tags.name ? el.tags.name : '').toLowerCase();
-      var _wk=Object.keys(WINKELS_DEF);for(var _wi=0;_wi<_wk.length;_wi++) {
-    var key=_wk[_wi]; var def=WINKELS_DEF[key];
-        if (def.osm && naam.includes(def.osm.toLowerCase())) {
-          gevondenWinkels.add(key);
+function startAppMet(opgeslagen) {
+  // Probeer ook cookie als localStorage leeg is
+  if (!opgeslagen) {
+    try {
+      var cookies = document.cookie.split(';');
+      for (var ci=0; ci<cookies.length; ci++) {
+        var c = cookies[ci].trim();
+        if (c.indexOf('gezinscode=') === 0) {
+          opgeslagen = c.substring('gezinscode='.length);
+          break;
         }
       }
-    });
-    // Picnic altijd beschikbaar (bezorging)
-    gevondenWinkels.add('picnic');
-    return gevondenWinkels.size >= 2 ? [...gevondenWinkels] : null;
-  } catch(e) { return null; }
-}
-
-// ---- Categorie filters prijsvergelijking ----
-let actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
-
-function toggleCat(cat) {
-  if (cat === 'alle') {
-    // Reset knop — alles aan
-    actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+    } catch(e) {}
+  }
+  document.getElementById('loading-screen').style.display = 'none';
+  if (opgeslagen) {
+    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    try { sessionStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    gezinsCode = opgeslagen;
+    initApp();
   } else {
-    // Simpel aan/uit per chip — zorg dat altijd minstens 1 actief blijft
-    const nieuw = { ...actieveCats, [cat]: !actieveCats[cat] };
-    if (Object.values(nieuw).some(v => v)) actieveCats = nieuw;
-    // Anders alles aanzetten
-    else actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+    document.getElementById('setup-screen').style.display = 'block';
+    toonKeuze();
   }
-  updateCatChipUI();
-  const res = document.getElementById('prijs-resultaat');
-  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
 }
 
-function updateCatChipUI() {
-  ['super','drogist','slijterij','speciaal'].forEach(c => {
-    const el = document.getElementById('cat-' + c);
-    if (el) el.classList.toggle('active', actieveCats[c]);
+async function registreerGezin() {
+  const naam = document.getElementById('reg-naam').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const errEl = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+
+  if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
+  if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
+
+  // Auto-genereer code vanuit naam
+  var code = sanitizeCode(naam);
+
+  // Tel bestaande registraties
+  var allSnap = await new Promise(function(res) { window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}); });
+  var bestaande = allSnap.val() || {};
+  var volgnummer = Object.keys(bestaande).length + 1;
+
+  // Check of code OF naam al bestaat (case-insensitive)
+  var naamLower = naam.toLowerCase().trim();
+  var codeAlGebruikt = !!bestaande[code];
+  var naamAlGebruikt = false;
+  var bestaandeStatus = 'wachtend';
+  for (var bk in bestaande) {
+    if ((bestaande[bk].naam || '').toLowerCase().trim() === naamLower) {
+      naamAlGebruikt = true;
+      bestaandeStatus = bestaande[bk].status || 'wachtend';
+      break;
+    }
+  }
+  if (codeAlGebruikt || naamAlGebruikt) {
+    var statusTekst = bestaandeStatus === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
+    errEl.textContent = 'De naam "' + naam + '" is ' + statusTekst + '. Kies een andere naam, bijv. "' + naam + ' Thuis" of "' + naam + ' 2".';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Wis eventuele eerdere gezinscode op dit apparaat zodat opnieuw registreren werkt
+  try { localStorage.removeItem('gezinscode'); } catch(e) {}
+  try { sessionStorage.removeItem('gezinscode'); } catch(e) {}
+  try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
+
+  // Sla registratie op
+  await window._set(window._ref(window._db, 'registraties/' + code), {
+    code: code, naam: naam, email: email,
+    volgnummer: volgnummer,
+    status: 'wachtend',
+    aangemeld: Date.now(),
+    goedgekeurd: false
   });
-  // Toon/verberg "Alles" reset knop
-  const alleActief = Object.values(actieveCats).every(v => v);
-  const resetBtn = document.getElementById('cat-alle');
-  if (resetBtn) resetBtn.style.display = alleActief ? 'none' : 'inline-flex';
-}
 
-function updateCatChips() {
-  var DROGIST_CHECK = ['scheermesjes','scheermes','tandpasta','shampoo','conditioner','douchegel','zeep','deodorant','bodylotion','maandverband','tampons','ibuprofen','paracetamol','vitamines','pleisters','luiers','schoonmaakmiddel','allesreiniger','vaatwastabletten'];
-  var SLIJTERIJ_CHECK = ['bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne','heineken','hertog jan','grolsch','amstel','tequila','cognac','baileys','aperol'];
-  var SPECIAAL_CHECK = ['ipa','pale ale','stout','tripel','dubbel','saison','craft','duvel','westmalle','chimay','la trappe','neipa'];
-  var todoItems = items.filter(function(i) { return !i.done; });
-  var hasDrogist = false, hasSlijterij = false, hasSpeciaal = false;
-  for (var ti=0; ti<todoItems.length; ti++) {
-    var iname = todoItems[ti].name.toLowerCase();
-    for (var di=0; di<DROGIST_CHECK.length; di++) { if (iname.indexOf(DROGIST_CHECK[di]) > -1) { hasDrogist = true; break; } }
-    for (var si=0; si<SLIJTERIJ_CHECK.length; si++) { if (iname.indexOf(SLIJTERIJ_CHECK[si]) > -1) { hasSlijterij = true; break; } }
-    for (var spi=0; spi<SPECIAAL_CHECK.length; spi++) { if (iname.indexOf(SPECIAAL_CHECK[spi]) > -1) { hasSpeciaal = true; break; } }
-  }
-  if (hasDrogist) actieveCats.drogist = true;
-  if (hasSlijterij) actieveCats.slijterij = true;
-  if (hasSpeciaal) actieveCats.speciaal = true;
-  updateCatChipUI();
-}
+  // Update globale teller
+  await window._set(window._ref(window._db, 'meta/totaal_aanmeldingen'), volgnummer);
 
-// ---- Folder links ----
-// Categorieën waarvoor we aanbiedingen tonen
-const AANBIEDING_CATS = [
-  'bier','wijn','vodka','gin','rum','whisky','jenever','prosecco','champagne',
-  'heineken','hertog jan','grolsch','amstel','corona','tequila','cognac','baileys','aperol',
-  'scheermesjes','scheermes','scheerschuim','tandpasta','shampoo','conditioner','douchegel',
-  'deodorant','bodylotion','zonnebrand','maandverband','tampons','luiers','ibuprofen','paracetamol',
-  'vitamines','wasmiddel','vaatwastabletten','wasverzachter','schoonmaakmiddel'
-];
-
-// Reclamefolder.nl winkel-slugs
-const FOLDER_SLUGS = {
-  ah: 'albert-heijn', jumbo: 'jumbo', lidl: 'lidl', aldi: 'aldi',
-  plus: 'plus', dirk: 'dirk', coop: 'coop',
-  etos: 'etos', kruidvat: 'kruidvat', da: 'da',
-  gall: 'gall-gall', mitra: 'mitra',
-};
-
-function isAanbiedingArtikel(naam) {
-  return AANBIEDING_CATS.some(c => naam.toLowerCase().includes(c));
-}
-
-function folderUrl(winkelKey, zoekterm) {
-  const slug = FOLDER_SLUGS[winkelKey];
-  if (!slug) return null;
-  return `https://www.reclamefolder.nl/${slug}/?q=${encodeURIComponent(zoekterm)}`;
-}
-
-function updatePrijsKnop() {
-  // Prijzen staan nu in eigen tab - geen toggle nodig
-  updateCatChips();
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'block';
 }
 
 async function vergelijkPrijzen() {
@@ -2928,407 +2268,22 @@ async function vergelijkPrijzen() {
   btn.innerHTML = '🔄 Opnieuw vergelijken';
 }
 
-
-
-
-
-function setupMic() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
-  recognition = new SR(); recognition.lang='nl-NL'; recognition.continuous=false; recognition.interimResults=true;
-
-  recognition.onstart = () => {
-    isListening=true;
-    document.getElementById('mic-btn').classList.add('listening');
-    document.getElementById('mic-btn').textContent='🔴';
-    setMicStatus('Luisteren… spreek nu','active');
-  };
-
-  recognition.onresult = (e) => {
-    let interim='', final='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const t=e.results[i][0].transcript;
-      e.results[i].isFinal?(final+=t):(interim+=t);
-    }
-    document.getElementById('item-input').value = final||interim;
-
-    // Als eindresultaat: start afteller voor automatisch toevoegen
-    if (final) {
-      clearAutoAdd();
-      startCountdown(final.trim());
-    } else {
-      setMicStatus('Horen: "'+interim+'"','active');
-    }
-  };
-
-  recognition.onerror=(e)=>{
-    clearAutoAdd();
-    const m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
-    setMicStatus(m[e.error]||'Fout.','active');
-    stopMic(false);
-  };
-  recognition.onend=()=>{ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
-}
-
-function startCountdown(text) {
-  // Zet tekst in inputveld zodat addItem hem kan lezen
-  var inp = document.getElementById('item-input');
-  if (inp) inp.value = text;
-  var secs = autoAddSeconds;
-  setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
-  countdownTimer = setInterval(function() {
-    secs--;
-    if (secs > 0) {
-      setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
-    }
-  }, 1000);
-  autoAddTimer = setTimeout(function() {
-    clearInterval(countdownTimer);
-    addItem();
-    setMicStatus('✅ Toegevoegd!', 'success');
-    setTimeout(function(){setMicStatus('');}, 2000);
-  }, autoAddSeconds * 1000);
-}
-
-function clearAutoAdd() {
-  clearTimeout(autoAddTimer);
-  clearInterval(countdownTimer);
-  autoAddTimer = null; countdownTimer = null;
-}
-
-function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(()=>setMicStatus(''),3000); }
-function setMicStatus(m,c=''){const el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
-
-function bindMicBtn() {
-  var micBtn = document.getElementById('mic-btn');
-  if (!micBtn) return;
-  micBtn.onclick = async function() {
-    if (!recognition) return;
-    if (autoAddTimer) { clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(function(){setMicStatus('');},1500); return; }
-    if (isListening) { recognition.stop(); return; }
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({audio:true});
-      }
-    } catch(e) { setMicStatus('&#128683; Microfoon geweigerd.','active'); return; }
-    var inp = document.getElementById('item-input');
-    if (inp) inp.value = '';
-    recognition.start();
-  };
-};
-// ---- Live prijszoeken per artikel ----
-let livePrijsTimer = null;
-
-function sluitLivePrijs() {
-  document.getElementById('live-prijs-resultaat').style.display = 'none';
-}
-
-async function zoekLivePrijs() {
-  var naam = document.getElementById('item-input').value.trim();
-  if (!naam || naam.length < 2) { alert('Typ eerst een artikel in het invoerveld.'); return; }
-  var btn = document.getElementById('live-prijs-btn');
-  var resultaat = document.getElementById('live-prijs-resultaat');
-  var inhoud = document.getElementById('live-prijs-inhoud');
-  btn.textContent = '...'; btn.disabled = true;
-  resultaat.style.display = 'block';
-  inhoud.innerHTML = 'Zoeken naar beste prijs voor <strong>' + esc(naam) + '</strong>...';
-  try {
-    var response = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artikel: naam })
-    });
-    var data = await response.json();
-    if (!response.ok) throw new Error('Worker fout');
-    var tekst = data.resultaat || '';
-    var regels = tekst.split('\n').filter(function(r) { return r.trim(); });
-    inhoud.innerHTML = regels.join('<br>') || 'Geen resultaten gevonden.';
-  } catch(e) {
-    inhoud.innerHTML = 'Zoeken mislukt. Controleer je verbinding.';
+function toggleCat(cat) {
+  if (cat === 'alle') {
+    // Reset knop — alles aan
+    actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+  } else {
+    // Simpel aan/uit per chip — zorg dat altijd minstens 1 actief blijft
+    const nieuw = { ...actieveCats, [cat]: !actieveCats[cat] };
+    if (Object.values(nieuw).some(v => v)) actieveCats = nieuw;
+    // Anders alles aanzetten
+    else actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
   }
-  btn.textContent = 'prijs'; btn.disabled = false;
+  updateCatChipUI();
+  const res = document.getElementById('prijs-resultaat');
+  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
 }
 
-// ---- Autocomplete productendatabase ----
-const PRODUCTEN_DB = [
-  // Zuivel & eieren
-  {n:'Melk volle AH 1L', c:'koeling', p:1.19}, {n:'Melk halfvolle AH 1L', c:'koeling', p:1.09},
-  {n:'Melk halfvolle Campina 1L', c:'koeling', p:1.29}, {n:'Melk halfvolle Jumbo 1L', c:'koeling', p:0.99},
-  {n:'Melk biologisch 1L', c:'koeling', p:1.59}, {n:'Karnemelk 1L', c:'koeling', p:0.99},
-  {n:'Slagroom 250ml', c:'koeling', p:1.39}, {n:'Boter ongezouten 250g', c:'koeling', p:2.49},
-  {n:'Roomboter AH 250g', c:'koeling', p:2.49}, {n:'Margarine 500g', c:'koeling', p:1.49},
-  {n:'Eieren scharrelvlees 6st', c:'koeling', p:1.99}, {n:'Eieren vrije uitloop 10st', c:'koeling', p:2.99},
-  {n:'Yoghurt naturel 500g', c:'koeling', p:1.09}, {n:'Griekse yoghurt 500g', c:'koeling', p:1.79},
-  {n:'Kwark mager 500g', c:'koeling', p:1.49}, {n:'Kwark volle 500g', c:'koeling', p:1.59},
-  {n:'Kaas jong 48+ 500g', c:'koeling', p:3.49}, {n:'Kaas belegen 48+ 500g', c:'koeling', p:3.79},
-  {n:'Kaas oud 48+ 500g', c:'koeling', p:3.99}, {n:'Geraspte kaas 150g', c:'koeling', p:1.89},
-  {n:'Mozzarella 125g', c:'koeling', p:1.29}, {n:'Feta 200g', c:'koeling', p:1.79},
-  {n:'Brie 200g', c:'koeling', p:2.49}, {n:'Camembert 250g', c:'koeling', p:2.29},
-  {n:'Smeerkaas naturel 200g', c:'koeling', p:1.99}, {n:'Philadelphia naturel 200g', c:'koeling', p:2.29},
-  {n:'Crème fraîche 200ml', c:'koeling', p:1.49}, {n:'Zure room 200ml', c:'koeling', p:0.99},
-  {n:'Vla vanille 1L', c:'koeling', p:1.19}, {n:'Vla chocolade 1L', c:'koeling', p:1.19},
-  {n:'Pudding vanille 450g', c:'koeling', p:1.09},
-  // Vlees
-  {n:'Rundergehakt 500g', c:'vlees', p:4.49}, {n:'Half-om-half gehakt 500g', c:'vlees', p:3.99},
-  {n:'Kipfilet 600g', c:'vlees', p:5.99}, {n:'Kipfilet AH 600g', c:'vlees', p:5.99},
-  {n:'Kipschnitzel 4st', c:'vlees', p:4.49}, {n:'Kipdrumsticks 1kg', c:'vlees', p:4.99},
-  {n:'Kip aan het spit', c:'vlees', p:6.99}, {n:'Speklapjes 400g', c:'vlees', p:3.99},
-  {n:'Varkenshaas 300g', c:'vlees', p:5.99}, {n:'Ossenhaas 200g', c:'vlees', p:8.99},
-  {n:'Ribeye 300g', c:'vlees', p:7.99}, {n:'Biefstuk 200g', c:'vlees', p:6.99},
-  {n:'Hamburger 4st', c:'vlees', p:4.49}, {n:'Worstjes 8st', c:'vlees', p:2.99},
-  {n:'Rookworst 300g', c:'vlees', p:2.99}, {n:'Bacon 150g', c:'vlees', p:2.49},
-  {n:'Ham gekookt 150g', c:'vlees', p:2.29}, {n:'Salami 100g', c:'vlees', p:1.99},
-  {n:'Kipfilet plakken 150g', c:'vlees', p:2.49}, {n:'Tonijn blik 185g', c:'vlees', p:1.49},
-  {n:'Zalm filet 2st', c:'vlees', p:5.99}, {n:'Zalm gerookt 100g', c:'vlees', p:3.49},
-  {n:'Garnalen gepeld 150g', c:'vlees', p:4.99}, {n:'Vissticks 10st', c:'vlees', p:2.99},
-  {n:'Kabeljauw filet 400g', c:'vlees', p:6.99},
-  // AGF
-  {n:'Appels Elstar 6st', c:'agf', p:1.99}, {n:'Appels Gala 1kg', c:'agf', p:2.49},
-  {n:'Bananen 1kg', c:'agf', p:1.49}, {n:'Bananen biologisch 1kg', c:'agf', p:1.99},
-  {n:'Sinaasappels 6st', c:'agf', p:2.49}, {n:'Mandarijnen 6st', c:'agf', p:2.29},
-  {n:'Druiven wit 500g', c:'agf', p:2.99}, {n:'Druiven rood 500g', c:'agf', p:2.99},
-  {n:'Aardbeien 400g', c:'agf', p:2.99}, {n:'Mango 1st', c:'agf', p:1.49},
-  {n:'Avocado 2st', c:'agf', p:1.99}, {n:'Citroen 3st', c:'agf', p:0.99},
-  {n:'Kiwi 6st', c:'agf', p:1.49}, {n:'Tomaten 500g', c:'agf', p:1.99},
-  {n:'Cherrytomaatjes 250g', c:'agf', p:1.29}, {n:'Komkommer 1st', c:'agf', p:0.89},
-  {n:'Paprika rood 3st', c:'agf', p:1.49}, {n:'Paprika mix 3st', c:'agf', p:1.79},
-  {n:'Uien 1kg', c:'agf', p:0.99}, {n:'Rode ui 3st', c:'agf', p:0.89},
-  {n:'Knoflook bol', c:'agf', p:0.49}, {n:'Wortelen 1kg', c:'agf', p:0.99},
-  {n:'Broccoli 1st', c:'agf', p:1.49}, {n:'Bloemkool 1st', c:'agf', p:1.99},
-  {n:'IJsbergsla 1st', c:'agf', p:0.99}, {n:'Rucola 75g', c:'agf', p:1.49},
-  {n:'Veldsla 100g', c:'agf', p:1.49}, {n:'Spinazie 300g', c:'agf', p:1.99},
-  {n:'Courgette 2st', c:'agf', p:1.29}, {n:'Aubergine 1st', c:'agf', p:1.49},
-  {n:'Champignons 250g', c:'agf', p:1.79}, {n:'Prei 2st', c:'agf', p:1.29},
-  {n:'Aardappelen vastkokend 1.5kg', c:'agf', p:1.99}, {n:'Aardappelen kruimig 1.5kg', c:'agf', p:1.89},
-  {n:'Zoete aardappel 1kg', c:'agf', p:2.49}, {n:'Gember stuk', c:'agf', p:0.79},
-  {n:'Peterselie vers', c:'agf', p:0.69}, {n:'Basilicum pot', c:'agf', p:1.49},
-  {n:'Munt vers', c:'agf', p:0.69}, {n:'Bieslook vers', c:'agf', p:0.69},
-  {n:'Mais 3st', c:'agf', p:1.49}, {n:'Asperges wit 500g', c:'agf', p:4.99},
-  {n:'Pompoen 1st', c:'agf', p:2.49},
-  // Pasta & rijst
-  {n:'Spaghetti AH 500g', c:'kruidenierswaren', p:0.99}, {n:'Spaghetti Barilla 500g', c:'kruidenierswaren', p:1.49},
-  {n:'Penne AH 500g', c:'kruidenierswaren', p:0.99}, {n:'Penne Barilla 500g', c:'kruidenierswaren', p:1.49},
-  {n:'Fusilli AH 500g', c:'kruidenierswaren', p:0.99}, {n:'Tagliatelle 250g', c:'kruidenierswaren', p:1.49},
-  {n:'Lasagnebladen 500g', c:'kruidenierswaren', p:1.49}, {n:'Orzo 400g', c:'kruidenierswaren', p:1.49},
-  {n:'Macaroni 500g', c:'kruidenierswaren', p:0.99}, {n:'Rijst basmati 1kg', c:'kruidenierswaren', p:2.49},
-  {n:'Rijst zilvervlies 1kg', c:'kruidenierswaren', p:2.29}, {n:'Rijst witte 1kg', c:'kruidenierswaren', p:1.99},
-  {n:'Couscous 500g', c:'kruidenierswaren', p:1.79}, {n:'Quinoa 400g', c:'kruidenierswaren', p:3.49},
-  {n:'Havermout 500g', c:'kruidenierswaren', p:1.49}, {n:'Havermout Quaker 750g', c:'kruidenierswaren', p:2.99},
-  // Brood & ontbijt
-  {n:'Brood volkoren AH 800g', c:'kruidenierswaren', p:2.09}, {n:'Brood wit AH 800g', c:'kruidenierswaren', p:1.49},
-  {n:'Brood meergranen 800g', c:'kruidenierswaren', p:2.29}, {n:'Broodjes 6st', c:'kruidenierswaren', p:1.79},
-  {n:'Crackers volkoren 30st', c:'kruidenierswaren', p:1.49}, {n:'Beschuit 24st', c:'kruidenierswaren', p:1.39},
-  {n:'Cornflakes Kelloggs 375g', c:'kruidenierswaren', p:2.99}, {n:'Cornflakes AH 500g', c:'kruidenierswaren', p:1.99},
-  {n:'Muesli 750g', c:'kruidenierswaren', p:2.99}, {n:'Granola 400g', c:'kruidenierswaren', p:3.49},
-  {n:'Hagelslag melk 400g', c:'kruidenierswaren', p:1.99}, {n:'Hagelslag puur 400g', c:'kruidenierswaren', p:1.99},
-  {n:'Pindakaas Calvé 350g', c:'kruidenierswaren', p:2.99}, {n:'Pindakaas AH 350g', c:'kruidenierswaren', p:1.99},
-  {n:'Nutella 400g', c:'kruidenierswaren', p:3.49}, {n:'Jam aardbei 450g', c:'kruidenierswaren', p:1.99},
-  {n:'Honing vloeibaar 350g', c:'kruidenierswaren', p:3.49},
-  // Sauzen & conserven
-  {n:'Tomatenpuree blik 70g', c:'kruidenierswaren', p:0.49}, {n:'Tomatenpuree tube 200g', c:'kruidenierswaren', p:0.99},
-  {n:'Passata 690g', c:'kruidenierswaren', p:1.09}, {n:'Tomaten blokjes blik 400g', c:'kruidenierswaren', p:0.79},
-  {n:'Pesto rosso 190g', c:'kruidenierswaren', p:2.49}, {n:'Pesto genovese 190g', c:'kruidenierswaren', p:2.49},
-  {n:'Ketchup Heinz 600g', c:'kruidenierswaren', p:2.99}, {n:'Mayonaise Hellmanns 400g', c:'kruidenierswaren', p:2.99},
-  {n:'Mayonaise AH 500ml', c:'kruidenierswaren', p:1.99}, {n:'Mosterd grove AH 250g', c:'kruidenierswaren', p:1.29},
-  {n:'Sambal oelek Conimex 200g', c:'kruidenierswaren', p:1.99}, {n:'Ketjap manis Conimex 250ml', c:'kruidenierswaren', p:1.79},
-  {n:'Sojasaus 150ml', c:'kruidenierswaren', p:1.49}, {n:'Worcestershire sauce 150ml', c:'kruidenierswaren', p:1.99},
-  {n:'Olijfolie extra vierge 500ml', c:'kruidenierswaren', p:4.99}, {n:'Zonnebloemolie 1L', c:'kruidenierswaren', p:2.49},
-  {n:'Balsamico azijn 250ml', c:'kruidenierswaren', p:2.29}, {n:'Witte wijnazijn 500ml', c:'kruidenierswaren', p:1.29},
-  {n:'Kikkererwten blik 400g', c:'kruidenierswaren', p:0.99}, {n:'Bruine bonen blik 400g', c:'kruidenierswaren', p:0.89},
-  {n:'Witte bonen blik 400g', c:'kruidenierswaren', p:0.89}, {n:'Linzen rood 400g', c:'kruidenierswaren', p:1.29},
-  {n:'Mais blik 340g', c:'kruidenierswaren', p:0.99}, {n:'Tonijn in water blik 185g', c:'kruidenierswaren', p:1.49},
-  // Bier - kratjes en flessen
-  {n:'Hertog Jan krat 24x30cl', c:'drank', p:17.99},
-  {n:'Hertog Jan 6-pack 30cl', c:'drank', p:6.99},
-  {n:'Heineken krat 24x30cl', c:'drank', p:15.99},
-  {n:'Heineken 6-pack 33cl', c:'drank', p:5.99},
-  {n:'Grolsch krat 24x30cl', c:'drank', p:15.99},
-  {n:'Amstel krat 24x30cl', c:'drank', p:14.99},
-  {n:'Bavaria krat 24x30cl', c:'drank', p:12.99},
-  {n:'Jupiler krat 24x25cl', c:'drank', p:13.99},
-  {n:'Corona 6-pack 35.5cl', c:'drank', p:9.99},
-  {n:'Duvel 4-pack 33cl', c:'drank', p:9.99},
-  {n:'La Trappe Tripel 6-pack', c:'drank', p:11.99},
-  {n:'Westvleteren 12 fles 33cl', c:'drank', p:8.99},
-  {n:'Chimay Blauw 33cl', c:'drank', p:2.99},
-  {n:'Westmalle Tripel 33cl', c:'drank', p:2.99},
-  {n:'IPA craft beer 33cl', c:'drank', p:2.99},
-  {n:'Bier alcoholvrij 6-pack', c:'drank', p:4.99},
-  // Diepvries
-  {n:'Friet AH 1kg', c:'diepvries', p:2.49}, {n:'Friet McCain 1kg', c:'diepvries', p:3.49},
-  {n:'Pizza Margherita AH', c:'diepvries', p:2.99}, {n:'Pizza Dr Oetker Salami', c:'diepvries', p:3.99},
-  {n:'Doperwten AH 450g', c:'diepvries', p:1.29}, {n:'Spinazie blokjes 450g', c:'diepvries', p:1.49},
-  {n:'Groentenmix AH 450g', c:'diepvries', p:1.79}, {n:'Edamame 400g', c:'diepvries', p:2.99},
-  {n:'Kroketten 8st', c:'diepvries', p:2.99}, {n:'Bitterballen 18st', c:'diepvries', p:3.49},
-  {n:'Vanille ijs 900ml', c:'diepvries', p:2.99}, {n:'Magnum classic 3st', c:'diepvries', p:3.99},
-  // Dranken
-  {n:'Water Spa rood 6x1.5L', c:'drank', p:3.99}, {n:'Water AH 6x1.5L', c:'drank', p:2.49},
-  {n:'Sinaasappelsap AH 1L', c:'drank', p:1.99}, {n:'Sinaasappelsap vers 1L', c:'drank', p:2.99},
-  {n:'Appelsap AH 1L', c:'drank', p:1.79}, {n:'Cola Coca-Cola 1.5L', c:'drank', p:2.29},
-  {n:'Cola Zero 1.5L', c:'drank', p:2.29}, {n:'Fanta Orange 1.5L', c:'drank', p:1.99},
-  {n:'Koffie Douwe Egberts 250g', c:'drank', p:5.99}, {n:'Koffie AH 250g', c:'drank', p:3.99},
-  {n:'Thee Pickwick 40st', c:'drank', p:2.49}, {n:'Heineken bier 6x33cl', c:'drank', p:5.99},
-  {n:'Hertog Jan bier 6x33cl', c:'drank', p:6.99}, {n:'Wijn rood AH 75cl', c:'drank', p:5.99},
-  {n:'Wijn wit AH 75cl', c:'drank', p:5.99}, {n:'Prosecco 75cl', c:'drank', p:7.99},
-  // Non-food
-  {n:'Toiletpapier AH 16st', c:'nonfood', p:4.99}, {n:'Toiletpapier Edet 12st', c:'nonfood', p:5.99},
-  {n:'Keukenpapier 2st', c:'nonfood', p:2.49}, {n:'Wasmiddel AH vloeibaar 1.5L', c:'nonfood', p:6.99},
-  {n:'Wasmiddel Ariel 1.5L', c:'nonfood', p:9.99}, {n:'Vaatwastabletten AH 40st', c:'nonfood', p:6.99},
-  {n:'Afwasmiddel AH 500ml', c:'nonfood', p:1.49}, {n:'Afwasmiddel Dreft 750ml', c:'nonfood', p:2.49},
-  {n:'Tandpasta Colgate 75ml', c:'nonfood', p:2.49}, {n:'Tandpasta AH 75ml', c:'nonfood', p:1.49},
-  {n:'Shampoo Head & Shoulders 250ml', c:'nonfood', p:3.99}, {n:'Douchegel AH 300ml', c:'nonfood', p:1.49},
-  {n:'Deodorant Dove 150ml', c:'nonfood', p:3.49}, {n:'Scheermesjes Gillette 4st', c:'nonfood', p:8.99},
-  {n:'Scheermesjes Wilkinson 4st', c:'nonfood', p:7.99}, {n:'Paracetamol 500mg 30st', c:'nonfood', p:2.99},
-];
-
-let acSelectedIdx = -1;
-
-function zoekAutocomplete(val) {
-  if (!val || val.length < 2) { sluitAutocomplete(); return; }
-  const n = val.toLowerCase().trim();
-  const woorden = n.split(/\s+/).filter(w => w.length > 1);
-
-  const resultaten = PRODUCTEN_DB.filter(p => {
-    const naam = p.n.toLowerCase();
-    // Exacte substring match
-    if (naam.includes(n)) return true;
-    // Alle woorden moeten voorkomen
-    if (woorden.length > 1 && woorden.every(w => naam.includes(w))) return true;
-    // Elk woord afzonderlijk
-    if (woorden.some(w => naam.includes(w) && w.length > 2)) return true;
-    return false;
-  })
-  .sort((a, b) => {
-    // Sorteer: exacte match eerst, dan begint-met, dan bevat
-    const an = a.n.toLowerCase(), bn = b.n.toLowerCase();
-    if (an.startsWith(n) && !bn.startsWith(n)) return -1;
-    if (!an.startsWith(n) && bn.startsWith(n)) return 1;
-    if (an.includes(n) && !bn.includes(n)) return -1;
-    if (!an.includes(n) && bn.includes(n)) return 1;
-    return 0;
-  })
-  .slice(0, 10);
-
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  if (!dropdown) return;
-  if (!resultaten.length) { sluitAutocomplete(); return; }
-
-  acSelectedIdx = -1;
-  const catLabels = {agf:'🥦 AGF', vlees:'🥩 Vlees & Vis', kruidenierswaren:'🛒 Kruiden.', koeling:'🧊 Koeling', diepvries:'❄️ Diepvries', drank:'🥤 Drank', nonfood:'🧴 Non Food', overig:'📦 Overig'};
-
-  // Groepeer per categorie
-  const groepen = {};
-  resultaten.forEach(p => {
-    if (!groepen[p.c]) groepen[p.c] = [];
-    groepen[p.c].push(p);
-  });
-
-  let html = '';
-  Object.entries(groepen).forEach(([cat, producten]) => {
-    html += `<div class="ac-header">${catLabels[cat]||cat}</div>`;
-    producten.forEach(function(p) {
-      var vn = p.n.split("'").join("\'");
-      html += '<div class="ac-item" onclick="kiesProduct(' + "'" + vn + "'" + ',' + "'" + p.c + "'" + ')">'
-        + '<span class="ac-naam">' + esc(p.n) + '</span>'
-        + '<span class="ac-prijs">v.a. €' + p.p.toFixed(2) + '</span>'
-        + '</div>';
-    });
-  });
-
-  dropdown.innerHTML = html;
-  dropdown.style.display = 'block';
-}
-
-function markeerTekst(tekst, zoek) {
-  var veiligZoek = zoek.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  var patroon = new RegExp('(' + veiligZoek + ')', 'gi');
-  return esc(tekst).replace(patroon, '<strong style="color:var(--green)">$1</strong>');
-}
-
-function kiesProduct(naam, cat) {
-  const input = document.getElementById('item-input');
-  if (input) input.value = naam;
-  sluitAutocomplete();
-  // Sla categorie op als geleerde voorkeur
-  slaGeleerdeCategorie(naam, cat);
-  input.focus();
-}
-
-function sluitAutocomplete() {
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  if (dropdown) dropdown.style.display = 'none';
-  acSelectedIdx = -1;
-}
-
-function navigeerAutocomplete(e) {
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  if (!dropdown || dropdown.style.display === 'none') return;
-  const items = dropdown.querySelectorAll('.ac-item');
-  if (!items.length) return;
-
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    acSelectedIdx = Math.min(acSelectedIdx + 1, items.length - 1);
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    acSelectedIdx = Math.max(acSelectedIdx - 1, -1);
-  } else if (e.key === 'Escape') {
-    sluitAutocomplete(); return;
-  } else if (e.key === 'Enter' && acSelectedIdx >= 0) {
-    e.preventDefault();
-    items[acSelectedIdx].click(); return;
-  } else { return; }
-
-  items.forEach((item, i) => item.classList.toggle('selected', i === acSelectedIdx));
-  if (acSelectedIdx >= 0) items[acSelectedIdx].scrollIntoView({block:'nearest'});
-}
-
-// Sluit dropdown bij klik buiten
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('#autocomplete-dropdown') && e.target.id !== 'item-input') {
-    sluitAutocomplete();
-  }
-});
-
-function bindInputEvents() {
-  var addBtn = document.getElementById('add-btn');
-  var inp = document.getElementById('item-input');
-  if (addBtn) addBtn.onclick = addItem;
-  if (inp) {
-    inp.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        var dropdown = document.getElementById('autocomplete-dropdown');
-        if (!dropdown || dropdown.style.display === 'none' || acSelectedIdx < 0) addItem();
-        else { sluitAutocomplete(); addItem(); }
-      }
-      navigeerAutocomplete(e);
-    });
-    inp.addEventListener('input', function() {
-      var val = inp.value.trim();
-      var el = document.getElementById('dubbel-melding');
-      if (el) {
-        var n = val.toLowerCase();
-        if (!n || n.length < 2) { el.textContent = ''; }
-        else {
-          var bestaand = null;
-          for (var ii=0; ii<items.length; ii++) {
-            var it = items[ii];
-            if (!it.done && it.name.length > 2) {
-              var iname = it.name.toLowerCase();
-              if (iname.indexOf(n) > -1 || n.indexOf(iname) > -1) { bestaand = it; break; }
-            }
-          }
-          if (bestaand) el.innerHTML = '\u26A0\uFE0F "<strong>' + esc(bestaand.name) + '</strong>" staat al op je lijst';
-          else el.textContent = '';
-        }
-      }
-      zoekAutocomplete(val);
-    });
-  }
-}
-// ============================================================
-// VIND DICHTSTBIJZIJNDE WINKEL (GPS + OpenStreetMap)
-// ============================================================
 function vindDichtstbijzijndeWinkel() {
   var modal = document.getElementById('vw-modal');
   var inhoud = document.getElementById('vw-inhoud');
@@ -3466,8 +2421,34 @@ function sluitVindWinkelBuiten(e) {
   if (e.target.id === 'vw-modal') sluitVindWinkel();
 }
 
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-</script>
+function deelAppLink() {
+  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  const tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
+  if (navigator.share) {
+    navigator.share({ title: 'Boodschappen App', text: tekst });
+  } else {
+    navigator.clipboard.writeText(tekst).then(() => {
+      const el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+    });
+  }
+}
+
+function kopieerAppLink() {
+  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  navigator.clipboard.writeText(link).then(() => {
+    const el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+  });
+}</script>
 
 <!-- Vind Winkel Modal -->
 
