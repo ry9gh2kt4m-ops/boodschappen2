@@ -968,9 +968,9 @@ document.getElementById('mic-btn').onclick=async()=>{
   // Als afteller bezig: annuleer
   if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(()=>setMicStatus(''),1500); return; }
   if(isListening){recognition.stop();return;}
-  try{await navigator.mediaDevices.getUserMedia({audio:true});}catch{setMicStatus('🚫 Microfoon geweigerd.','active');return;}
+  try{await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){setMicStatus('🚫 Microfoon geweigerd.','active');return;}
   document.getElementById('item-input').value='';
-  try{recognition.start();}catch{setMicStatus('Start mislukt.','active');}
+  try{recognition.start();}catch(e){setMicStatus('Start mislukt.','active');}
 };
 document.getElementById('add-btn').onclick=addItem;
 document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
