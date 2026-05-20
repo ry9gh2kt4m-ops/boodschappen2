@@ -1162,7 +1162,8 @@ async function addItem() {
   inp.value = '';
   var dbl = document.getElementById('dubbel-melding');
   if (dbl) dbl.textContent = '';
-  var newItem = {id:Date.now(), name:name, person:currentPerson, done:false, qty:1, cat:detectCat(name), winkel:detectWinkel(name)};
+  var inDB = (window._acGekozen === name); window._acGekozen = null;
+  var newItem = {id:Date.now(), name:name, person:currentPerson, done:false, qty:1, cat:detectCat(name), winkel:detectWinkel(name), inDB:inDB};
   items.unshift(newItem);
   render();
   logHistorie(name);
@@ -1283,6 +1284,7 @@ function kiesAC(naam, cat) {
   if (inp) inp.value = naam;
   sluitAC();
   if (cat) leerCategorie(naam, cat);
+  window._acGekozen = naam; // markeer als uit dropdown gekozen
 }
 
 function sluitAC() {
@@ -1615,6 +1617,8 @@ function platLabel(url) {
   if(u.indexOf('tiktok')>-1) return '🎵 TikTok';
   if(u.indexOf('pinterest')>-1) return '📌 Pinterest';
   if(u.indexOf('instagram')>-1) return '📸 Instagram';
+  if(u.indexOf('facebook')>-1||u.indexOf('fb.com')>-1||u.indexOf('fb.watch')>-1) return '📘 Facebook';
+  if(u.indexOf('twitter')>-1||u.indexOf('x.com')>-1) return '🐦 Twitter/X';
   return '🔗 Link';
 }
 
@@ -1628,52 +1632,88 @@ function setCatFilter(el, cat) {
 }
 
 function renderRecepten() {
-  var zoekEl=document.getElementById('recept-zoek'), zoek=zoekEl?zoekEl.value.toLowerCase():'';
-  var gef=recepten.filter(function(r){
-    return (receptCatFilter==='alle'||r.cat===receptCatFilter) && (!zoek||r.naam.toLowerCase().indexOf(zoek)>-1);
+  var zoekEl = document.getElementById('recept-zoek');
+  var zoek = zoekEl ? zoekEl.value.toLowerCase() : '';
+  var gef = recepten.filter(function(r) {
+    return (receptCatFilter==='alle' || r.cat===receptCatFilter) &&
+           (!zoek || r.naam.toLowerCase().indexOf(zoek) > -1);
   });
-  var el=document.getElementById('recepten-lijst'), leeg=document.getElementById('recepten-leeg');
-  if(!el) return;
-  if(!gef.length) { el.innerHTML=''; if(leeg)leeg.style.display='block'; return; }
-  if(leeg) leeg.style.display='none';
-  var catIco={ontbijt:'🥐',lunch:'🥗',diner:'🍽️',snack:'🍿',dessert:'🍰',overig:'📦'};
-  var html='';
-  for(var ri=0;ri<gef.length;ri++) {
-    var r=gef[ri], vid=ytId(r.url), pl=platLabel(r.url);
-    var media='';
-    if(vid) {
-      media='<div style="position:relative;cursor:pointer" onclick="speelAf(\''+r.id+'\',\''+vid+'\')">';
-      media+='<img src="https://img.youtube.com/vi/'+vid+'/mqdefault.jpg" class="recept-media">';
-      media+='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.15)"><span style="font-size:2.5rem;color:white">▶</span></div></div>';
-      media+='<div id="rv-'+r.id+'"></div>';
-    } else if(r.url) {
-      media='<a href="'+esc(r.url)+'" target="_blank" style="display:block;padding:14px;text-align:center;background:#f5f5f5;border-bottom:1px solid var(--border);text-decoration:none"><div style="font-size:1.8rem">'+pl.split(' ')[0]+'</div><div style="font-size:0.8rem;color:#555">'+pl+'</div></a>';
+  var el = document.getElementById('recepten-lijst');
+  var leeg = document.getElementById('recepten-leeg');
+  if (!el) return;
+  if (!gef.length) { el.innerHTML=''; if(leeg) leeg.style.display='block'; return; }
+  if (leeg) leeg.style.display='none';
+  var catIco = {ontbijt:'&#x1F950;',lunch:'&#x1F957;',diner:'&#x1F37D;',snack:'&#x1F37F;',dessert:'&#x1F370;',overig:'&#x1F4E6;'};
+  var html = '';
+  for (var ri = 0; ri < gef.length; ri++) {
+    var r = gef[ri];
+    var vid = ytId(r.url);
+    var pl = platLabel(r.url);
+    var rurl = r.url ? r.url.toLowerCase() : '';
+    var rid = esc(r.id);
+
+    // Media blok
+    var media = '';
+    if (vid) {
+      media = '<div class="yt-thumb" data-id="' + rid + '" data-vid="' + esc(vid) + '" style="position:relative;cursor:pointer">'
+        + '<img src="https://img.youtube.com/vi/' + vid + '/mqdefault.jpg" class="recept-media">'
+        + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.15)">'
+        + '<span style="font-size:2.5rem;color:white">&#x25B6;</span></div></div>'
+        + '<div id="rv-' + rid + '"></div>';
+    } else if (r.url) {
+      var pk = rurl.indexOf('tiktok')>-1?'#010101':rurl.indexOf('facebook')>-1?'#1877f2':rurl.indexOf('instagram')>-1?'#c13584':rurl.indexOf('pinterest')>-1?'#e60023':'#3d6b4f';
+      media = '<a href="' + esc(r.url) + '" target="_blank" '
+        + 'style="display:flex;flex-direction:column;align-items:center;justify-content:center;'
+        + 'padding:22px;background:' + pk + ';text-decoration:none;gap:6px;min-height:90px">'
+        + '<div style="font-size:2.8rem">' + pl.split(' ')[0] + '</div>'
+        + '<div style="font-size:0.95rem;color:white;font-weight:700">' + pl + '</div>'
+        + '<div style="font-size:0.78rem;color:rgba(255,255,255,0.85)">Tik om te openen &#x2197;</div>'
+        + '</a>';
     }
-    var tags='<span class="recept-tag">'+(catIco[r.cat]||'📦')+' '+(r.cat||'diner')+'</span>';
-    if(r.pers) tags+='<span class="recept-tag">👥 '+esc(r.pers)+' pers.</span>';
-    if(r.tijd) tags+='<span class="recept-tag">⏱ '+esc(r.tijd)+'</span>';
-    var ingH='';
-    if(r.ing&&r.ing.length) {
-      ingH='<div style="margin-top:8px"><div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:5px">🧾 Ingrediënten</div>';
-      for(var ii=0;ii<r.ing.length;ii++) {
-        var iid='ic-'+r.id+'-'+ii;
-        ingH+='<div class="ing-rij"><div class="ing-check" id="'+iid+'" onclick="toggleIng(\''+iid+'\')"></div><span>'+esc(r.ing[ii])+'</span></div>';
+
+    // Tags
+    var tags = '<span class="recept-tag">' + (catIco[r.cat]||'&#x1F4E6;') + ' ' + (r.cat||'diner') + '</span>';
+    if (r.pers) tags += '<span class="recept-tag">&#x1F465; ' + esc(r.pers) + ' pers.</span>';
+    if (r.tijd) tags += '<span class="recept-tag">&#x23F1; ' + esc(r.tijd) + '</span>';
+
+    // Ingredienten
+    var ingH = '';
+    if (r.ing && r.ing.length) {
+      ingH = '<div style="margin-top:8px"><div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:5px">Ingredienten</div>';
+      for (var ii = 0; ii < r.ing.length; ii++) {
+        ingH += '<div class="ing-rij"><div class="ing-check" data-id="ic-' + rid + '-' + ii + '" onclick="toggleIng(this)"></div>'
+          + '<span>' + esc(r.ing[ii]) + '</span></div>';
       }
-      ingH+='<button class="btn-naar-lijst" onclick="voegIngToeAanLijst(\''+r.id+'\')">🛒 Alle ingrediënten naar boodschappenlijst</button></div>';
+      ingH += '<button class="btn-naar-lijst" data-rid="' + rid + '" onclick="voegIngToeAanLijst(this.getAttribute(\'data-rid\'))">Alle ingredienten naar lijst</button></div>';
     }
-    html+='<div class="recept-card">'+media+'<div class="recept-body">';
-    html+='<div class="recept-titel">'+(r.url?'<a href="'+esc(r.url)+'" target="_blank" style="color:var(--ink);text-decoration:none">'+esc(r.naam)+' ↗</a>':esc(r.naam))+'</div>';
-    html+='<div class="recept-tags">'+tags+'</div>';
-    if(r.omschr) html+='<div class="recept-omschr">'+esc(r.omschr)+'</div>';
-    html+=ingH;
-    html+='<div class="recept-btns">';
-    if(vid) html+='<button class="recept-btn" onclick="speelAf(\''+r.id+'\',\''+vid+'\')">▶ Afspelen</button>';
-    else if(r.url) html+='<a href="'+esc(r.url)+'" target="_blank" style="text-decoration:none;display:inline-block;padding:6px 14px;border-radius:8px;background:#3d6b4f;color:white;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600">'+pl+' Openen ↗</a>';
-    html+='<button class="recept-btn edit" onclick="openReceptForm(\''+r.id+'\')">✏️ Bewerken</button>';
-    html+='<button class="recept-btn del" onclick="verwijderRecept(\''+r.id+'\')">🗑 Verwijderen</button>';
-    html+='</div></div></div>';
+
+    // Knoppen
+    var btns = '';
+    if (vid) btns += '<button class="recept-btn" data-id="' + rid + '" data-vid="' + esc(vid) + '" onclick="speelAf(this.getAttribute(\'data-id\'),this.getAttribute(\'data-vid\'))">&#x25B6; Afspelen</button>';
+    if (r.url) btns += '<a href="' + esc(r.url) + '" target="_blank" style="text-decoration:none;display:inline-block;padding:6px 14px;border-radius:8px;background:#3d6b4f;color:white;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600">' + pl + ' Openen &#x2197;</a>';
+    btns += '<button class="recept-btn edit" data-id="' + rid + '" onclick="openReceptForm(this.getAttribute(\'data-id\'))">Bewerken</button>';
+    btns += '<button class="recept-btn del" data-id="' + rid + '" onclick="verwijderRecept(this.getAttribute(\'data-id\'))">Verwijderen</button>';
+
+    // Titel
+    var titel = r.url
+      ? '<a href="' + esc(r.url) + '" target="_blank" style="color:var(--ink);text-decoration:none">' + esc(r.naam) + ' &#x2197;</a>'
+      : esc(r.naam);
+
+    html += '<div class="recept-card">' + media
+      + '<div class="recept-body">'
+      + '<div class="recept-titel">' + titel + '</div>'
+      + '<div class="recept-tags">' + tags + '</div>'
+      + (r.omschr ? '<div class="recept-omschr">' + esc(r.omschr) + '</div>' : '')
+      + ingH
+      + '<div class="recept-btns">' + btns + '</div>'
+      + '</div></div>';
   }
   el.innerHTML = html;
+
+  // Bind YouTube thumbnail clicks
+  el.querySelectorAll('.yt-thumb').forEach(function(div) {
+    div.onclick = function() { speelAf(div.getAttribute('data-id'), div.getAttribute('data-vid')); };
+  });
 }
 
 function speelAf(receptId, videoId) {
@@ -1789,6 +1829,7 @@ var WINKELS = {
 // Sleutel = deel van productnaam (lowercase), waarde = array van winkels die het NIET verkopen
 var NIET_BIJ = {
   'hertog jan': ['lidl','aldi','dirk'],
+  'hertog': ['lidl','aldi','dirk'],
   'grolsch': ['lidl','aldi'],
   'duvel': ['lidl','aldi','dirk','plus'],
   'westmalle': ['lidl','aldi','dirk','plus'],
@@ -1842,17 +1883,32 @@ async function vergelijkPrijzen() {
       var p=PRIJZEN_DB[pi];
       if(n.indexOf(p.n.toLowerCase().split(' ')[0])>-1||(p.n.toLowerCase().indexOf(n)>-1&&n.length>3)){ahP=p.p;break;}
     }
+    // Fuzzy match: zoek ook als naam niet exact overeenkomt
+    if(ahP===null) {
+      // Probeer woorden uit productnaam te matchen
+      var woorden = n.split(/\s+/).filter(function(w){return w.length>2;});
+      for(var wdi=0; wdi<woorden.length && ahP===null; wdi++) {
+        for(var pj=0; pj<PRIJZEN_DB.length; pj++) {
+          var pnl = PRIJZEN_DB[pj].n.toLowerCase();
+          if(pnl.indexOf(woorden[wdi])>-1 || woorden[wdi].indexOf(pnl.split(' ')[0])>-1) {
+            ahP = PRIJZEN_DB[pj].p;
+            break;
+          }
+        }
+      }
+    }
     if(ahP!==null) {
       var pr={naam:item.name};
       for(var wi=0;wi<actW.length;wi++) {
         var wk=actW[wi];
-        // Check WINKEL_EXCLUSIEF (mag alleen bij bepaalde winkels)
         var excl=null;
-        for(var ek in WINKEL_EXCLUSIEF) { if(n.indexOf(ek)>-1){excl=WINKEL_EXCLUSIEF[ek];break;} }
+        for(var ek in WINKEL_EXCLUSIEF) { if(n.indexOf(ek)>-1||n.split(' ').some(function(w){return ek.indexOf(w)>-1&&w.length>3;})){excl=WINKEL_EXCLUSIEF[ek];break;} }
         if(excl && excl.indexOf(wk)<0) { pr[wk]=null; continue; }
-        // Check NIET_BIJ (mag NIET bij bepaalde winkels)
         var nBij=false;
-        for(var nk in NIET_BIJ) { if(n.indexOf(nk)>-1 && NIET_BIJ[nk].indexOf(wk)>-1){nBij=true;break;} }
+        for(var nk in NIET_BIJ) {
+          var match = n.indexOf(nk)>-1 || n.split(' ').some(function(w){return nk.indexOf(w)>-1&&w.length>3;});
+          if(match && NIET_BIJ[nk].indexOf(wk)>-1){nBij=true;break;}
+        }
         if(nBij) { pr[wk]=null; continue; }
         pr[wk]=Math.round(ahP*(WINKELS[wk].f)*(item.qty||1)*100)/100;
       }
