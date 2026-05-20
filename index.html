@@ -650,7 +650,8 @@ var CATS = [
   {k:'koel',l:'Koeling',i:'🧊',w:['melk','halfvolle','karnemelk','yoghurt','kwark','slagroom','boter','margarine','kaas','gouda','edam','brie','camembert','feta','mozzarella','parmezaan','roomkaas','smeerkaas','eieren','vla','pudding']},
   {k:'diep',l:'Diepvries',i:'❄️',w:['friet','pizza','kroketten','bitterballen','ijs','sorbet','diepvries','doperwten','edamame','bladerdeeg','wafels','pannenkoeken']},
   {k:'drank',l:'Drank',i:'🥤',w:['bier','wijn','prosecco','champagne','cava','heineken','hertog jan','grolsch','amstel','bavaria','vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','cognac','water','spa','cola','fanta','sprite','redbull','frisdrank','limonade','siroop','tonic','koffie','thee','cappuccino']},
-  {k:'nonfood',l:'Non Food',i:'🧴',w:['wasmiddel','afwasmiddel','vaatwas','vaatwastabletten','toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum']}
+  {k:'frituur',l:'Frituur',i:'🍟',w:['friet','patat','frikandel','kroket','loempia','berenklauw','bamischijf','nasibal','kaassouffle','saucijzenbroodje','kibbeling','viandel','gehaktbal','bitterballen','snack','pindasaus','mayonaise frituur','curryketchup','frietsaus']},
+    {k:'nonfood',l:'Non Food',i:'🧴',w:['wasmiddel','afwasmiddel','vaatwas','vaatwastabletten','toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum']}
 ];
 
 var KV = ['shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum','wasmiddel','vaatwas','vaatwastabletten','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','waterontharder','ontkalker'];
@@ -1895,12 +1896,14 @@ async function zoekWinkels(lat, lon, inh, sub) {
   var dq='[out:json][timeout:30];(node["shop"="chemist"](around:'+R+','+lat+','+lon+');node["shop"="drugstore"](around:'+R+','+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister|DA drogist",i](around:'+R+','+lat+','+lon+');way["name"~"Kruidvat|Etos|Trekpleister",i](around:'+R+','+lat+','+lon+'););out center 20;';
   var slq='[out:json][timeout:30];(node["shop"="alcohol"](around:'+R+','+lat+','+lon+');node["shop"="wine"](around:'+R+','+lat+','+lon+');node["name"~"Gall|Mitra|Slijterij",i](around:'+R+','+lat+','+lon+');way["name"~"Gall|Mitra",i](around:'+R+','+lat+','+lon+'););out center 20;';
   try {
-    var rs = await Promise.all([
+    var fq='[out:json][timeout:30];(node["amenity"="fast_food"](around:'+R+','+lat+','+lon+');node["amenity"="restaurant"]["cuisine"~"friture|fries|snack",i](around:'+R+','+lat+','+lon+');node["shop"="frozen_food"]["name"~"friet|patat|frituur|snack",i](around:'+R+','+lat+','+lon+');node["name"~"frituur|frietboer|frietkar|patatzaak|snackbar|friettent",i](around:10000,'+lat+','+lon+'););out center 30;';
+  var rs = await Promise.all([
       fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(sq)}),
       fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(dq)}),
-      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(slq)})
+      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(slq)}),
+      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(fq)})
     ]);
-    var sd=await rs[0].json(), dd=await rs[1].json(), sld=await rs[2].json();
+    var sd=await rs[0].json(), dd=await rs[1].json(), sld=await rs[2].json(), fd=await rs[3].json();
     var supers=verwerkOSM(sd.elements,lat,lon);
     var drog=verwerkOSM(dd.elements,lat,lon);
     var slij=verwerkOSM(sld.elements,lat,lon);
@@ -1910,6 +1913,9 @@ async function zoekWinkels(lat, lon, inh, sub) {
     supers=sorteenWinkels(supers,supK).slice(0,3);
     drog=sorteenWinkels(drog,drogK).slice(0,3);
     slij=sorteenWinkels(slij,slijK).slice(0,3);
+    var frituur=verwerkOSM(fd.elements,lat,lon);
+    var fritK=['frituur','frietboer','frietkar','patatzaak','snackbar','friettent','snack'];
+    frituur=sorteenWinkels(frituur,fritK).slice(0,3);
     var ahN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
     var kvN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
     if(sub) sub.textContent='Dichtstbijzijnde winkels (binnen 25km):';
@@ -1925,6 +1931,10 @@ async function zoekWinkels(lat, lon, inh, sub) {
     if(slij.length) {
       html+='<div class="vw-sectie">🍷 Slijterij</div>';
       slij.forEach(function(w){html+=renderWinkelKaart(w,'🍷','#fde8f0','#8b0000');});
+    }
+    if(frituur.length) {
+      html+='<div class="vw-sectie">🍟 Frituur & Snackbar</div>';
+      frituur.forEach(function(w){html+=renderWinkelKaart(w,'🍟','#fff8e1','#e65100');});
     }
     if(!html) html='<div style="text-align:center;padding:20px;color:var(--muted)">Geen winkels gevonden binnen 25km.<br><small>Mogelijk staat de winkel niet in OpenStreetMap.</small></div>';
     inh.innerHTML=html;
