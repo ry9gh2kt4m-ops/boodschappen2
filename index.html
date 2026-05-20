@@ -220,6 +220,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 .vw-adres{font-size:0.75rem;color:var(–muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vw-afstand{font-size:0.72rem;color:var(–green);font-weight:600;margin-top:2px}
 .vw-nav{background:var(–green);color:white;border:none;border-radius:9px;padding:7px 11px;font-family:‘DM Sans’,sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer}
+.prijs-item-rij button:hover{opacity:1!important;transform:scale(1.2)}
 .vw-sectie{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(–muted);margin:12px 0 7px 2px}
 
 /* Ideeën */
@@ -327,7 +328,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 
 <!-- Hoofdapp -->
 
-<div id="app">
+<div id="app" id2="main-app">
 
   <!-- Header -->
 
@@ -384,7 +385,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     <input class="item-input" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
     <button class="btn-mic" id="mic-btn" title="Spraak">🎙️</button>
     <button class="btn-prijs" id="prijs-btn" onclick="zoekLivePrijs()">prijs</button>
-    <button class="btn-add" onclick="addItem()" style="background:#3d6b4f;color:white;border:none;width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1.3rem;flex-shrink:0">＋</button>
+    <button class="btn-add" id="add-btn" onclick="addItem()" style="background:#3d6b4f;color:white;border:none;width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1.3rem;flex-shrink:0">＋</button>
   </div>
   <div class="mic-status" id="mic-status"></div>
   <div class="dubbel-melding" id="dubbel-melding"></div>
@@ -474,6 +475,10 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
   <!-- ===== PRIJZEN VIEW ===== -->
 
   <div class="view" id="view-prijzen">
+    <!-- Melding balk voor feedback -->
+    <div id="prijs-melding" style="display:none;padding:9px 12px;border-radius:10px;font-size:0.82rem;margin-bottom:10px;font-weight:500"></div>
+    <!-- Suggesties popup -->
+    <div id="prijs-suggesties" style="display:none;background:white;border:1.5px solid var(--green);border-radius:12px;padding:12px;margin-bottom:12px"></div>
     <div id="prijs-cat-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <button class="cat-chip" id="cat-alle" onclick="toggleCat('alle')" style="display:none">Alles</button>
       <button class="cat-chip active" id="cat-super" onclick="toggleCat('super')">🛒 Supermarkt</button>
@@ -497,7 +502,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     </div>
     <div onclick="toggleGoedgekeurdeIdeeen()" id="ideeen-sectie-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
       <span style="font-family:'Playfair Display',serif;font-size:0.95rem">Goedgekeurde ideeën</span>
-      <span id="ideeen-arrow">▶</span>
+      <span id="ideeen-goedgekeurd-arrow">▶</span>
     </div>
     <div id="ideeen-lijst-wrap" style="display:none"><div id="ideeen-lijst"></div></div>
   </div>
@@ -649,6 +654,8 @@ var CATS = [
   {k:'kruid',l:'Kruidenierswaren',i:'🛒',w:['pasta','spaghetti','penne','fusilli','tagliatelle','orzo','lasagne','rijst','basmati','couscous','quinoa','havermout','cruesli','granola','muesli','cornflakes','sultana','brinta','brood','crackers','beschuit','bloem','suiker','zout','peper','olie','azijn','ketchup','mayonaise','mosterd','pesto','sambal','sojasaus','ketjap','jam','pindakaas','nutella','honing','hagelslag','chocolade','chips','koekjes','noten','blik','bonen','kikkererwten','linzen','soep','bouillon','tomatenpuree','passata','bakpoeder','vanille','kruiden','specerijen','waterontharder','ontkalker']},
   {k:'koel',l:'Koeling',i:'🧊',w:['melk','halfvolle','karnemelk','yoghurt','kwark','slagroom','boter','margarine','kaas','gouda','edam','brie','camembert','feta','mozzarella','parmezaan','roomkaas','smeerkaas','eieren','vla','pudding']},
   {k:'diep',l:'Diepvries',i:'❄️',w:['friet','pizza','kroketten','bitterballen','ijs','sorbet','diepvries','doperwten','edamame','bladerdeeg','wafels','pannenkoeken']},
+  {k:'pizzeria',l:'Pizzeria',i:'🍕',w:['pizza','calzone','focaccia','lasagne bestelling','pasta bestelling','risotto bestelling']},
+  {k:'speciaalbier',l:'Speciaal Bier',i:'🍺',w:['speciaalbier','speciaal bier','duvel','westmalle','chimay','leffe','la trappe','rochefort','orval','westvleteren','karmeliet','grolsch','hertog jan','palm','brugse zot','delirium','kwak','gulden draak','jupiler','maes','stella artois','hoegaarden','blanc','tripel','quadrupel','ipa','ale','stout','porter','lambiek','geuze','kriek','framboise','witbier']},
   {k:'cafetaria',l:'Cafetaria',i:'🍟',w:['frikandel','frikandellen','kroket','kroketten','loempia','berenklauw','bamischijf','nasibal','kaassouffle','saucijzenbroodje','kibbeling','viandel','gehaktbal','bitterballen','patatje','patatje oorlog','patatje mayo','frietje','friet cafetaria','snack','pindasaus','curryketchup','frietsaus','satésaus','mayonaise cafetaria','uitsmijter','kipnuggets','nuggets','hamburger cafetaria','hotdog','worst cafetaria','babi pangang']},
   {k:'drank',l:'Drank',i:'🥤',w:['bier','wijn','prosecco','champagne','cava','heineken','hertog jan','grolsch','amstel','bavaria','vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','cognac','water','spa','cola','fanta','sprite','redbull','frisdrank','limonade','siroop','tonic','koffie','thee','cappuccino']},
   {k:'nonfood',l:'Non Food',i:'🧴',w:['wasmiddel','afwasmiddel','vaatwas','vaatwastabletten','toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum']}
@@ -850,6 +857,9 @@ function startApp() {
   }, {onlyOnce:true});
   laadPersonen();
   fbListen();
+  laadPrijsFeedback();
+  laadPrijsKoppelingen();
+  laadCommunityPrijzen();
   setupSpeech();
   isBeheerder = false;
   try { isBeheerder = localStorage.getItem('beheerder') === '1' || gezinsCode === 'familie-de-jong'; } catch(e) {}
@@ -1868,6 +1878,294 @@ function toggleCat(cat) {
   });
 }
 
+// ---- Slimme prijsmatching ----
+function normaliseerWoord(w) {
+  if (w.endsWith('nen') && w.length > 5) return w.slice(0,-3);
+  if (w.endsWith('en') && w.length > 4) return w.slice(0,-2);
+  if (w.endsWith('s') && w.length > 3) return w.slice(0,-1);
+  return w;
+}
+
+function levenshtein(a, b) {
+  if (a.length < b.length) return levenshtein(b, a);
+  if (!b.length) return a.length;
+  var prev = Array.from({length: b.length+1}, function(_,i){return i;});
+  for (var i = 0; i < a.length; i++) {
+    var curr = [i+1];
+    for (var j = 0; j < b.length; j++) {
+      curr.push(Math.min(prev[j+1]+1, curr[j]+1, prev[j]+(a[i]!==b[j]?1:0)));
+    }
+    prev = curr;
+  }
+  return prev[b.length];
+}
+
+function zoekPrijsMatch(invoer) {
+  var words = invoer.toLowerCase().trim().split(/\s+/).filter(function(w){return w.length > 2;});
+  if (!words.length) return null;
+  var normWords = words.map(normaliseerWoord);
+  var bestScore = 0, bestMatch = null;
+  for (var pi = 0; pi < PRIJZEN_DB.length; pi++) {
+    var p = PRIJZEN_DB[pi];
+    var dbWords = p.n.toLowerCase().split(' ');
+    var dbNorm = dbWords.map(normaliseerWoord);
+    var score = 0;
+    for (var wi = 0; wi < words.length; wi++) {
+      var w = words[wi], nw = normWords[wi];
+      for (var di = 0; di < dbWords.length; di++) {
+        var dw = dbWords[di], ndw = dbNorm[di];
+        if (w === dw || nw === ndw) { score += 3; break; }
+        if (w.length >= 4 && dw.length >= 4 && (dw.indexOf(w.slice(0,4)) === 0 || w.indexOf(dw.slice(0,4)) === 0)) { score += 2; break; }
+        if (nw.length >= 4 && ndw.length >= 4 && (ndw.indexOf(nw.slice(0,4)) === 0 || nw.indexOf(ndw.slice(0,4)) === 0)) { score += 2; break; }
+        if (w.length > 4 && levenshtein(w, dw) <= 1) { score += 1; break; }
+      }
+    }
+    if (score > bestScore) { bestScore = score; bestMatch = p; }
+  }
+  return bestScore >= 2 ? bestMatch : null;
+}
+
+// ============================================================
+// ZELFLERENDE PRIJSVERGELIJKING - Feedback systeem
+// ============================================================
+
+// In-memory cache van feedback (geladen vanuit Firebase)
+var prijsFeedback = {};
+// { "hertog_jan|aldi": {score:-2, verloopt:timestamp}, ... }
+
+// Laad feedback bij opstarten
+function laadPrijsFeedback() {
+  window._onValue(getRef('prijs_feedback'), function(snap) {
+    prijsFeedback = snap.val() || {};
+  });
+}
+
+// Verloopschema: hoe vaker 👎, hoe langer geblokkeerd
+function berekenVerloopDuur(score) {
+  var absScore = Math.abs(score);
+  if (absScore <= 1) return 14 * 24 * 60 * 60 * 1000;   // 14 dagen
+  if (absScore <= 2) return 30 * 24 * 60 * 60 * 1000;   // 30 dagen
+  if (absScore <= 3) return 90 * 24 * 60 * 60 * 1000;   // 90 dagen
+  return 180 * 24 * 60 * 60 * 1000;                      // 180 dagen
+}
+
+// Maak een sleutel voor product+winkel combinatie
+function feedbackSleutel(productnaam, winkelKey) {
+  return productnaam.toLowerCase().trim().replace(/[^a-z0-9]/g,'_')
+         .replace(/_+/g,'_').slice(0,30) + '|' + winkelKey;
+}
+
+// Check of een product+winkel combinatie geblokkeerd is
+function isGeblokkeerd(productnaam, winkelKey) {
+  var sleutel = feedbackSleutel(productnaam, winkelKey);
+  var fb = prijsFeedback[sleutel];
+  if (!fb || fb.score >= 0) return false;
+  // Check of verlooptijd nog niet verstreken is
+  if (fb.verloopt && Date.now() > fb.verloopt) {
+    // Verlopen: automatisch vrijgeven
+    return false;
+  }
+  return fb.score < 0;
+}
+
+// Sla 👎 feedback op
+async function geefDuimOmlaag(productnaam, winkelKey, winkelNaam) {
+  var sleutel = feedbackSleutel(productnaam, winkelKey);
+  var bestaand = prijsFeedback[sleutel] || {score:0};
+  var nieuweScore = bestaand.score - 1;
+  var verloopDuur = berekenVerloopDuur(nieuweScore);
+  var verloopt = Date.now() + verloopDuur;
+  var verloopDagen = Math.round(verloopDuur / (24*60*60*1000));
+  
+  var nieuweData = {score: nieuweScore, verloopt: verloopt, bijgewerkt: Date.now()};
+  prijsFeedback[sleutel] = nieuweData;
+  
+  try {
+    var fbKey = sleutel.replace(/\|/g, '__');
+    await window._set(getRef('prijs_feedback/' + fbKey), nieuweData);
+  } catch(e) {}
+  
+  // Toon bevestiging
+  toonPrijsMelding(
+    '👎 ' + productnaam + ' bij ' + winkelNaam + ' verborgen voor ' + verloopDagen + ' dagen',
+    'info'
+  );
+  
+  // Herbereken vergelijking
+  vergelijkPrijzen();
+}
+
+// Sla 👍 feedback op (bevestigt dat prijs klopt)
+async function geefDuimOmhoog(productnaam, winkelKey) {
+  var sleutel = feedbackSleutel(productnaam, winkelKey);
+  var bestaand = prijsFeedback[sleutel] || {score:0};
+  var nieuweScore = Math.min(bestaand.score + 1, 5);
+  var nieuweData = {score: nieuweScore, verloopt: null, bijgewerkt: Date.now()};
+  prijsFeedback[sleutel] = nieuweData;
+  try {
+    var fbKey = sleutel.replace(/\|/g,'__');
+    await window._set(getRef('prijs_feedback/' + fbKey), nieuweData);
+  } catch(e) {}
+  toonPrijsMelding('👍 Bedankt! Prijs bevestigd.', 'success');
+}
+
+// Toon een korte melding
+function toonPrijsMelding(tekst, type) {
+  var el = document.getElementById('prijs-melding');
+  if (!el) return;
+  el.textContent = tekst;
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#e8f5e9' : '#e3f2fd';
+  el.style.color = type === 'success' ? '#2e7d32' : '#1565c0';
+  setTimeout(function() { el.style.display = 'none'; }, 4000);
+}
+
+// Zoek suggesties voor niet-gevonden product
+function zoekSuggesties(invoer) {
+  var woorden = invoer.toLowerCase().split(/\s+/).filter(function(w){return w.length>2;});
+  var scores = PRIJZEN_DB.map(function(p) {
+    var pn = p.n.toLowerCase();
+    var score = 0;
+    woorden.forEach(function(w){ if(pn.indexOf(w)>-1) score+=2; });
+    // Categorie match
+    var cat = detectCat(invoer);
+    if (p.c === cat) score += 1;
+    return {p:p, score:score};
+  });
+  scores.sort(function(a,b){return b.score-a.score;});
+  return scores.filter(function(s){return s.score>0;}).slice(0,3).map(function(s){return s.p;});
+}
+
+// Toon popup voor niet-gevonden product
+function toonSuggestiesPopup(productnaam, suggesties) {
+  var el = document.getElementById('prijs-suggesties');
+  if (!el) return;
+  var html = '<div style="font-weight:600;font-size:0.88rem;margin-bottom:10px;color:var(--ink)">Geen prijs voor <em>' + esc(productnaam) + '</em></div>';
+  html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Bedoel je misschien:</div>';
+  for (var si = 0; si < suggesties.length; si++) {
+    var s = suggesties[si];
+    html += '<button class="sugg-btn" data-orig="' + esc(productnaam) + '" data-match="' + esc(s.n) + '" '
+      + 'style="display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:9px 11px;margin-bottom:6px;border:1.5px solid var(--border);border-radius:9px;background:white;cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.83rem">'
+      + '<span>' + esc(s.n) + '</span><span style="color:var(--green);font-weight:600">&euro;' + s.p.toFixed(2) + '</span></button>';
+  }
+  html += '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">';
+  html += '<button class="sugg-toevoegen" data-naam="' + esc(productnaam) + '" '
+    + 'style="display:block;width:100%;padding:8px;margin-bottom:6px;border:1.5px dashed var(--green);border-radius:9px;background:var(--green-light);cursor:pointer;font-family:DM Sans,sans-serif;font-size:0.8rem;color:var(--green);font-weight:600">'
+    + '&#xFF0B; Prijs voor "' + esc(productnaam) + '" zelf opgeven</button>';
+  html += '<button class="sugg-overslaan" data-naam="' + esc(productnaam) + '" '
+    + 'style="width:100%;padding:7px;border:none;border-radius:9px;background:var(--cream);font-family:DM Sans,sans-serif;font-size:0.78rem;cursor:pointer;color:var(--muted)">'
+    + '&#x23ED;&#xFE0F; Overslaan &mdash; wel in lijst, niet in vergelijking</button>';
+  el.innerHTML = html;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  // Bind knoppen
+  el.querySelectorAll('.sugg-btn').forEach(function(btn) {
+    btn.onclick = function() { kiesSuggestie(btn.getAttribute('data-orig'), btn.getAttribute('data-match')); };
+  });
+  var toevBtn = el.querySelector('.sugg-toevoegen');
+  if (toevBtn) toevBtn.onclick = function() { toonToevoegAanDB(toevBtn.getAttribute('data-naam')); };
+  var overBtn = el.querySelector('.sugg-overslaan');
+  if (overBtn) overBtn.onclick = function() { slaanOverProductOver(overBtn.getAttribute('data-naam')); };
+}
+
+function toonToevoegAanDB(productnaam) {
+  var el = document.getElementById('prijs-suggesties');
+  if (!el) return;
+  var geradenCat = detectCat(productnaam);
+  var catOpties = [['koel','Koeling'],['vlees','Vlees/Vis'],['agf','AGF'],['kruid','Kruidenierswaren'],
+    ['diep','Diepvries'],['drank','Drank'],['nonfood','Non Food'],['pizzeria','Pizzeria'],
+    ['speciaalbier','Speciaal Bier'],['cafetaria','Cafetaria']];
+  var optHtml = catOpties.map(function(c){
+    return '<option value="' + c[0] + '"' + (geradenCat===c[0]?' selected':'') + '>' + c[1] + '</option>';
+  }).join('');
+  var html = '<div style="font-weight:600;font-size:0.88rem;margin-bottom:10px">Prijs opgeven voor <em>' + esc(productnaam) + '</em></div>';
+  html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Gemiddelde prijs bij AH? Dan leer ik de andere winkels ervan.</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">';
+  html += '<span style="font-size:1rem">&euro;</span>';
+  html += '<input id="db-prijs-inp" type="number" step="0.01" min="0.01" max="999" placeholder="bijv. 3.49" '
+    + 'style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:DM Sans,sans-serif;font-size:0.9rem;outline:none">';
+  html += '<select id="db-cat-inp" style="flex:1.2;border:1.5px solid var(--border);border-radius:8px;padding:8px;font-family:DM Sans,sans-serif;font-size:0.8rem;background:white">'
+    + optHtml + '</select></div>';
+  html += '<button class="db-opslaan-btn" data-naam="' + esc(productnaam) + '" '
+    + 'style="width:100%;padding:9px;border:none;border-radius:9px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:6px">Opslaan</button>';
+  html += '<button class="sugg-overslaan" data-naam="' + esc(productnaam) + '" '
+    + 'style="width:100%;padding:7px;border:none;border-radius:9px;background:var(--cream);font-family:DM Sans,sans-serif;font-size:0.78rem;cursor:pointer;color:var(--muted)">Toch overslaan</button>';
+  el.innerHTML = html;
+  var opslaanBtn = el.querySelector('.db-opslaan-btn');
+  if (opslaanBtn) opslaanBtn.onclick = function() { slaDBProductOp(opslaanBtn.getAttribute('data-naam')); };
+  var overBtn2 = el.querySelector('.sugg-overslaan');
+  if (overBtn2) overBtn2.onclick = function() { slaanOverProductOver(overBtn2.getAttribute('data-naam')); };
+}
+
+async function slaDBProductOp(productnaam) {
+  var prijsInp = document.getElementById('db-prijs-inp');
+  var catInp = document.getElementById('db-cat-inp');
+  if (!prijsInp || !catInp) return;
+  var prijs = parseFloat(prijsInp.value);
+  if (!prijs || prijs <= 0 || prijs > 999) {
+    if (prijsInp) prijsInp.style.borderColor = 'var(--red)';
+    return;
+  }
+  var cat = catInp.value;
+  var key = productnaam.toLowerCase().trim().replace(/[^a-z0-9]/g,'_').slice(0,40);
+  var nieuwProduct = {n:productnaam, c:cat, p:prijs, toegevoegd:Date.now(), door:gezinsCode};
+  try {
+    await window._set(window._ref(window._db,'community_prijzen/'+key), nieuwProduct);
+    var bestaandIdx = -1;
+    for (var i=0; i<PRIJZEN_DB.length; i++) {
+      if (PRIJZEN_DB[i].n.toLowerCase()===productnaam.toLowerCase()){bestaandIdx=i;break;}
+    }
+    if (bestaandIdx>=0) PRIJZEN_DB[bestaandIdx]=nieuwProduct;
+    else PRIJZEN_DB.push(nieuwProduct);
+  } catch(e) {}
+  document.getElementById('prijs-suggesties').style.display='none';
+  toonPrijsMelding('Opgeslagen! "'+productnaam+'" wordt voortaan meegenomen in vergelijking.','success');
+  vergelijkPrijzen();
+}
+
+function slaanOverProductOver(productnaam) {
+  var key = productnaam.toLowerCase().trim().replace(/[^a-z0-9]/g,'_').slice(0,30);
+  if (!window._overgeslagen) window._overgeslagen = {};
+  window._overgeslagen[key] = true;
+  document.getElementById('prijs-suggesties').style.display='none';
+  toonPrijsMelding('"'+productnaam+'" overgeslagen. Staat wel op je lijst.','info');
+}
+
+// Sla suggestie-koppeling op in Firebase
+async function kiesSuggestie(origineel, gevonden) {
+  var k = origineel.toLowerCase().trim().replace(/[^a-z0-9]/g,'_').slice(0,30);
+  try { await window._set(getRef('prijs_koppelingen/' + k), gevonden); } catch(e) {}
+  // Laad koppelingen opnieuw
+  document.getElementById('prijs-suggesties').style.display = 'none';
+  toonPrijsMelding('✅ Volgende keer wordt "' + origineel + '" vergeleken als "' + gevonden + '"', 'success');
+  vergelijkPrijzen();
+}
+
+// Laad eerder gemaakte koppelingen
+var prijsKoppelingen = {};
+function laadCommunityPrijzen() {
+  // Laad door gebruikers opgegeven prijzen uit Firebase
+  window._onValue(window._ref(window._db, 'community_prijzen'), function(snap) {
+    var data = snap.val() || {};
+    Object.values(data).forEach(function(p) {
+      if (!p.n || !p.p) return;
+      var bestaandIdx = -1;
+      for (var i = 0; i < PRIJZEN_DB.length; i++) {
+        if (PRIJZEN_DB[i].n.toLowerCase() === p.n.toLowerCase()) { bestaandIdx = i; break; }
+      }
+      if (bestaandIdx >= 0) PRIJZEN_DB[bestaandIdx] = p;
+      else PRIJZEN_DB.push(p);
+    });
+  });
+}
+
+function laadPrijsKoppelingen() {
+  window._onValue(getRef('prijs_koppelingen'), function(snap) {
+    prijsKoppelingen = snap.val() || {};
+  });
+}
+
+
 async function vergelijkPrijzen() {
   var res=document.getElementById('prijs-resultaat'); if(!res) return;
   res.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">💰 Berekenen...</div>';
@@ -1885,18 +2183,18 @@ async function vergelijkPrijzen() {
       if(n.indexOf(p.n.toLowerCase().split(' ')[0])>-1||(p.n.toLowerCase().indexOf(n)>-1&&n.length>3)){ahP=p.p;break;}
     }
     // Fuzzy match: zoek ook als naam niet exact overeenkomt
-    if(ahP===null) {
-      // Probeer woorden uit productnaam te matchen
-      var woorden = n.split(/\s+/).filter(function(w){return w.length>2;});
-      for(var wdi=0; wdi<woorden.length && ahP===null; wdi++) {
-        for(var pj=0; pj<PRIJZEN_DB.length; pj++) {
-          var pnl = PRIJZEN_DB[pj].n.toLowerCase();
-          if(pnl.indexOf(woorden[wdi])>-1 || woorden[wdi].indexOf(pnl.split(' ')[0])>-1) {
-            ahP = PRIJZEN_DB[pj].p;
-            break;
-          }
-        }
+    // Check eerder opgeslagen koppelingen (gebruiker heeft zelf gematcht)
+    if (ahP === null) {
+      var koppKey = item.name.toLowerCase().trim().replace(/[^a-z0-9]/g,'_').slice(0,30);
+      if (prijsKoppelingen[koppKey]) {
+        var gekoppeld = PRIJZEN_DB.find(function(p){return p.n===prijsKoppelingen[koppKey];});
+        if (gekoppeld) ahP = gekoppeld.p;
       }
+    }
+    // Gebruik slimme matching met typfouttolerantie
+    if (ahP === null) {
+      var smartMatch = zoekPrijsMatch(item.name);
+      if (smartMatch) ahP = smartMatch.p;
     }
     if(ahP!==null) {
       var pr={naam:item.name};
@@ -1910,6 +2208,8 @@ async function vergelijkPrijzen() {
           var match = n.indexOf(nk)>-1 || n.split(' ').some(function(w){return nk.indexOf(w)>-1&&w.length>3;});
           if(match && NIET_BIJ[nk].indexOf(wk)>-1){nBij=true;break;}
         }
+        // Check ook gebruikers-feedback (👎 blokkades)
+        if(!nBij && isGeblokkeerd(item.name, wk)) nBij=true;
         if(nBij) { pr[wk]=null; continue; }
         pr[wk]=Math.round(ahP*(WINKELS[wk].f)*(item.qty||1)*100)/100;
       }
@@ -1935,7 +2235,17 @@ async function vergelijkPrijzen() {
       var a=gevonden[agi];
       var minP=Math.min.apply(null,actW.map(function(ww){return a[ww]||Infinity;}));
       var isMin=(a[w]||0)===minP;
-      if(a[w]!==null && a[w]!==undefined) { html+='<div class="prijs-item-rij"><span>'+esc(a.naam)+'</span><span class="'+(isMin?'prijs-goedkoopst':'')+'">€'+(a[w]).toFixed(2)+'</span></div>'; } else { html+='<div class="prijs-item-rij"><span>'+esc(a.naam)+'</span><span style="color:var(--muted);font-size:0.75rem">n.v.t.</span></div>'; }
+      if(a[w]!==null && a[w]!==undefined) {
+          var pnSafe=a.naam.replace(/'/g,"&#39;"), wkSafe=w;
+          html+='<div class="prijs-item-rij">'
+            +'<span>'+esc(a.naam)+'</span>'
+            +'<span style="display:flex;align-items:center;gap:4px">'
+            +'<span class="'+(isMin?'prijs-goedkoopst':'')+'">€'+(a[w]).toFixed(2)+'</span>'
+            +'<button onclick="geefDuimOmlaag(\'' + pnSafe + '\',\'' + wkSafe + '\',\'' + esc(WINKELS[wkSafe].n) + '\')" '
+            +'title="Niet beschikbaar bij deze winkel" '
+            +'style="background:none;border:none;cursor:pointer;font-size:0.75rem;padding:1px 3px;opacity:0.5;line-height:1">👎</button>'
+            +'</span></div>';
+        } else { html+='<div class="prijs-item-rij"><span>'+esc(a.naam)+'</span><span style="color:var(--muted);font-size:0.75rem">n.v.t.</span></div>'; }
     }
     html+='</div></div>';
   }
@@ -2010,6 +2320,8 @@ function toonWinkelLinks(lat, lon, inh, sub) {
   html += mapsLink('drogisterij kruidvat etos', '#f3e8ff', '💊', 'Drogisterij');
   html += mapsLink('slijterij gall mitra', '#fde8f0', '🍷', 'Slijterij');
   html += mapsLink('frituur snackbar patatzaak', '#fff8e1', '🍟', 'Frituur & Snackbar');
+  html += mapsLink('pizzeria pizza bezorgen', '#fff0e8', '🍕', 'Pizzeria');
+  html += mapsLink('speciaalbier winkel biershop', '#f5f0e8', '🍺', 'Speciaal Bierwinkel');
 
   if (lat) {
     html += '<div id="overpass-resultaten" style="margin-top:4px"><div style="text-align:center;padding:8px;color:var(--muted);font-size:0.8rem">🔍 Exacte adressen ophalen...</div></div>';
@@ -2068,6 +2380,8 @@ async function zoekWinkelsOverpass(lat, lon, inh, sub) {
     else if (shop==='chemist' || n.indexOf('kruidvat')>-1 || n.indexOf('etos')>-1 || n.indexOf('trekpleister')>-1) cats.drog.push(w);
     else if (shop==='alcohol' || shop==='wine' || n.indexOf('gall')>-1 || n.indexOf('mitra')>-1 || n.indexOf('slijterij')>-1) cats.slij.push(w);
     else if (amenity==='fast_food' || n.indexOf('frituur')>-1 || n.indexOf('patatzaak')>-1 || n.indexOf('snackbar')>-1 || n.indexOf('frietboer')>-1) cats.frituur.push(w);
+    else if (amenity==='restaurant' && (n.indexOf('pizza')>-1 || (el.tags&&(el.tags.cuisine||'').indexOf('pizza')>-1))) cats.pizza=(cats.pizza||[]), cats.pizza.push(w);
+    else if (shop==='alcohol' && (n.indexOf('bier')>-1 || n.indexOf('speciaalbier')>-1)) cats.bier=(cats.bier||[]), cats.bier.push(w);
   });
 
   // Bouw HTML voor gevonden winkels
@@ -2322,7 +2636,8 @@ function toggleAdminSectie(id) {
 
 function toggleGoedgekeurdeIdeeen() {
   var wrap = document.getElementById('ideeen-lijst-wrap');
-  var arrow = document.getElementById('ideeen-arrow');
+  var arrowId = id === 'ideeen' ? 'ideeen-goedgekeurd-arrow' : id+'-arrow';
+  var arrow = document.getElementById(arrowId);
   if (!wrap) return;
   var open = wrap.style.display === 'block';
   wrap.style.display = open ? 'none' : 'block';
