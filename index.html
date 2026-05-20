@@ -1900,113 +1900,161 @@ function vindWinkel() {
   if (sub) sub.textContent = 'Even geduld...';
 
   if (!navigator.geolocation) {
-    inh.innerHTML = '<div style="color:var(--red);padding:10px">❌ Locatie niet beschikbaar op dit apparaat.</div>';
+    toonWinkelLinks(null, null, inh, sub);
     return;
   }
 
-  var geoTimer = setTimeout(function() {
-    inh.innerHTML = '<div style="color:var(--red);padding:10px">⏱ Locatie ophalen duurt te lang.<br><small>Controleer je locatie-instellingen: Instellingen › Safari › Locatie › Toestaan.</small></div>';
-  }, 15000);
+  var timer = setTimeout(function() {
+    // Na timeout: toon Google Maps links zonder locatie
+    toonWinkelLinks(null, null, inh, sub);
+  }, 8000);
 
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      clearTimeout(geoTimer);
-      if (sub) sub.textContent = 'Winkels zoeken binnen 25km...';
-      zoekWinkels(pos.coords.latitude, pos.coords.longitude, inh, sub);
+      clearTimeout(timer);
+      var lat = pos.coords.latitude;
+      var lon = pos.coords.longitude;
+      toonWinkelLinks(lat, lon, inh, sub);
+      // Probeer ook Overpass in achtergrond
+      zoekWinkelsOverpass(lat, lon, inh, sub);
     },
     function(err) {
-      clearTimeout(geoTimer);
-      var msgs = {
-        1: 'Locatietoegang geweigerd.<br><small>Ga naar Instellingen › Privacy › Locatievoorzieningen › Safari en kies "Tijdens gebruik".</small>',
-        2: 'Locatie kon niet bepaald worden. Controleer of GPS aan staat.',
-        3: 'Timeout bij ophalen locatie. Probeer opnieuw.'
-      };
-      inh.innerHTML = '<div style="color:var(--red);padding:10px">❌ ' + (msgs[err.code] || 'Locatiefout: ' + err.message) + '</div>';
+      clearTimeout(timer);
+      // Bij fout: toon alsnog Google Maps links (zonder locatie)
+      toonWinkelLinks(null, null, inh, sub);
     },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    { enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 }
   );
 }
 
-async function zoekWinkels(lat, lon, inh, sub) {
-  // Haal per categorie winkels op - sequentieel om rate limiting te voorkomen
-  var R = 10000; // Begin met 10km
-  var results = {super:[], drog:[], slij:[], frituur:[]};
+function toonWinkelLinks(lat, lon, inh, sub) {
+  // Toon direct klikbare Google Maps zoeklinks
+  if (sub) sub.textContent = lat ? 'Winkels bij jou in de buurt:' : 'Zoek winkels via Google Maps:';
 
-  // Helper: voer een Overpass query uit
-  async function overpass(query) {
+  var locParam = lat ? ('&near=' + lat + ',' + lon) : '';
+  var zoekBase = lat
+    ? 'https://www.google.com/maps/search/'
+    : 'https://www.google.com/maps/search/';
+
+  function mapsLink(zoek, kleur, ico, label) {
+    var url = zoekBase + encodeURIComponent(zoek) + (lat ? '/@' + lat + ',' + lon + ',13z' : '');
+    return '<div style="background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
+      + '<div style="width:40px;height:40px;border-radius:10px;background:' + kleur + ';display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">' + ico + '</div>'
+      + '<div style="flex:1">'
+      + '<div style="font-weight:600;font-size:0.9rem">' + label + '</div>'
+      + '<div style="font-size:0.75rem;color:var(--muted);margin-top:2px">' + (lat ? 'Zoeken bij jou in de buurt' : 'Zoeken op Google Maps') + '</div>'
+      + '</div>'
+      + '<a href="' + url + '" target="_blank" style="background:#3d6b4f;color:white;border:none;border-radius:9px;padding:8px 12px;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap">🗺️ Open</a>'
+      + '</div>';
+  }
+
+  var html = '';
+  html += mapsLink('supermarkt', '#ebf3ff', '🛒', 'Supermarkt');
+  html += mapsLink('drogisterij kruidvat etos', '#f3e8ff', '💊', 'Drogisterij');
+  html += mapsLink('slijterij gall mitra', '#fde8f0', '🍷', 'Slijterij');
+  html += mapsLink('frituur snackbar patatzaak', '#fff8e1', '🍟', 'Frituur & Snackbar');
+
+  if (lat) {
+    html += '<div id="overpass-resultaten" style="margin-top:4px"><div style="text-align:center;padding:8px;color:var(--muted);font-size:0.8rem">🔍 Exacte adressen ophalen...</div></div>';
+  }
+
+  inh.innerHTML = html;
+}
+
+async function zoekWinkelsOverpass(lat, lon, inh, sub) {
+  // Haal exacte winkeldata op via OpenStreetMap en voeg toe aan resultaten
+  var R = 5000;
+  async function ovp(q) {
     try {
-      var resp = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'data=' + encodeURIComponent(query)
+      var r = await fetch('https://overpass-api.de/api/interpreter', {
+        method:'POST', body:'data=' + encodeURIComponent(q)
       });
-      if (!resp.ok) return [];
-      var data = await resp.json();
-      return data.elements || [];
+      var d = await r.json();
+      return d.elements || [];
     } catch(e) { return []; }
   }
 
-  if (sub) sub.textContent = 'Supermarkten zoeken...';
-  var supQ = '[out:json][timeout:15];(node["shop"="supermarket"](around:'+R+','+lat+','+lon+');way["shop"="supermarket"](around:'+R+','+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:'+R+','+lat+','+lon+'););out center 20;';
-  results.super = verwerkOSM(await overpass(supQ), lat, lon);
+  // Haal alle categorieën op in één query
+  var q = '[out:json][timeout:20];('
+    + 'node["shop"="supermarket"](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'way["shop"="supermarket"](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'node["shop"="chemist"](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'node["name"~"Kruidvat|Etos|Trekpleister",i](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'node["shop"="alcohol"](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'node["name"~"Gall|Mitra|Slijterij",i](around:' + R + ',' + lat + ',' + lon + ');'
+    + 'node["amenity"="fast_food"](around:3000,' + lat + ',' + lon + ');'
+    + 'node["name"~"frituur|patatzaak|snackbar|frietboer",i](around:5000,' + lat + ',' + lon + ');'
+    + ');out center 50;';
 
-  // Als geen supermarkt gevonden binnen 10km, probeer 25km
-  if (results.super.length === 0) {
-    if (sub) sub.textContent = 'Uitbreiden naar 25km...';
-    var supQ2 = '[out:json][timeout:15];(node["shop"="supermarket"](around:25000,'+lat+','+lon+');way["shop"="supermarket"](around:25000,'+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk",i](around:25000,'+lat+','+lon+'););out center 20;';
-    results.super = verwerkOSM(await overpass(supQ2), lat, lon);
-  }
+  var els = await ovp(q);
+  if (!els.length) return;
 
-  if (sub) sub.textContent = 'Drogisterijen zoeken...';
-  var drogQ = '[out:json][timeout:15];(node["shop"="chemist"](around:25000,'+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister",i](around:25000,'+lat+','+lon+'););out center 20;';
-  results.drog = verwerkOSM(await overpass(drogQ), lat, lon);
+  // Categoriseer resultaten
+  var cats = {super:[], drog:[], slij:[], frituur:[]};
+  els.forEach(function(el) {
+    var naam = (el.tags && el.tags.name) || '';
+    var shop = (el.tags && el.tags.shop) || '';
+    var amenity = (el.tags && el.tags.amenity) || '';
+    var n = naam.toLowerCase();
+    var lat2 = el.lat || (el.center && el.center.lat);
+    var lon2 = el.lon || (el.center && el.center.lon);
+    if (!lat2 || !lon2 || !naam) return;
+    var af = berekenAfstand(lat, lon, lat2, lon2);
+    var adres = '';
+    if (el.tags) {
+      var s = el.tags['addr:street']||'', h = el.tags['addr:housenumber']||'';
+      adres = s ? (s + (h?' '+h:'')) : '';
+    }
+    var w = {naam:naam, adres:adres, afstand:af, lat:lat2, lon:lon2};
+    if (shop==='supermarket' || n.indexOf('albert heijn')>-1 || n.indexOf('jumbo')>-1 || n.indexOf('lidl')>-1 || n.indexOf('aldi')>-1 || n.indexOf('plus')>-1 || n.indexOf('dirk')>-1 || n.indexOf('coop')>-1 || n.indexOf('spar')>-1) cats.super.push(w);
+    else if (shop==='chemist' || n.indexOf('kruidvat')>-1 || n.indexOf('etos')>-1 || n.indexOf('trekpleister')>-1) cats.drog.push(w);
+    else if (shop==='alcohol' || shop==='wine' || n.indexOf('gall')>-1 || n.indexOf('mitra')>-1 || n.indexOf('slijterij')>-1) cats.slij.push(w);
+    else if (amenity==='fast_food' || n.indexOf('frituur')>-1 || n.indexOf('patatzaak')>-1 || n.indexOf('snackbar')>-1 || n.indexOf('frietboer')>-1) cats.frituur.push(w);
+  });
 
-  if (sub) sub.textContent = 'Slijterijen zoeken...';
-  var slijQ = '[out:json][timeout:15];(node["shop"="alcohol"](around:25000,'+lat+','+lon+');node["shop"="wine"](around:25000,'+lat+','+lon+');node["name"~"Gall|Mitra|Slijterij",i](around:25000,'+lat+','+lon+'););out center 20;';
-  results.slij = verwerkOSM(await overpass(slijQ), lat, lon);
-
-  if (sub) sub.textContent = 'Frituur & snackbars zoeken...';
-  var fritQ = '[out:json][timeout:15];(node["amenity"="fast_food"](around:10000,'+lat+','+lon+');node["name"~"frituur|frietboer|patatzaak|snackbar|friettent",i](around:10000,'+lat+','+lon+'););out center 20;';
-  results.frituur = verwerkOSM(await overpass(fritQ), lat, lon);
-
-  // Sorteer en top 3 per categorie
-  var supK = ['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar'];
-  var drogK = ['kruidvat','etos','trekpleister','da '];
-  var slijK = ['gall','mitra','slijterij'];
-  var fritK = ['frituur','frietboer','patatzaak','snackbar','friettent'];
-
-  var supers  = sorteenWinkels(results.super,  supK).slice(0,3);
-  var drog    = sorteenWinkels(results.drog,   drogK).slice(0,3);
-  var slij    = sorteenWinkels(results.slij,   slijK).slice(0,3);
-  var frituur = sorteenWinkels(results.frituur, fritK).slice(0,3);
-
-  var ahN = items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
-  var kvN = items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
-
-  if (sub) sub.textContent = 'Dichtstbijzijnde winkels:';
+  // Bouw HTML voor gevonden winkels
+  var res = document.getElementById('overpass-resultaten');
+  if (!res) return;
   var html = '';
 
-  if (supers.length) {
-    html += '<div class="vw-sectie">🛒 Supermarkt' + (ahN > 0 ? ' (' + ahN + ' product' + (ahN>1?'en':'') + ' op lijst)' : '') + '</div>';
-    supers.forEach(function(w){ html += renderWinkelKaart(w,'🛒','#ebf3ff','#003087'); });
-  }
-  if (drog.length) {
-    html += '<div class="vw-sectie">💊 Drogisterij' + (kvN > 0 ? ' (' + kvN + ' product' + (kvN>1?'en':'') + ' op lijst)' : '') + '</div>';
-    drog.forEach(function(w){ html += renderWinkelKaart(w,'💊','#f3e8ff','#6a00c4'); });
-  }
-  if (slij.length) {
-    html += '<div class="vw-sectie">🍷 Slijterij</div>';
-    slij.forEach(function(w){ html += renderWinkelKaart(w,'🍷','#fde8f0','#8b0000'); });
-  }
-  if (frituur.length) {
-    html += '<div class="vw-sectie">🍟 Frituur & Snackbar</div>';
-    frituur.forEach(function(w){ html += renderWinkelKaart(w,'🍟','#fff8e1','#e65100'); });
+  function sectie(lijst, ico, bg, kleur, label) {
+    if (!lijst.length) return '';
+    lijst.sort(function(a,b){return a.afstand-b.afstand;});
+    var h = '<div class="vw-sectie">' + ico + ' ' + label + '</div>';
+    lijst.slice(0,3).forEach(function(w) { h += renderWinkelKaart(w, ico, bg, kleur); });
+    return h;
   }
 
-  if (!html) {
-    html = '<div style="text-align:center;padding:20px;color:var(--muted)">Geen winkels gevonden in de buurt.<br><small>Mogelijk staan ze niet in OpenStreetMap.</small></div>';
-  }
-  inh.innerHTML = html;
+  html += sectie(cats.super,  '🛒', '#ebf3ff', '#003087', 'Supermarkt');
+  html += sectie(cats.drog,   '💊', '#f3e8ff', '#6a00c4', 'Drogisterij');
+  html += sectie(cats.slij,   '🍷', '#fde8f0', '#8b0000', 'Slijterij');
+  html += sectie(cats.frituur,'🍟', '#fff8e1', '#e65100', 'Frituur & Snackbar');
+
+  res.innerHTML = html || '<div style="font-size:0.8rem;color:var(--muted);text-align:center;padding:8px">Geen exacte adressen gevonden via OpenStreetMap.</div>';
+}
+
+// Hulpfuncties behouden
+function verwerkOSM(els, uLat, uLon) {
+  var ws = [];
+  (els||[]).forEach(function(el) {
+    var elLat = el.lat||(el.center&&el.center.lat);
+    var elLon = el.lon||(el.center&&el.center.lon);
+    if(!elLat||!elLon) return;
+    var naam = (el.tags&&el.tags.name)||'';
+    if(!naam) return;
+    var s='',h='',p='',c='';
+    if(el.tags){s=el.tags['addr:street']||'';h=el.tags['addr:housenumber']||'';p=el.tags['addr:postcode']||'';c=el.tags['addr:city']||'';}
+    var adres = s?(s+(h?' '+h:'')+(p?', '+p:'')+(c?' '+c:'')):null;
+    ws.push({naam:naam,adres:adres,afstand:berekenAfstand(uLat,uLon,elLat,elLon),lat:elLat,lon:elLon});
+  });
+  return ws;
+}
+
+function sorteenWinkels(ws, ketens) {
+  var bek = (ws||[]).filter(function(w){var n=w.naam.toLowerCase();return ketens.some(function(k){return n.indexOf(k)>-1;});});
+  var onb = (ws||[]).filter(function(w){var n=w.naam.toLowerCase();return !ketens.some(function(k){return n.indexOf(k)>-1;});});
+  return bek.concat(onb).sort(function(a,b){return a.afstand-b.afstand;});
 }
 
 function verwerkOSM(els, uLat, uLon) {
