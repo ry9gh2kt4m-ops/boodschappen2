@@ -1928,57 +1928,85 @@ function vindWinkel() {
 }
 
 async function zoekWinkels(lat, lon, inh, sub) {
-  var R = 25000; // 25km radius
-  var sq='[out:json][timeout:30];(node["shop"="supermarket"](around:'+R+','+lat+','+lon+');way["shop"="supermarket"](around:'+R+','+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar|Vomar|Deen",i](around:'+R+','+lat+','+lon+');way["name"~"Albert Heijn|Jumbo|Lidl|Aldi",i](around:'+R+','+lat+','+lon+'););out center 30;';
-  var dq='[out:json][timeout:30];(node["shop"="chemist"](around:'+R+','+lat+','+lon+');node["shop"="drugstore"](around:'+R+','+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister|DA drogist",i](around:'+R+','+lat+','+lon+');way["name"~"Kruidvat|Etos|Trekpleister",i](around:'+R+','+lat+','+lon+'););out center 20;';
-  var slq='[out:json][timeout:30];(node["shop"="alcohol"](around:'+R+','+lat+','+lon+');node["shop"="wine"](around:'+R+','+lat+','+lon+');node["name"~"Gall|Mitra|Slijterij",i](around:'+R+','+lat+','+lon+');way["name"~"Gall|Mitra",i](around:'+R+','+lat+','+lon+'););out center 20;';
-  try {
-    var fq='[out:json][timeout:30];(node["amenity"="fast_food"](around:'+R+','+lat+','+lon+');node["amenity"="restaurant"]["cuisine"~"friture|fries|snack",i](around:'+R+','+lat+','+lon+');node["shop"="frozen_food"]["name"~"friet|patat|frituur|snack",i](around:'+R+','+lat+','+lon+');node["name"~"frituur|frietboer|frietkar|patatzaak|snackbar|friettent",i](around:10000,'+lat+','+lon+'););out center 30;';
-  var rs = await Promise.all([
-      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(sq)}),
-      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(dq)}),
-      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(slq)}),
-      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(fq)})
-    ]);
-    var sd=await rs[0].json(), dd=await rs[1].json(), sld=await rs[2].json(), fd=await rs[3].json();
-    var supers=verwerkOSM(sd.elements,lat,lon);
-    var drog=verwerkOSM(dd.elements,lat,lon);
-    var slij=verwerkOSM(sld.elements,lat,lon);
-    var supK=['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar','vomar','deen'];
-    var drogK=['kruidvat','etos','trekpleister','da '];
-    var slijK=['gall','mitra','slijterij'];
-    supers=sorteenWinkels(supers,supK).slice(0,3);
-    drog=sorteenWinkels(drog,drogK).slice(0,3);
-    slij=sorteenWinkels(slij,slijK).slice(0,3);
-    var frituur=verwerkOSM(fd.elements,lat,lon);
-    var fritK=['frituur','frietboer','frietkar','patatzaak','snackbar','friettent','snack'];
-    frituur=sorteenWinkels(frituur,fritK).slice(0,3);
-    var ahN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
-    var kvN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
-    if(sub) sub.textContent='Dichtstbijzijnde winkels (binnen 25km):';
-    var html='';
-    if(supers.length) {
-      html+='<div class="vw-sectie">🛒 Supermarkt'+(ahN>0?' ('+ahN+' product'+(ahN>1?'en':'')+' op lijst)':'')+'</div>';
-      supers.forEach(function(w){html+=renderWinkelKaart(w,'🛒','#ebf3ff','#003087');});
-    }
-    if(drog.length) {
-      html+='<div class="vw-sectie">💊 Drogisterij'+(kvN>0?' ('+kvN+' product'+(kvN>1?'en':'')+' op lijst)':'')+'</div>';
-      drog.forEach(function(w){html+=renderWinkelKaart(w,'💊','#f3e8ff','#6a00c4');});
-    }
-    if(slij.length) {
-      html+='<div class="vw-sectie">🍷 Slijterij</div>';
-      slij.forEach(function(w){html+=renderWinkelKaart(w,'🍷','#fde8f0','#8b0000');});
-    }
-    if(frituur.length) {
-      html+='<div class="vw-sectie">🍟 Frituur & Snackbar</div>';
-      frituur.forEach(function(w){html+=renderWinkelKaart(w,'🍟','#fff8e1','#e65100');});
-    }
-    if(!html) html='<div style="text-align:center;padding:20px;color:var(--muted)">Geen winkels gevonden binnen 25km.<br><small>Mogelijk staat de winkel niet in OpenStreetMap.</small></div>';
-    inh.innerHTML=html;
-  } catch(e) {
-    console.log('Winkel fout:', e);
-    inh.innerHTML='<div style="color:var(--red);padding:10px">❌ Ophalen mislukt. Controleer je internet.</div>';
+  // Haal per categorie winkels op - sequentieel om rate limiting te voorkomen
+  var R = 10000; // Begin met 10km
+  var results = {super:[], drog:[], slij:[], frituur:[]};
+
+  // Helper: voer een Overpass query uit
+  async function overpass(query) {
+    try {
+      var resp = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'data=' + encodeURIComponent(query)
+      });
+      if (!resp.ok) return [];
+      var data = await resp.json();
+      return data.elements || [];
+    } catch(e) { return []; }
   }
+
+  if (sub) sub.textContent = 'Supermarkten zoeken...';
+  var supQ = '[out:json][timeout:15];(node["shop"="supermarket"](around:'+R+','+lat+','+lon+');way["shop"="supermarket"](around:'+R+','+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:'+R+','+lat+','+lon+'););out center 20;';
+  results.super = verwerkOSM(await overpass(supQ), lat, lon);
+
+  // Als geen supermarkt gevonden binnen 10km, probeer 25km
+  if (results.super.length === 0) {
+    if (sub) sub.textContent = 'Uitbreiden naar 25km...';
+    var supQ2 = '[out:json][timeout:15];(node["shop"="supermarket"](around:25000,'+lat+','+lon+');way["shop"="supermarket"](around:25000,'+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk",i](around:25000,'+lat+','+lon+'););out center 20;';
+    results.super = verwerkOSM(await overpass(supQ2), lat, lon);
+  }
+
+  if (sub) sub.textContent = 'Drogisterijen zoeken...';
+  var drogQ = '[out:json][timeout:15];(node["shop"="chemist"](around:25000,'+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister",i](around:25000,'+lat+','+lon+'););out center 20;';
+  results.drog = verwerkOSM(await overpass(drogQ), lat, lon);
+
+  if (sub) sub.textContent = 'Slijterijen zoeken...';
+  var slijQ = '[out:json][timeout:15];(node["shop"="alcohol"](around:25000,'+lat+','+lon+');node["shop"="wine"](around:25000,'+lat+','+lon+');node["name"~"Gall|Mitra|Slijterij",i](around:25000,'+lat+','+lon+'););out center 20;';
+  results.slij = verwerkOSM(await overpass(slijQ), lat, lon);
+
+  if (sub) sub.textContent = 'Frituur & snackbars zoeken...';
+  var fritQ = '[out:json][timeout:15];(node["amenity"="fast_food"](around:10000,'+lat+','+lon+');node["name"~"frituur|frietboer|patatzaak|snackbar|friettent",i](around:10000,'+lat+','+lon+'););out center 20;';
+  results.frituur = verwerkOSM(await overpass(fritQ), lat, lon);
+
+  // Sorteer en top 3 per categorie
+  var supK = ['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar'];
+  var drogK = ['kruidvat','etos','trekpleister','da '];
+  var slijK = ['gall','mitra','slijterij'];
+  var fritK = ['frituur','frietboer','patatzaak','snackbar','friettent'];
+
+  var supers  = sorteenWinkels(results.super,  supK).slice(0,3);
+  var drog    = sorteenWinkels(results.drog,   drogK).slice(0,3);
+  var slij    = sorteenWinkels(results.slij,   slijK).slice(0,3);
+  var frituur = sorteenWinkels(results.frituur, fritK).slice(0,3);
+
+  var ahN = items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
+  var kvN = items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
+
+  if (sub) sub.textContent = 'Dichtstbijzijnde winkels:';
+  var html = '';
+
+  if (supers.length) {
+    html += '<div class="vw-sectie">🛒 Supermarkt' + (ahN > 0 ? ' (' + ahN + ' product' + (ahN>1?'en':'') + ' op lijst)' : '') + '</div>';
+    supers.forEach(function(w){ html += renderWinkelKaart(w,'🛒','#ebf3ff','#003087'); });
+  }
+  if (drog.length) {
+    html += '<div class="vw-sectie">💊 Drogisterij' + (kvN > 0 ? ' (' + kvN + ' product' + (kvN>1?'en':'') + ' op lijst)' : '') + '</div>';
+    drog.forEach(function(w){ html += renderWinkelKaart(w,'💊','#f3e8ff','#6a00c4'); });
+  }
+  if (slij.length) {
+    html += '<div class="vw-sectie">🍷 Slijterij</div>';
+    slij.forEach(function(w){ html += renderWinkelKaart(w,'🍷','#fde8f0','#8b0000'); });
+  }
+  if (frituur.length) {
+    html += '<div class="vw-sectie">🍟 Frituur & Snackbar</div>';
+    frituur.forEach(function(w){ html += renderWinkelKaart(w,'🍟','#fff8e1','#e65100'); });
+  }
+
+  if (!html) {
+    html = '<div style="text-align:center;padding:20px;color:var(--muted)">Geen winkels gevonden in de buurt.<br><small>Mogelijk staan ze niet in OpenStreetMap.</small></div>';
+  }
+  inh.innerHTML = html;
 }
 
 function verwerkOSM(els, uLat, uLon) {
