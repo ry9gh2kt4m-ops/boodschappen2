@@ -650,8 +650,7 @@ var CATS = [
   {k:'koel',l:'Koeling',i:'🧊',w:['melk','halfvolle','karnemelk','yoghurt','kwark','slagroom','boter','margarine','kaas','gouda','edam','brie','camembert','feta','mozzarella','parmezaan','roomkaas','smeerkaas','eieren','vla','pudding']},
   {k:'diep',l:'Diepvries',i:'❄️',w:['friet','pizza','kroketten','bitterballen','ijs','sorbet','diepvries','doperwten','edamame','bladerdeeg','wafels','pannenkoeken']},
   {k:'drank',l:'Drank',i:'🥤',w:['bier','wijn','prosecco','champagne','cava','heineken','hertog jan','grolsch','amstel','bavaria','vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','cognac','water','spa','cola','fanta','sprite','redbull','frisdrank','limonade','siroop','tonic','koffie','thee','cappuccino']},
-  {k:'frituur',l:'Frituur',i:'🍟',w:['friet','patat','frikandel','kroket','loempia','berenklauw','bamischijf','nasibal','kaassouffle','saucijzenbroodje','kibbeling','viandel','gehaktbal','bitterballen','snack','pindasaus','mayonaise frituur','curryketchup','frietsaus']},
-    {k:'nonfood',l:'Non Food',i:'🧴',w:['wasmiddel','afwasmiddel','vaatwas','vaatwastabletten','toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum']}
+  {k:'nonfood',l:'Non Food',i:'🧴',w:['wasmiddel','afwasmiddel','vaatwas','vaatwastabletten','toiletpapier','keukenpapier','aluminiumfolie','huishoudfolie','vuilniszak','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum']}
 ];
 
 var KV = ['shampoo','conditioner','douchegel','zeep','handzeep','deodorant','bodylotion','handcreme','zonnebrand','aftersun','tandpasta','tandenborstel','floss','mondwater','scheermesje','scheerschuim','haargel','haarspray','maandverband','tampons','inlegkruisje','paracetamol','ibuprofen','aspirine','vitamines','vitamine','pleisters','verband','luiers','babydoekjes','nagellak','parfum','wasmiddel','vaatwas','vaatwastabletten','schoonmaakmiddel','allesreiniger','bleek','soda','wasverzachter','schuurmiddel','waterontharder','ontkalker'];
@@ -1786,6 +1785,27 @@ var WINKELS = {
   gall:{n:'Gall & Gall',i:'🍷',f:0.92,slijterij:true,merken:['heineken','hertog jan','grolsch','amstel','bavaria','wijn','prosecco','champagne','vodka','gin','rum','whisky','jenever','tequila','aperol','baileys','cognac']},
   mitra:{n:'Mitra',i:'🥃',f:0.90,slijterij:true,merken:['heineken','hertog jan','wijn','prosecco','champagne','vodka','gin','rum','whisky']}
 };
+// Producten per winkel: welke winkels verkopen dit NIET
+// Sleutel = deel van productnaam (lowercase), waarde = array van winkels die het NIET verkopen
+var NIET_BIJ = {
+  'hertog jan': ['lidl','aldi','dirk'],
+  'grolsch': ['lidl','aldi'],
+  'duvel': ['lidl','aldi','dirk','plus'],
+  'westmalle': ['lidl','aldi','dirk','plus'],
+  'la trappe': ['lidl','aldi','dirk','plus'],
+  'chimay': ['lidl','aldi','dirk','plus'],
+  'leffe': ['lidl','aldi'],
+  'kruidvat': ['ah','jumbo','lidl','aldi','plus','dirk','gall','mitra'],
+  'etos': ['ah','jumbo','lidl','aldi','plus','dirk','gall','mitra'],
+  'shampoo': ['gall','mitra'],
+  'tandpasta': ['gall','mitra'],
+  'wasmiddel': ['gall','mitra'],
+  'wijn': ['lidl','aldi'],
+  'whisky': ['lidl','aldi','ah','jumbo','plus','dirk'],
+  'jenever': ['lidl','aldi','ah','jumbo','plus','dirk'],
+  'cognac': ['lidl','aldi','ah','jumbo','plus','dirk']
+};
+
 // Producten die ALLEEN bij specifieke winkeltypen verkrijgbaar zijn
 var WINKEL_EXCLUSIEF = {
   'hertog jan': ['ah','jumbo','plus','gall','mitra'],
@@ -1825,9 +1845,16 @@ async function vergelijkPrijzen() {
     if(ahP!==null) {
       var pr={naam:item.name};
       for(var wi=0;wi<actW.length;wi++) {
-        var wk=actW[wi], excl=WINKEL_EXCLUSIEF[n];
-        if(excl && excl.indexOf(wk)<0) { pr[wk]=null; } // niet beschikbaar
-        else pr[wk]=Math.round(ahP*(WINKELS[wk].f)*(item.qty||1)*100)/100;
+        var wk=actW[wi];
+        // Check WINKEL_EXCLUSIEF (mag alleen bij bepaalde winkels)
+        var excl=null;
+        for(var ek in WINKEL_EXCLUSIEF) { if(n.indexOf(ek)>-1){excl=WINKEL_EXCLUSIEF[ek];break;} }
+        if(excl && excl.indexOf(wk)<0) { pr[wk]=null; continue; }
+        // Check NIET_BIJ (mag NIET bij bepaalde winkels)
+        var nBij=false;
+        for(var nk in NIET_BIJ) { if(n.indexOf(nk)>-1 && NIET_BIJ[nk].indexOf(wk)>-1){nBij=true;break;} }
+        if(nBij) { pr[wk]=null; continue; }
+        pr[wk]=Math.round(ahP*(WINKELS[wk].f)*(item.qty||1)*100)/100;
       }
       gevonden.push(pr);
     } else { nietGev.push(item.name); }
@@ -1851,7 +1878,7 @@ async function vergelijkPrijzen() {
       var a=gevonden[agi];
       var minP=Math.min.apply(null,actW.map(function(ww){return a[ww]||Infinity;}));
       var isMin=(a[w]||0)===minP;
-      html+='<div class="prijs-item-rij"><span>'+esc(a.naam)+'</span><span class="'+(isMin?'prijs-goedkoopst':'')+'">€'+(a[w]||0).toFixed(2)+'</span></div>';
+      if(a[w]!==null && a[w]!==undefined) { html+='<div class="prijs-item-rij"><span>'+esc(a.naam)+'</span><span class="'+(isMin?'prijs-goedkoopst':'')+'">€'+(a[w]).toFixed(2)+'</span></div>'; } else { html+='<div class="prijs-item-rij"><span>'+esc(a.naam)+'</span><span style="color:var(--muted);font-size:0.75rem">n.v.t.</span></div>'; }
     }
     html+='</div></div>';
   }
@@ -1867,26 +1894,36 @@ function vindWinkel() {
   var modal = document.getElementById('winkel-modal');
   var inh = document.getElementById('winkel-inhoud');
   var sub = document.getElementById('winkel-sub');
-  if (!modal||!inh) return;
+  if (!modal || !inh) return;
   modal.classList.add('open');
-  inh.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">📡 Locatie ophalen...</div>';
-  if(sub) sub.textContent='Even geduld...';
-  if(!navigator.geolocation) { inh.innerHTML='<div style="color:var(--red);padding:10px">Locatie niet beschikbaar.</div>'; return; }
-  var geoTimer = setTimeout(function(){
-    inh.innerHTML='<div style="color:var(--red);padding:10px">Locatie ophalen duurt te lang. Controleer je instellingen.</div>';
-  }, 12000);
+  inh.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">📡 Locatie ophalen...</div>';
+  if (sub) sub.textContent = 'Even geduld...';
+
+  if (!navigator.geolocation) {
+    inh.innerHTML = '<div style="color:var(--red);padding:10px">❌ Locatie niet beschikbaar op dit apparaat.</div>';
+    return;
+  }
+
+  var geoTimer = setTimeout(function() {
+    inh.innerHTML = '<div style="color:var(--red);padding:10px">⏱ Locatie ophalen duurt te lang.<br><small>Controleer je locatie-instellingen: Instellingen › Safari › Locatie › Toestaan.</small></div>';
+  }, 15000);
+
   navigator.geolocation.getCurrentPosition(
     function(pos) {
       clearTimeout(geoTimer);
-      if(sub) sub.textContent='Winkels zoeken...';
+      if (sub) sub.textContent = 'Winkels zoeken binnen 25km...';
       zoekWinkels(pos.coords.latitude, pos.coords.longitude, inh, sub);
     },
     function(err) {
       clearTimeout(geoTimer);
-      var msgs={1:'Locatietoegang geweigerd. Sta locatie toe in instellingen.',2:'Locatie kon niet bepaald worden.',3:'Timeout.'};
-      inh.innerHTML='<div style="color:var(--red);padding:10px">❌ '+(msgs[err.code]||'Locatiefout.')+'<br><small>Ga naar Instellingen > Privacy > Locatievoorzieningen > Safari en zet op Tijdens gebruik.</small></div>';
+      var msgs = {
+        1: 'Locatietoegang geweigerd.<br><small>Ga naar Instellingen › Privacy › Locatievoorzieningen › Safari en kies "Tijdens gebruik".</small>',
+        2: 'Locatie kon niet bepaald worden. Controleer of GPS aan staat.',
+        3: 'Timeout bij ophalen locatie. Probeer opnieuw.'
+      };
+      inh.innerHTML = '<div style="color:var(--red);padding:10px">❌ ' + (msgs[err.code] || 'Locatiefout: ' + err.message) + '</div>';
     },
-    {enableHighAccuracy:false, timeout:10000, maximumAge:300000}
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
   );
 }
 
