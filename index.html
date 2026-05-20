@@ -43,6 +43,9 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 .tabs{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(–border);display:flex;z-index:50;padding:4px 0 8px}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:‘DM Sans’,sans-serif;font-size:0.6rem;color:var(–muted)}
 .tab.active{color:var(–green)}
+.tab.active .tab-icon{transform:scale(1.15)}
+.tab::after{content:’’;display:block;height:3px;border-radius:2px;background:transparent;margin-top:2px;transition:background 0.2s}
+.tab.active::after{background:var(–green)}
 .tab-icon{font-size:1.3rem}
 .tab[style*=“none”]{display:none!important}
 
@@ -146,7 +149,7 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 .dag-input{width:100%;border:1.5px solid var(–border);border-radius:8px;padding:8px 10px;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;outline:none;margin-bottom:8px}
 .dag-input:focus{border-color:var(–green)}
 .dag-btns{display:flex;gap:6px}
-.dag-save{flex:1;padding:8px;border:none;border-radius:8px;background:var(–green);color:white;font-family:‘DM Sans’,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer}
+.dag-save{flex:1;padding:9px;border:none;border-radius:8px;background:#3d6b4f;color:white;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(61,107,79,0.3)}
 .dag-clear{padding:8px 12px;border:1.5px solid var(–border);border-radius:8px;background:white;font-family:‘DM Sans’,sans-serif;font-size:0.82rem;cursor:pointer}
 .recept-picker-btn{width:100%;margin-top:8px;padding:7px;border:1.5px dashed var(–border);border-radius:8px;background:none;cursor:pointer;font-family:‘DM Sans’,sans-serif;font-size:0.78rem;color:var(–muted)}
 .recept-picker{margin-top:8px;display:none}
@@ -492,8 +495,11 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
       <button onclick="stuurIdee()" class="btn-setup" style="margin-bottom:0">Versturen →</button>
       <div class="idee-ok" id="idee-ok">✅ Bedankt voor je idee!</div>
     </div>
-    <div style="font-family:'Playfair Display',serif;font-size:0.95rem;margin-bottom:10px;color:var(--muted)">Goedgekeurde ideeën</div>
-    <div id="ideeen-lijst"></div>
+    <div onclick="toggleGoedgekeurdeIdeeen()" id="ideeen-sectie-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <span style="font-family:'Playfair Display',serif;font-size:0.95rem">Goedgekeurde ideeën</span>
+      <span id="ideeen-arrow">▶</span>
+    </div>
+    <div id="ideeen-lijst-wrap" style="display:none"><div id="ideeen-lijst"></div></div>
   </div>
 
   <!-- ===== ADMIN VIEW ===== -->
@@ -1662,7 +1668,7 @@ function renderRecepten() {
     html+=ingH;
     html+='<div class="recept-btns">';
     if(vid) html+='<button class="recept-btn" onclick="speelAf(\''+r.id+'\',\''+vid+'\')">▶ Afspelen</button>';
-    else if(r.url) html+='<a href="'+esc(r.url)+'" target="_blank" class="recept-btn" style="text-decoration:none">'+pl+' Openen</a>';
+    else if(r.url) html+='<a href="'+esc(r.url)+'" target="_blank" style="text-decoration:none;display:inline-block;padding:6px 14px;border-radius:8px;background:#3d6b4f;color:white;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600">'+pl+' Openen ↗</a>';
     html+='<button class="recept-btn edit" onclick="openReceptForm(\''+r.id+'\')">✏️ Bewerken</button>';
     html+='<button class="recept-btn del" onclick="verwijderRecept(\''+r.id+'\')">🗑 Verwijderen</button>';
     html+='</div></div></div>';
@@ -1884,34 +1890,46 @@ function vindWinkel() {
 }
 
 async function zoekWinkels(lat, lon, inh, sub) {
-  var sq='[out:json][timeout:25];(node["shop"="supermarket"](around:5000,'+lat+','+lon+');way["shop"="supermarket"](around:5000,'+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:5000,'+lat+','+lon+'););out center 20;';
-  var dq='[out:json][timeout:25];(node["shop"="chemist"](around:5000,'+lat+','+lon+');node["shop"="drugstore"](around:5000,'+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister",i](around:5000,'+lat+','+lon+'););out center 20;';
+  var R = 25000; // 25km radius
+  var sq='[out:json][timeout:30];(node["shop"="supermarket"](around:'+R+','+lat+','+lon+');way["shop"="supermarket"](around:'+R+','+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar|Vomar|Deen",i](around:'+R+','+lat+','+lon+');way["name"~"Albert Heijn|Jumbo|Lidl|Aldi",i](around:'+R+','+lat+','+lon+'););out center 30;';
+  var dq='[out:json][timeout:30];(node["shop"="chemist"](around:'+R+','+lat+','+lon+');node["shop"="drugstore"](around:'+R+','+lat+','+lon+');node["name"~"Kruidvat|Etos|Trekpleister|DA drogist",i](around:'+R+','+lat+','+lon+');way["name"~"Kruidvat|Etos|Trekpleister",i](around:'+R+','+lat+','+lon+'););out center 20;';
+  var slq='[out:json][timeout:30];(node["shop"="alcohol"](around:'+R+','+lat+','+lon+');node["shop"="wine"](around:'+R+','+lat+','+lon+');node["name"~"Gall|Mitra|Slijterij",i](around:'+R+','+lat+','+lon+');way["name"~"Gall|Mitra",i](around:'+R+','+lat+','+lon+'););out center 20;';
   try {
     var rs = await Promise.all([
       fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(sq)}),
-      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(dq)})
+      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(dq)}),
+      fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(slq)})
     ]);
-    var sd=await rs[0].json(), dd=await rs[1].json();
-    var supers=verwerkOSM(sd.elements,lat,lon), drog=verwerkOSM(dd.elements,lat,lon);
-    var supK=['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar'];
+    var sd=await rs[0].json(), dd=await rs[1].json(), sld=await rs[2].json();
+    var supers=verwerkOSM(sd.elements,lat,lon);
+    var drog=verwerkOSM(dd.elements,lat,lon);
+    var slij=verwerkOSM(sld.elements,lat,lon);
+    var supK=['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar','vomar','deen'];
     var drogK=['kruidvat','etos','trekpleister','da '];
+    var slijK=['gall','mitra','slijterij'];
     supers=sorteenWinkels(supers,supK).slice(0,3);
     drog=sorteenWinkels(drog,drogK).slice(0,3);
+    slij=sorteenWinkels(slij,slijK).slice(0,3);
     var ahN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
     var kvN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
-    if(sub) sub.textContent='Dichtstbijzijnde winkels:';
+    if(sub) sub.textContent='Dichtstbijzijnde winkels (binnen 25km):';
     var html='';
     if(supers.length) {
       html+='<div class="vw-sectie">🛒 Supermarkt'+(ahN>0?' ('+ahN+' product'+(ahN>1?'en':'')+' op lijst)':'')+'</div>';
-      supers.forEach(function(w) { html+=renderWinkelKaart(w,'🛒','#ebf3ff','#003087'); });
+      supers.forEach(function(w){html+=renderWinkelKaart(w,'🛒','#ebf3ff','#003087');});
     }
     if(drog.length) {
       html+='<div class="vw-sectie">💊 Drogisterij'+(kvN>0?' ('+kvN+' product'+(kvN>1?'en':'')+' op lijst)':'')+'</div>';
-      drog.forEach(function(w) { html+=renderWinkelKaart(w,'💊','#f3e8ff','#6a00c4'); });
+      drog.forEach(function(w){html+=renderWinkelKaart(w,'💊','#f3e8ff','#6a00c4');});
     }
-    if(!html) html='<div style="text-align:center;padding:20px;color:var(--muted)">Geen winkels gevonden binnen 5km.</div>';
+    if(slij.length) {
+      html+='<div class="vw-sectie">🍷 Slijterij</div>';
+      slij.forEach(function(w){html+=renderWinkelKaart(w,'🍷','#fde8f0','#8b0000');});
+    }
+    if(!html) html='<div style="text-align:center;padding:20px;color:var(--muted)">Geen winkels gevonden binnen 25km.<br><small>Mogelijk staat de winkel niet in OpenStreetMap.</small></div>';
     inh.innerHTML=html;
   } catch(e) {
+    console.log('Winkel fout:', e);
     inh.innerHTML='<div style="color:var(--red);padding:10px">❌ Ophalen mislukt. Controleer je internet.</div>';
   }
 }
@@ -1944,17 +1962,18 @@ function berekenAfstand(la1,lo1,la2,lo2) {
 }
 
 function renderWinkelKaart(w, ico, bg, kleur) {
-  var url='https://www.google.com/maps/dir/?api=1&destination='+w.lat+','+w.lon;
-  var af=w.afstand<1000?w.afstand+'m':(w.afstand/1000).toFixed(1).replace('.',',')+'km';
+  var url = 'https://www.google.com/maps/dir/?api=1&destination=' + w.lat + ',' + w.lon;
+  var af = w.afstand < 1000 ? w.afstand + 'm' : (w.afstand/1000).toFixed(1).replace('.',',') + 'km';
+  var navBtn = '<button onclick="window.open(\'' + url + '\',\'_blank\')" style="background:#3d6b4f;color:white;border:none;border-radius:9px;padding:8px 12px;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap">🗺️ Navigeer</button>';
   return '<div class="vw-winkel-kaart">'
-    +'<div class="vw-logo" style="background:'+bg+';color:'+kleur+'">'+ico+'</div>'
-    +'<div class="vw-info">'
-    +'<div class="vw-naam">'+esc(w.naam)+'</div>'
-    +'<div class="vw-adres">'+(w.adres?esc(w.adres):'Adres onbekend')+'</div>'
-    +'<div class="vw-afstand">📍 '+af+' verderop</div>'
-    +'</div>'
-    +'<button class="vw-nav" onclick="window.open(\''+url+'\',\'_blank\')">📍 Navigeer</button>'
-    +'</div>';
+    + '<div class="vw-logo" style="background:' + bg + ';color:' + kleur + '">' + ico + '</div>'
+    + '<div class="vw-info">'
+    + '<div class="vw-naam">' + esc(w.naam) + '</div>'
+    + '<div class="vw-adres">' + (w.adres ? esc(w.adres) : 'Adres onbekend') + '</div>'
+    + '<div class="vw-afstand">📍 ' + af + ' verderop</div>'
+    + '</div>'
+    + navBtn
+    + '</div>';
 }
 
 // ============================================================
@@ -2115,6 +2134,15 @@ function sluitModals(e, id) {
 function toggleAdminSectie(id) {
   var wrap = document.getElementById('admin-'+id+'-wrap');
   var arrow = document.getElementById(id+'-arrow');
+  if (!wrap) return;
+  var open = wrap.style.display === 'block';
+  wrap.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▶' : '▼';
+}
+
+function toggleGoedgekeurdeIdeeen() {
+  var wrap = document.getElementById('ideeen-lijst-wrap');
+  var arrow = document.getElementById('ideeen-arrow');
   if (!wrap) return;
   var open = wrap.style.display === 'block';
   wrap.style.display = open ? 'none' : 'block';
