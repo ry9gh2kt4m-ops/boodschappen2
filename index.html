@@ -42,9 +42,12 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 /* Tabs */
 .tabs{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(–border);display:flex;z-index:50;padding:4px 0 8px}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:‘DM Sans’,sans-serif;font-size:0.6rem;color:var(–muted)}
-.tab.active{color:var(–green)}
-.tab.active .tab-icon{transform:scale(1.15)}
-.tab::after{content:’’;display:block;height:3px;border-radius:2px;background:transparent;margin-top:2px;transition:background 0.2s}
+.tab.active{color:var(–green);font-weight:700}
+.tab.active .tab-icon{transform:scale(1.2)}
+.tab{position:relative;transition:color 0.15s}
+.tab::before{content:’’;position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:3px;background:var(–green);border-radius:0 0 3px 3px;transition:width 0.2s}
+.tab.active::before{width:60%}
+.tab::after{content:’’;display:block;height:3px;border-radius:2px;background:transparent;margin-top:2px}
 .tab.active::after{background:var(–green)}
 .tab-icon{font-size:1.3rem}
 .tab[style*=“none”]{display:none!important}
@@ -139,12 +142,12 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 .week-nav-btn{background:none;border:1.5px solid var(–border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center}
 .week-nav-btn:disabled{opacity:0.3;cursor:default}
 .dag-card{background:white;border-radius:12px;margin-bottom:8px;border:1px solid var(–border);overflow:hidden}
-.dag-card.vandaag{border-color:var(–green);background:linear-gradient(135deg,#e8f0ea 0%,#f5fff7 100%)}
-.dag-card.vandaag .dag-header{background:var(–green);border-radius:11px 11px 0 0;margin:-0px}
-.dag-card.vandaag .dag-naam{color:white;font-weight:700}
-.dag-card.vandaag .dag-datum{color:rgba(255,255,255,0.85)}
-.dag-card.vandaag .dag-preview{color:rgba(255,255,255,0.75)}
-.dag-card.vandaag .dag-preview.gevuld{color:white}
+.dag-card.vandaag{border:2px solid var(–green);background:white}
+.dag-card.vandaag .dag-header{background:#e8f0ea;border-radius:11px 11px 0 0}
+.dag-card.vandaag .dag-naam{color:#3d6b4f;font-weight:700;font-size:1rem}
+.dag-card.vandaag .dag-datum{color:#3d6b4f;font-weight:600}
+.dag-card.vandaag .dag-preview{color:var(–muted)}
+.dag-card.vandaag .dag-preview.gevuld{color:#3d6b4f;font-weight:600}
 .dag-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
 .dag-naam{font-weight:600;font-size:0.9rem}
 .dag-datum{font-size:0.72rem;color:var(–muted)}
@@ -1715,20 +1718,41 @@ function renderRecepten() {
       ? '<a href="' + esc(r.url) + '" target="_blank" style="color:var(--ink);text-decoration:none">' + esc(r.naam) + ' &#x2197;</a>'
       : esc(r.naam);
 
-    html += '<div class="recept-card">' + media
+    html += '<div class="recept-card">'
+      + '<div class="recept-summary" data-rid="' + rid + '" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px">'
+      + '<div style="display:flex;align-items:center;gap:10px;min-width:0">'
+      + (vid ? '<img src="https://img.youtube.com/vi/'+vid+'/default.jpg" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">' : '<div style="width:44px;height:44px;border-radius:8px;background:'+((function(){var pk=rurl.indexOf('tiktok')>-1?'#010101':rurl.indexOf('facebook')>-1?'#1877f2':rurl.indexOf('instagram')>-1?'#c13584':rurl.indexOf('pinterest')>-1?'#e60023':'#3d6b4f';return pk;})())+';display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">'+(r.url?pl.split(' ')[0]:'📖')+'</div>')
+      + '<div style="min-width:0"><div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.naam) + '</div>'
+      + '<div style="font-size:0.72rem;color:var(--muted);margin-top:2px">' + tags.replace(/<[^>]+>/g,' ').trim() + '</div></div></div>'
+      + '<span class="recept-toggle-arrow" style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>'
+      + '</div>'
+      + '<div class="recept-detail" id="rd-' + rid + '" style="display:none">'
+      + media
       + '<div class="recept-body">'
       + '<div class="recept-titel">' + titel + '</div>'
       + '<div class="recept-tags">' + tags + '</div>'
       + (r.omschr ? '<div class="recept-omschr">' + esc(r.omschr) + '</div>' : '')
       + ingH
       + '<div class="recept-btns">' + btns + '</div>'
-      + '</div></div>';
+      + '</div></div></div>';
   }
   el.innerHTML = html;
 
   // Bind YouTube thumbnail clicks
   el.querySelectorAll('.yt-thumb').forEach(function(div) {
     div.onclick = function() { speelAf(div.getAttribute('data-id'), div.getAttribute('data-vid')); };
+  });
+  // Bind recept uitklap
+  el.querySelectorAll('.recept-summary').forEach(function(div) {
+    div.onclick = function() {
+      var rid = div.getAttribute('data-rid');
+      var detail = document.getElementById('rd-' + rid);
+      var arrow = div.querySelector('.recept-toggle-arrow');
+      if (!detail) return;
+      var open = detail.style.display === 'block';
+      detail.style.display = open ? 'none' : 'block';
+      if (arrow) arrow.textContent = open ? '▶' : '▼';
+    };
   });
 }
 
