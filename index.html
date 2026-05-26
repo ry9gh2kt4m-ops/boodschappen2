@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
@@ -14,40 +13,40 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 :root{--green:#3d6b4f;--green-light:#e8f0ea;--red:#c4473a;--ink:#1a1a1a;--muted:#888;--border:#e0dbd3;--cream:#f5f0eb}
 
 /* Loading */
-#loading{position:fixed;inset:0;background:var(–cream);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px}
-.spinner{width:32px;height:32px;border:3px solid var(–border);border-top-color:var(–green);border-radius:50%;animation:spin 0.8s linear infinite}
+#loading{position:fixed;inset:0;background:var(--cream);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* Setup */
-#setup{position:fixed;inset:0;background:var(–cream);display:none;overflow-y:auto;z-index:100}
+#setup{position:fixed;inset:0;background:var(--cream);display:none;overflow-y:auto;z-index:100}
 .setup-inner{max-width:400px;margin:0 auto;padding:40px 20px}
 .setup-logo{font-size:3rem;text-align:center;margin-bottom:8px}
-.setup-titel{font-family:‘Playfair Display’,serif;font-size:1.6rem;text-align:center;color:var(–ink);margin:0 0 6px}
-.setup-sub{text-align:center;color:var(–muted);font-size:0.85rem;margin-bottom:28px}
-.setup-card{background:white;border-radius:16px;padding:20px;margin-bottom:14px;border:1px solid var(–border)}
-.setup-input{width:100%;border:1.5px solid var(–border);border-radius:10px;padding:11px 13px;font-family:‘DM Sans’,sans-serif;font-size:0.95rem;outline:none;margin-bottom:10px}
-.setup-input:focus{border-color:var(–green)}
-.btn-setup{width:100%;padding:12px;border:none;border-radius:12px;background:var(–green);color:white;font-family:‘DM Sans’,sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:8px}
-.btn-setup-alt{width:100%;padding:11px;border:1.5px solid var(–border);border-radius:12px;background:white;color:var(–ink);font-family:‘DM Sans’,sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer}
-.setup-err{color:var(–red);font-size:0.82rem;margin-bottom:8px;display:none;padding:8px 10px;background:#faeae9;border-radius:8px}
+.setup-titel{font-family:'Playfair Display',serif;font-size:1.6rem;text-align:center;color:var(--ink);margin:0 0 6px}
+.setup-sub{text-align:center;color:var(--muted);font-size:0.85rem;margin-bottom:28px}
+.setup-card{background:white;border-radius:16px;padding:20px;margin-bottom:14px;border:1px solid var(--border)}
+.setup-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:0.95rem;outline:none;margin-bottom:10px}
+.setup-input:focus{border-color:var(--green)}
+.btn-setup{width:100%;padding:12px;border:none;border-radius:12px;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:8px}
+.btn-setup-alt{width:100%;padding:11px;border:1.5px solid var(--border);border-radius:12px;background:white;color:var(--ink);font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer}
+.setup-err{color:var(--red);font-size:0.82rem;margin-bottom:8px;display:none;padding:8px 10px;background:#faeae9;border-radius:8px}
 
 /* App layout */
 #app{display:none;min-height:100vh;padding-bottom:80px}
-.header{background:white;border-bottom:1px solid var(–border);padding:10px 16px;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
-.header-titel{font-family:‘Playfair Display’,serif;font-size:1.1rem;color:var(–green)}
+.header{background:white;border-bottom:1px solid var(--border);padding:10px 16px;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
+.header-titel{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--green)}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block;margin-right:4px}
 .sync-dot.saving{background:#ff9800;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
 /* Tabs */
-.tabs{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(–border);display:flex;z-index:50;padding:4px 0 8px}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:‘DM Sans’,sans-serif;font-size:0.6rem;color:var(–muted)}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--border);display:flex;z-index:50;padding:4px 0 8px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:none;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.6rem;color:var(--muted)}
 .tab{position:relative;transition:color 0.15s}
-.tab.active{color:var(–green);font-weight:700}
+.tab.active{color:var(--green);font-weight:700}
 .tab-icon{font-size:1.3rem;display:block;transition:all 0.15s}
 .tab.active .tab-icon{transform:scale(1.1);background:#e8f0ea;border-radius:12px;padding:3px 8px;display:block}
 .tab-icon{font-size:1.3rem}
-.tab[style*=“none”]{display:none!important}
+.tab[style*="none"]{display:none!important}
 
 /* Views */
 .view{display:none;padding:14px}
@@ -55,57 +54,57 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 
 /* Stats */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-.stat{background:white;border-radius:12px;padding:10px;text-align:center;border:1px solid var(–border)}
-.stat-num{font-family:‘Playfair Display’,serif;font-size:1.5rem;color:var(–green)}
-.stat-lbl{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.8px;color:var(–muted);margin-top:2px}
+.stat{background:white;border-radius:12px;padding:10px;text-align:center;border:1px solid var(--border)}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--green)}
+.stat-lbl{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-top:2px}
 
 /* Input */
-.input-card{background:white;border-radius:14px;padding:12px;margin-bottom:14px;border:1px solid var(–border);position:relative}
+.input-card{background:white;border-radius:14px;padding:12px;margin-bottom:14px;border:1px solid var(--border);position:relative}
 .input-row{display:flex;gap:8px;align-items:center}
-.item-input{flex:1;border:1.5px solid var(–border);border-radius:10px;padding:10px 12px;font-family:‘DM Sans’,sans-serif;font-size:0.95rem;outline:none;min-width:0}
-.item-input:focus{border-color:var(–green)}
-.btn-mic{width:40px;height:40px;border:1.5px solid var(–border);border-radius:10px;background:white;cursor:pointer;font-size:1rem;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.btn-mic.listening{border-color:var(–red);background:#faeae9}
-.btn-prijs{height:40px;padding:0 10px;border:1.5px solid #f0c070;border-radius:10px;background:white;color:#c47a2a;cursor:pointer;font-family:‘DM Sans’,sans-serif;font-size:0.78rem;font-weight:600;flex-shrink:0}
-.btn-add{width:40px;height:40px;border:none;border-radius:10px;background:var(–green);color:white;cursor:pointer;font-size:1.3rem;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.mic-status{font-size:0.75rem;color:var(–muted);margin-top:6px;min-height:18px}
-.mic-status.success{color:var(–green)}
-.mic-status.active{color:var(–red)}
-.dubbel-melding{font-size:0.78rem;color:var(–red);margin-top:4px;min-height:16px}
+.item-input{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:0.95rem;outline:none;min-width:0}
+.item-input:focus{border-color:var(--green)}
+.btn-mic{width:40px;height:40px;border:1.5px solid var(--border);border-radius:10px;background:white;cursor:pointer;font-size:1rem;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.btn-mic.listening{border-color:var(--red);background:#faeae9}
+.btn-prijs{height:40px;padding:0 10px;border:1.5px solid #f0c070;border-radius:10px;background:white;color:#c47a2a;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;flex-shrink:0}
+.btn-add{width:40px;height:40px;border:none;border-radius:10px;background:var(--green);color:white;cursor:pointer;font-size:1.3rem;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.mic-status{font-size:0.75rem;color:var(--muted);margin-top:6px;min-height:18px}
+.mic-status.success{color:var(--green)}
+.mic-status.active{color:var(--red)}
+.dubbel-melding{font-size:0.78rem;color:var(--red);margin-top:4px;min-height:16px}
 
 /* Autocomplete */
-.ac-dropdown{position:absolute;left:0;right:0;top:100%;background:white;border:1.5px solid var(–green-light);border-radius:12px;box-shadow:0 8px 24px rgba(61,107,79,0.15);z-index:200;display:none;max-height:280px;overflow-y:auto;margin-top:4px}
-.ac-item{padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(–border)}
+.ac-dropdown{position:absolute;left:0;right:0;top:100%;background:white;border:1.5px solid var(--green-light);border-radius:12px;box-shadow:0 8px 24px rgba(61,107,79,0.15);z-index:200;display:none;max-height:280px;overflow-y:auto;margin-top:4px}
+.ac-item{padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 .ac-item:last-child{border-bottom:none}
-.ac-item:hover,.ac-item.selected{background:var(–green-light)}
-.ac-naam{font-size:0.88rem;color:var(–ink)}
-.ac-prijs{font-size:0.75rem;color:var(–muted)}
+.ac-item:hover,.ac-item.selected{background:var(--green-light)}
+.ac-naam{font-size:0.88rem;color:var(--ink)}
+.ac-prijs{font-size:0.75rem;color:var(--muted)}
 
 /* Prijs resultaat */
-.prijs-box{background:white;border-radius:12px;border:1px solid var(–border);padding:12px;margin-bottom:12px;display:none}
-.prijs-box-titel{font-size:0.75rem;font-weight:600;color:var(–green);margin-bottom:6px;display:flex;justify-content:space-between}
-.prijs-sluit{background:none;border:none;cursor:pointer;color:var(–muted);font-size:1rem;padding:0}
+.prijs-box{background:white;border-radius:12px;border:1px solid var(--border);padding:12px;margin-bottom:12px;display:none}
+.prijs-box-titel{font-size:0.75rem;font-weight:600;color:var(--green);margin-bottom:6px;display:flex;justify-content:space-between}
+.prijs-sluit{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:0}
 
 /* Personen */
 .person-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;overflow-x:auto}
-.filter-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(–border);background:white;font-family:‘DM Sans’,sans-serif;font-size:0.75rem;cursor:pointer;white-space:nowrap;color:var(–muted)}
-.filter-chip.active{border-color:var(–green);background:var(–green-light);color:var(–green);font-weight:600}
+.filter-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:0.75rem;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.filter-chip.active{border-color:var(--green);background:var(--green-light);color:var(--green);font-weight:600}
 
 /* Categorie header */
 .cat-header{display:flex;align-items:center;gap:6px;margin:12px 0 6px}
 .cat-icon{font-size:0.9rem}
-.cat-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(–muted);font-weight:600}
-.cat-line{flex:1;height:1px;background:var(–border)}
-.cat-count{font-size:0.65rem;color:var(–muted)}
+.cat-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);font-weight:600}
+.cat-line{flex:1;height:1px;background:var(--border)}
+.cat-count{font-size:0.65rem;color:var(--muted)}
 
 /* Item */
-.item{background:white;border-radius:12px;padding:11px 12px;margin-bottom:7px;display:flex;align-items:center;gap:8px;border:1px solid var(–border)}
+.item{background:white;border-radius:12px;padding:11px 12px;margin-bottom:7px;display:flex;align-items:center;gap:8px;border:1px solid var(--border)}
 .item.done{opacity:0.55}
-.check-btn{width:24px;height:24px;border-radius:50%;border:2px solid var(–border);background:white;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(–green);transition:all 0.15s}
+.check-btn{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:white;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--green);transition:all 0.15s}
 .item.done .check-btn{background:#3d6b4f;border-color:#3d6b4f;color:white}
 .check-btn:not(.done-btn):hover{border-color:#3d6b4f}
-.item.done .check-btn{background:var(–green);border-color:var(–green);color:white}
+.item.done .check-btn{background:var(--green);border-color:var(--green);color:white}
 .item-main{flex:1;min-width:0}
 .item-name{font-size:0.92rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item.done .item-name{text-decoration:line-through}
@@ -114,139 +113,147 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 .winkel-badge{font-size:0.65rem;padding:2px 6px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
 .winkel-ah{background:#ebf3ff;color:#003087}
 .winkel-kv{background:#f3e8ff;color:#6a00c4}
-.cat-select{font-size:0.65rem;border:none;background:transparent;color:var(–muted);cursor:pointer;max-width:80px}
+.cat-select{font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px}
 .qty-controls{display:flex;align-items:center;gap:4px;flex-shrink:0}
-.qty-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(–border);background:white;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center}
+.qty-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:white;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center}
 .qty-num{font-size:0.82rem;min-width:16px;text-align:center}
-.delete-btn{width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(–muted);font-size:0.9rem;flex-shrink:0}
+.delete-btn{width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:0.9rem;flex-shrink:0}
 
 /* Done sectie */
-.done-header{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;color:var(–muted);font-size:0.82rem;border-top:1px solid var(–border);margin-top:8px}
-.clear-btn{margin-left:auto;padding:6px 14px;border-radius:8px;border:none;background:#c4473a;color:white;font-family:‘DM Sans’,sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(196,71,58,0.3)}
+.done-header{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer;color:var(--muted);font-size:0.82rem;border-top:1px solid var(--border);margin-top:8px}
+.clear-btn{margin-left:auto;padding:6px 14px;border-radius:8px;border:none;background:#c4473a;color:white;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(196,71,58,0.3)}
 #done-list-wrap{display:none}
 
 /* Slimme suggesties */
 .wow-box{background:linear-gradient(135deg,#3d6b4f,#5a8f6d);border-radius:14px;padding:14px;margin-bottom:14px;color:white;display:none}
-.wow-titel{font-family:‘Playfair Display’,serif;font-size:0.95rem;margin-bottom:2px}
+.wow-titel{font-family:'Playfair Display',serif;font-size:0.95rem;margin-bottom:2px}
 .wow-sub{font-size:0.72rem;opacity:0.85;margin-bottom:10px}
 .wow-chips{display:flex;gap:6px;flex-wrap:wrap}
-.wow-chip{padding:5px 11px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:0.78rem;cursor:pointer;font-family:‘DM Sans’,sans-serif}
+.wow-chip{padding:5px 11px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif}
 
 /* Weekmenu */
-.week-nav{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:12px;padding:10px 14px;margin-bottom:12px;border:1px solid var(–border)}
-.week-titel{font-family:‘Playfair Display’,serif;font-size:0.95rem;color:var(–ink)}
-.week-sub{font-size:0.72rem;color:var(–muted)}
-.week-nav-btn{background:none;border:1.5px solid var(–border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center}
+.week-nav{display:flex;align-items:center;justify-content:space-between;background:white;border-radius:12px;padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)}
+.week-titel{font-family:'Playfair Display',serif;font-size:0.95rem;color:var(--ink)}
+.week-sub{font-size:0.72rem;color:var(--muted)}
+.week-nav-btn{background:none;border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center}
 .week-nav-btn:disabled{opacity:0.3;cursor:default}
-.dag-card{background:white;border-radius:12px;margin-bottom:8px;border:1px solid var(–border);overflow:hidden}
-.dag-card.vandaag{border:2px solid var(–green);background:white}
+.dag-card{background:white;border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden}
+.dag-card.vandaag{border:2px solid var(--green);background:white}
 .dag-card.vandaag .dag-header{background:#e8f0ea;border-radius:11px 11px 0 0}
 .dag-card.vandaag .dag-naam{color:#3d6b4f;font-weight:700;font-size:1rem}
 .dag-card.vandaag .dag-datum{color:#3d6b4f;font-weight:600}
-.dag-card.vandaag .dag-preview{color:var(–muted)}
+.dag-card.vandaag .dag-preview{color:var(--muted)}
 .dag-card.vandaag .dag-preview.gevuld{color:#3d6b4f;font-weight:600}
 .dag-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
 .dag-naam{font-weight:600;font-size:0.9rem}
-.dag-datum{font-size:0.72rem;color:var(–muted)}
-.dag-preview{font-size:0.78rem;color:var(–muted);margin-top:2px}
-.dag-preview.gevuld{color:var(–green)}
+.dag-datum{font-size:0.72rem;color:var(--muted)}
+.dag-preview{font-size:0.78rem;color:var(--muted);margin-top:2px}
+.dag-preview.gevuld{color:var(--green)}
 .dag-body{padding:0 14px 14px;display:none}
-.dag-input{width:100%;border:1.5px solid var(–border);border-radius:8px;padding:8px 10px;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;outline:none;margin-bottom:8px}
-.dag-input:focus{border-color:var(–green)}
+.dag-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;margin-bottom:8px}
+.dag-input:focus{border-color:var(--green)}
 .dag-btns{display:flex;gap:6px}
-.dag-save{flex:1;padding:9px;border:none;border-radius:8px;background:#3d6b4f;color:white;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(61,107,79,0.3)}
-.dag-clear{padding:8px 12px;border:1.5px solid var(–border);border-radius:8px;background:white;font-family:‘DM Sans’,sans-serif;font-size:0.82rem;cursor:pointer}
-.recept-picker-btn{width:100%;margin-top:8px;padding:7px;border:1.5px dashed var(–border);border-radius:8px;background:none;cursor:pointer;font-family:‘DM Sans’,sans-serif;font-size:0.78rem;color:var(–muted)}
+.dag-save{flex:1;padding:9px;border:none;border-radius:8px;background:#3d6b4f;color:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(61,107,79,0.3)}
+.dag-clear{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;background:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer}
+.recept-picker-btn{width:100%;margin-top:8px;padding:7px;border:1.5px dashed var(--border);border-radius:8px;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted)}
 .recept-picker{margin-top:8px;display:none}
-.picker-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;border:1px solid var(–border);background:white;cursor:pointer;margin-bottom:5px;font-size:0.82rem}
+.picker-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:white;cursor:pointer;margin-bottom:5px;font-size:0.82rem}
 
 /* Kookboek */
-.recept-card{background:white;border-radius:14px;margin-bottom:14px;border:1px solid var(–border);overflow:hidden}
+.recept-card{background:white;border-radius:14px;margin-bottom:14px;border:1px solid var(--border);overflow:hidden}
 .recept-media{width:100%;height:155px;object-fit:cover;display:block;cursor:pointer}
 .recept-body{padding:13px}
-.recept-titel{font-family:‘Playfair Display’,serif;font-size:1rem;margin-bottom:6px}
+.recept-titel{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:6px}
 .recept-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.recept-tag{font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(–green-light);color:var(–green)}
-.recept-omschr{font-size:0.8rem;color:var(–muted);line-height:1.5;margin-bottom:8px}
+.recept-tag{font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(--green-light);color:var(--green)}
+.recept-omschr{font-size:0.8rem;color:var(--muted);line-height:1.5;margin-bottom:8px}
 .recept-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.recept-btn{padding:6px 12px;border-radius:8px;border:1.5px solid var(–border);background:white;font-family:‘DM Sans’,sans-serif;font-size:0.75rem;cursor:pointer}
-.recept-btn.edit{border-color:var(–green);color:var(–green)}
-.recept-btn.del{border-color:var(–red);color:var(–red)}
-.ing-rij{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(–border);font-size:0.82rem}
-.ing-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(–border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.ing-check.checked{background:var(–green);border-color:var(–green);color:white}
-.btn-naar-lijst{width:100%;margin-top:8px;padding:8px;border:none;border-radius:8px;background:var(–green);color:white;font-family:‘DM Sans’,sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer}
-.recept-leeg{text-align:center;padding:40px 20px;color:var(–muted);font-size:0.9rem}
-.recept-zoek{width:100%;border:1.5px solid var(–border);border-radius:10px;padding:10px 12px;font-family:‘DM Sans’,sans-serif;font-size:0.9rem;outline:none;margin-bottom:12px}
-.recept-zoek:focus{border-color:var(–green)}
+.recept-btn{padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:0.75rem;cursor:pointer}
+.recept-btn.edit{border-color:var(--green);color:var(--green)}
+.recept-btn.del{border-color:var(--red);color:var(--red)}
+.ing-rij{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.82rem}
+.ing-check{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ing-check.checked{background:var(--green);border-color:var(--green);color:white}
+.btn-naar-lijst{width:100%;margin-top:8px;padding:8px;border:none;border-radius:8px;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer}
+.recept-leeg{text-align:center;padding:40px 20px;color:var(--muted);font-size:0.9rem}
+.recept-zoek{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;margin-bottom:12px}
+.recept-zoek:focus{border-color:var(--green)}
 .recept-cat-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
 
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:300;display:none;align-items:flex-end;justify-content:center}
 .modal.open{display:flex}
 .modal-card{background:white;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;max-height:88vh;overflow-y:auto}
-.modal-titel{font-family:‘Playfair Display’,serif;font-size:1.1rem;margin-bottom:16px}
-.modal-input{width:100%;border:1.5px solid var(–border);border-radius:10px;padding:10px 12px;font-family:‘DM Sans’,sans-serif;font-size:0.9rem;outline:none;margin-bottom:10px}
-.modal-input:focus{border-color:var(–green)}
-.modal-select{width:100%;border:1.5px solid var(–border);border-radius:10px;padding:10px 12px;font-family:‘DM Sans’,sans-serif;font-size:0.9rem;outline:none;margin-bottom:10px;background:white}
-.modal-err{color:var(–red);font-size:0.8rem;margin-bottom:8px;display:none;padding:8px;background:#faeae9;border-radius:8px}
-.modal-btn{width:100%;padding:12px;border:none;border-radius:12px;background:var(–green);color:white;font-family:‘DM Sans’,sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:4px}
-.modal-sluiten{width:100%;padding:10px;border:none;background:none;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;color:var(–muted);cursor:pointer;margin-top:6px}
+.modal-titel{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:16px}
+.modal-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;margin-bottom:10px}
+.modal-input:focus{border-color:var(--green)}
+.modal-select{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;margin-bottom:10px;background:white}
+.modal-err{color:var(--red);font-size:0.8rem;margin-bottom:8px;display:none;padding:8px;background:#faeae9;border-radius:8px}
+.modal-btn{width:100%;padding:12px;border:none;border-radius:12px;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:4px}
+.modal-sluiten{width:100%;padding:10px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-top:6px}
 
 /* Personen modal */
-.persoon-rij{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px;background:var(–cream);border-radius:10px}
-.foto-label{width:36px;height:36px;border-radius:50%;background:var(–border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;overflow:hidden}
+.persoon-rij{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px;background:var(--cream);border-radius:10px}
+.foto-label{width:36px;height:36px;border-radius:50%;background:var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;overflow:hidden}
 .foto-label input{display:none}
-.persoon-naam-inp{flex:1;border:1.5px solid var(–border);border-radius:8px;padding:7px 10px;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;outline:none;background:white}
+.persoon-naam-inp{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;background:white}
 .persoon-kleur-inp{width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0;background:none}
-.persoon-del{background:none;border:none;cursor:pointer;color:var(–muted);font-size:1rem;padding:4px}
-.btn-add-persoon{width:100%;padding:8px;border:1.5px dashed var(–border);border-radius:10px;background:none;font-family:‘DM Sans’,sans-serif;font-size:0.85rem;color:var(–muted);cursor:pointer;margin-bottom:10px}
+.persoon-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px}
+.btn-add-persoon{width:100%;padding:8px;border:1.5px dashed var(--border);border-radius:10px;background:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-bottom:10px}
 
 /* Prijzen */
 .prijs-resultaat{padding-top:4px}
 .prijs-winner{background:linear-gradient(135deg,#3d6b4f,#5a8f6d);border-radius:14px;padding:14px;color:white;margin-bottom:12px}
-.prijs-winner-titel{font-family:‘Playfair Display’,serif;font-size:1rem;margin-bottom:4px}
+.prijs-winner-titel{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:4px}
 .prijs-winner-sub{font-size:0.8rem;opacity:0.9}
-.prijs-winkel-kaart{background:white;border-radius:12px;border:1px solid var(–border);margin-bottom:8px;overflow:hidden}
+.prijs-winkel-kaart{background:white;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;overflow:hidden}
 .prijs-winkel-header{padding:9px 13px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:0.88rem;background:#f9f9f9}
 .prijs-winkel-items{padding:8px 13px 10px}
-.prijs-item-rij{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(–border);font-size:0.82rem}
+.prijs-item-rij{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);font-size:0.82rem}
 .prijs-item-rij:last-child{border-bottom:none}
-.prijs-goedkoopst{color:var(–green);font-weight:700}
-.cat-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(–border);background:white;font-family:‘DM Sans’,sans-serif;font-size:0.75rem;cursor:pointer;color:var(–muted)}
-.cat-chip.active{border-color:var(–green);background:var(–green-light);color:var(–green);font-weight:600}
+.prijs-goedkoopst{color:var(--green);font-weight:700}
+.cat-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:0.75rem;cursor:pointer;color:var(--muted)}
+.cat-chip.active{border-color:var(--green);background:var(--green-light);color:var(--green);font-weight:600}
 
 /* Vind winkel modal */
 .vw-card{background:white;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px;max-height:88vh;overflow-y:auto}
-.vw-winkel-kaart{border:1px solid var(–border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.vw-winkel-kaart{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
 .vw-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
 .vw-info{flex:1;min-width:0}
 .vw-naam{font-weight:600;font-size:0.9rem}
-.vw-adres{font-size:0.75rem;color:var(–muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vw-afstand{font-size:0.72rem;color:var(–green);font-weight:600;margin-top:2px}
-.vw-nav{background:var(–green);color:white;border:none;border-radius:9px;padding:7px 11px;font-family:‘DM Sans’,sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer}
+.vw-adres{font-size:0.75rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vw-afstand{font-size:0.72rem;color:var(--green);font-weight:600;margin-top:2px}
+.vw-nav{background:var(--green);color:white;border:none;border-radius:9px;padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer}
 .prijs-item-rij button:hover{opacity:1!important;transform:scale(1.2)}
-.vw-sectie{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(–muted);margin:12px 0 7px 2px}
+.insp-vraag{font-size:0.82rem;font-weight:600;color:var(--ink);margin-bottom:7px}
+.insp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.insp-chip{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;font-family:DM Sans,sans-serif;font-size:0.78rem;cursor:pointer;color:var(--muted);transition:all 0.15s}
+.insp-chip.selected{border-color:var(--green);background:var(--green-light);color:var(--green);font-weight:600}
+.insp-recept-kaart{background:white;border-radius:14px;border:1px solid var(--border);padding:14px;margin-bottom:10px}
+.insp-recept-naam{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:4px}
+.insp-recept-beschr{font-size:0.82rem;color:var(--muted);line-height:1.5;margin-bottom:10px}
+.insp-recept-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.vw-sectie{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:12px 0 7px 2px}
 
 /* Ideeën */
-.idee-card{background:white;border-radius:12px;padding:12px;border:1px solid var(–border);margin-bottom:8px}
+.idee-card{background:white;border-radius:12px;padding:12px;border:1px solid var(--border);margin-bottom:8px}
 .idee-header{display:flex;justify-content:space-between;margin-bottom:4px}
-.idee-naam{font-size:0.75rem;font-weight:600;color:var(–green)}
-.idee-datum{font-size:0.7rem;color:var(–muted)}
+.idee-naam{font-size:0.75rem;font-weight:600;color:var(--green)}
+.idee-datum{font-size:0.7rem;color:var(--muted)}
 .idee-tekst-el{font-size:0.85rem;line-height:1.5}
-.idee-tekst-input{width:100%;border:1.5px solid var(–border);border-radius:10px;padding:10px;font-family:‘DM Sans’,sans-serif;font-size:0.9rem;outline:none;resize:none;height:80px;margin-bottom:8px}
-.idee-ok{color:var(–green);font-size:0.82rem;display:none;margin-top:4px}
+.idee-tekst-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;resize:none;height:80px;margin-bottom:8px}
+.idee-ok{color:var(--green);font-size:0.82rem;display:none;margin-top:4px}
 
 /* Admin */
 .admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-.admin-stat{background:white;border-radius:12px;padding:10px;text-align:center;border:1px solid var(–border)}
-.admin-stat-num{font-family:‘Playfair Display’,serif;font-size:1.3rem;color:var(–green)}
-.admin-stat-lbl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.6px;color:var(–muted)}
-.reg-kaart{background:white;border-radius:12px;padding:12px;border:1px solid var(–border);margin-bottom:8px}
+.admin-stat{background:white;border-radius:12px;padding:10px;text-align:center;border:1px solid var(--border)}
+.admin-stat-num{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--green)}
+.admin-stat-lbl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted)}
+.reg-kaart{background:white;border-radius:12px;padding:12px;border:1px solid var(--border);margin-bottom:8px}
 .reg-naam{font-weight:600;font-size:0.9rem;margin-bottom:2px}
-.reg-meta{font-size:0.75rem;color:var(–muted);margin-bottom:8px}
+.reg-meta{font-size:0.75rem;color:var(--muted);margin-bottom:8px}
 .reg-btns{display:flex;gap:6px}
-.reg-btn{flex:1;padding:7px;border-radius:8px;border:none;font-family:‘DM Sans’,sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer}
+.reg-btn{flex:1;padding:7px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;cursor:pointer}
 .reg-btn.goed{background:#e8f5e9;color:#2e7d32}
 .reg-btn.af{background:#fce4ec;color:#c62828}
 .reg-btn.del{background:#f5f5f5;color:#666}
@@ -256,87 +263,79 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 .status-afgewezen{background:#fce4ec;color:#c62828}
 
 /* Deel knop */
-.deel-btn{width:100%;padding:11px;border:1.5px solid var(–green);border-radius:12px;background:var(–green-light);color:var(–green);font-family:‘DM Sans’,sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-top:12px}
+.deel-btn{width:100%;padding:11px;border:1.5px solid var(--green);border-radius:12px;background:var(--green-light);color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-top:12px}
 
 /* Lege staat */
-.empty{text-align:center;padding:32px 20px;color:var(–muted)}
+.empty{text-align:center;padding:32px 20px;color:var(--muted)}
 .empty-icon{font-size:2.5rem;margin-bottom:8px}
 
 /* Video embed */
 .video-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;background:#000}
 .video-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}
 </style>
-
 </head>
 <body>
 
 <!-- Loading screen -->
-
 <div id="loading">
   <div class="spinner"></div>
   <div style="font-size:0.85rem;color:var(--muted)">Verbinden...</div>
 </div>
 
 <!-- Setup screen -->
-
 <div id="setup">
   <div class="setup-inner">
     <div class="setup-logo">🛒</div>
     <h1 class="setup-titel">Onze Boodschappen</h1>
     <p class="setup-sub">Samen boodschappen doen, maar dan slim</p>
-
-```
-<!-- Keuze -->
-<div id="setup-keuze">
-  <div class="setup-card">
-    <button class="btn-setup" onclick="toonInloggen()">👨‍👩‍👧 Bestaand gezin inloggen</button>
-    <button class="btn-setup-alt" onclick="toonRegistreren()">✨ Nieuw gezin aanmelden</button>
-  </div>
-</div>
-
-<!-- Inloggen -->
-<div id="setup-inloggen" style="display:none">
-  <div class="setup-card">
-    <h3 style="margin:0 0 12px;font-family:'Playfair Display',serif">Inloggen</h3>
-    <div class="setup-err" id="login-err"></div>
-    <input class="setup-input" id="login-code" type="text" placeholder="Gezinscode bijv. familie-de-jong" autocomplete="off" />
-    <button class="btn-setup" onclick="startMetCode()">Inloggen →</button>
-    <button class="btn-setup-alt" onclick="toonKeuze()">← Terug</button>
-  </div>
-</div>
-
-<!-- Registreren -->
-<div id="setup-registreren" style="display:none">
-  <div class="setup-card">
-    <h3 style="margin:0 0 12px;font-family:'Playfair Display',serif">Nieuw gezin aanmelden</h3>
-    <p style="font-size:0.82rem;color:var(--muted);margin:0 0 12px">Na goedkeuring kun je direct aan de slag!</p>
-    <div class="setup-err" id="reg-err"></div>
-    <input class="setup-input" id="reg-naam" type="text" placeholder="Naam van je gezin bijv. Familie De Jong" />
-    <input class="setup-input" id="reg-email" type="email" placeholder="E-mailadres" />
-    <button class="btn-setup" onclick="registreerGezin()">Aanmelden →</button>
-    <button class="btn-setup-alt" onclick="toonKeuze()">← Terug</button>
-  </div>
-</div>
-
-<!-- Wachten -->
-<div id="setup-wachten" style="display:none">
-  <div class="setup-card" style="text-align:center">
-    <div style="font-size:2.5rem;margin-bottom:8px">⏳</div>
-    <h3 style="font-family:'Playfair Display',serif;margin:0 0 8px">Aanmelding ontvangen!</h3>
-    <p style="font-size:0.85rem;color:var(--muted)">Je ontvangt toegang zodra je aanmelding is goedgekeurd.</p>
-  </div>
-</div>
-```
-
+    
+    <!-- Keuze -->
+    <div id="setup-keuze">
+      <div class="setup-card">
+        <button class="btn-setup" onclick="toonInloggen()">👨‍👩‍👧 Bestaand gezin inloggen</button>
+        <button class="btn-setup-alt" onclick="toonRegistreren()">✨ Nieuw gezin aanmelden</button>
+      </div>
+    </div>
+    
+    <!-- Inloggen -->
+    <div id="setup-inloggen" style="display:none">
+      <div class="setup-card">
+        <h3 style="margin:0 0 12px;font-family:'Playfair Display',serif">Inloggen</h3>
+        <div class="setup-err" id="login-err"></div>
+        <input class="setup-input" id="login-code" type="text" placeholder="Gezinscode bijv. familie-de-jong" autocomplete="off" />
+        <button class="btn-setup" onclick="startMetCode()">Inloggen →</button>
+        <button class="btn-setup-alt" onclick="toonKeuze()">← Terug</button>
+      </div>
+    </div>
+    
+    <!-- Registreren -->
+    <div id="setup-registreren" style="display:none">
+      <div class="setup-card">
+        <h3 style="margin:0 0 12px;font-family:'Playfair Display',serif">Nieuw gezin aanmelden</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin:0 0 12px">Na goedkeuring kun je direct aan de slag!</p>
+        <div class="setup-err" id="reg-err"></div>
+        <input class="setup-input" id="reg-naam" type="text" placeholder="Naam van je gezin bijv. Familie De Jong" />
+        <input class="setup-input" id="reg-email" type="email" placeholder="E-mailadres" />
+        <button class="btn-setup" onclick="registreerGezin()">Aanmelden →</button>
+        <button class="btn-setup-alt" onclick="toonKeuze()">← Terug</button>
+      </div>
+    </div>
+    
+    <!-- Wachten -->
+    <div id="setup-wachten" style="display:none">
+      <div class="setup-card" style="text-align:center">
+        <div style="font-size:2.5rem;margin-bottom:8px">⏳</div>
+        <h3 style="font-family:'Playfair Display',serif;margin:0 0 8px">Aanmelding ontvangen!</h3>
+        <p style="font-size:0.85rem;color:var(--muted)">Je ontvangt toegang zodra je aanmelding is goedgekeurd.</p>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- Hoofdapp -->
-
 <div id="app" id2="main-app">
-
+  
   <!-- Header -->
-
   <div class="header">
     <div>
       <div class="header-titel">🛒 Onze Boodschappen</div>
@@ -348,9 +347,8 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     </div>
     <button onclick="openPersonenModal()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;padding:4px">👥</button>
   </div>
-
+  
   <!-- Tabs -->
-
   <div class="tabs">
     <button class="tab active" id="tab-boodschappen" onclick="switchTab('boodschappen')">
       <span class="tab-icon">🛒</span>Boodschap
@@ -371,78 +369,73 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
       <span class="tab-icon">⚙️</span>Admin
     </button>
   </div>
-
+  
   <!-- ===== BOODSCHAPPEN VIEW ===== -->
-
   <div class="view active" id="view-boodschappen">
-
-```
-<!-- Stats -->
-<div class="stats">
-  <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-lbl">Totaal</div></div>
-  <div class="stat"><div class="stat-num" id="stat-todo">0</div><div class="stat-lbl">Te halen</div></div>
-  <div class="stat"><div class="stat-num" id="stat-done">0</div><div class="stat-lbl">In mandje</div></div>
-</div>
-
-<!-- Input -->
-<div class="input-card">
-  <div class="input-row">
-    <input class="item-input" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
-    <button class="btn-mic" id="mic-btn" title="Spraak">🎙️</button>
-    <button class="btn-prijs" id="prijs-btn" onclick="zoekLivePrijs()">prijs</button>
-    <button class="btn-add" id="add-btn" onclick="addItem()" style="background:#3d6b4f;color:white;border:none;width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1.3rem;flex-shrink:0">＋</button>
+    
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-lbl">Totaal</div></div>
+      <div class="stat"><div class="stat-num" id="stat-todo">0</div><div class="stat-lbl">Te halen</div></div>
+      <div class="stat"><div class="stat-num" id="stat-done">0</div><div class="stat-lbl">In mandje</div></div>
+    </div>
+    
+    <!-- Input -->
+    <div class="input-card">
+      <div class="input-row">
+        <input class="item-input" id="item-input" type="text" placeholder="Voeg boodschap toe…" autocomplete="off" />
+        <button class="btn-mic" id="mic-btn" title="Spraak">🎙️</button>
+        <button class="btn-prijs" id="prijs-btn" onclick="zoekLivePrijs()">prijs</button>
+        <button class="btn-add" id="add-btn" onclick="addItem()" style="background:#3d6b4f;color:white;border:none;width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1.3rem;flex-shrink:0">＋</button>
+      </div>
+      <div class="mic-status" id="mic-status"></div>
+      <div class="dubbel-melding" id="dubbel-melding"></div>
+      <!-- Autocomplete dropdown -->
+      <div class="ac-dropdown" id="ac-dropdown"></div>
+    </div>
+    
+    <!-- Live prijs resultaat -->
+    <div class="prijs-box" id="prijs-box">
+      <div class="prijs-box-titel">
+        💰 Goedkoopste aanbieding
+        <button class="prijs-sluit" onclick="sluitPrijsBox()">✕</button>
+      </div>
+      <div id="prijs-inhoud" style="font-size:0.85rem;color:var(--muted)"></div>
+    </div>
+    
+    <!-- Personen knoppen -->
+    <div class="person-row" id="person-row"></div>
+    
+    <!-- Filter chips -->
+    <div class="filter-row" id="filter-row"></div>
+    
+    <!-- Vind winkel knop -->
+    <button onclick="vindWinkel()" style="width:100%;padding:10px;border:none;border-radius:11px;background:linear-gradient(135deg,#1a56a0,#2d7dd2);color:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:6px">
+      📍 Vind dichtstbijzijnde winkel
+    </button>
+    
+    <!-- Slimme suggesties -->
+    <div class="wow-box" id="wow-box">
+      <div class="wow-titel">🧠 Slim voorstel</div>
+      <div class="wow-sub" id="wow-sub">Op basis van jouw aankooppatroon:</div>
+      <div class="wow-chips" id="wow-chips"></div>
+    </div>
+    
+    <!-- Todo lijst -->
+    <div id="todo-list"></div>
+    
+    <!-- Done sectie -->
+    <div class="done-header" onclick="toggleDone()">
+      <span id="done-arrow">▶</span>
+      <span>In mandje (<span id="done-count">0</span>)</span>
+      <button class="clear-btn" onclick="event.stopPropagation();clearDone()">Leegmaken</button>
+    </div>
+    <div id="done-list-wrap">
+      <div id="done-list"></div>
+    </div>
   </div>
-  <div class="mic-status" id="mic-status"></div>
-  <div class="dubbel-melding" id="dubbel-melding"></div>
-  <!-- Autocomplete dropdown -->
-  <div class="ac-dropdown" id="ac-dropdown"></div>
-</div>
-
-<!-- Live prijs resultaat -->
-<div class="prijs-box" id="prijs-box">
-  <div class="prijs-box-titel">
-    💰 Goedkoopste aanbieding
-    <button class="prijs-sluit" onclick="sluitPrijsBox()">✕</button>
-  </div>
-  <div id="prijs-inhoud" style="font-size:0.85rem;color:var(--muted)"></div>
-</div>
-
-<!-- Personen knoppen -->
-<div class="person-row" id="person-row"></div>
-
-<!-- Filter chips -->
-<div class="filter-row" id="filter-row"></div>
-
-<!-- Vind winkel knop -->
-<button onclick="vindWinkel()" style="width:100%;padding:10px;border:none;border-radius:11px;background:linear-gradient(135deg,#1a56a0,#2d7dd2);color:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:6px">
-  📍 Vind dichtstbijzijnde winkel
-</button>
-
-<!-- Slimme suggesties -->
-<div class="wow-box" id="wow-box">
-  <div class="wow-titel">🧠 Slim voorstel</div>
-  <div class="wow-sub" id="wow-sub">Op basis van jouw aankooppatroon:</div>
-  <div class="wow-chips" id="wow-chips"></div>
-</div>
-
-<!-- Todo lijst -->
-<div id="todo-list"></div>
-
-<!-- Done sectie -->
-<div class="done-header" onclick="toggleDone()">
-  <span id="done-arrow">▶</span>
-  <span>In mandje (<span id="done-count">0</span>)</span>
-  <button class="clear-btn" onclick="event.stopPropagation();clearDone()">Leegmaken</button>
-</div>
-<div id="done-list-wrap">
-  <div id="done-list"></div>
-</div>
-```
-
-  </div>
-
+  
   <!-- ===== WEEKMENU VIEW ===== -->
-
   <div class="view" id="view-menu">
     <div class="week-nav">
       <button class="week-nav-btn" id="week-prev" onclick="wisselWeek(-1)" disabled>‹</button>
@@ -454,9 +447,8 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     </div>
     <div id="week-grid"></div>
   </div>
-
+  
   <!-- ===== KOOKBOEK VIEW ===== -->
-
   <div class="view" id="view-kookboek">
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <input class="recept-zoek" id="recept-zoek" placeholder="Zoek recept…" oninput="renderRecepten()" style="margin-bottom:0" />
@@ -475,10 +467,69 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
       <div style="font-size:2rem;margin-bottom:8px">📖</div>
       Nog geen recepten. Voeg je eerste toe!
     </div>
+
+    <!-- Inspiratie sectie -->
+    <div style="margin-top:16px;border-top:2px solid var(--border);padding-top:16px">
+      <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:4px">✨ Inspiratie zoeken</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px">Laat je verrassen — stel je wensen in en ontvang receptideeën</div>
+
+      <!-- Stap 1: Keuken -->
+      <div class="insp-stap" id="insp-stap-1">
+        <div class="insp-vraag">Welke keuken spreekt je aan?</div>
+        <div class="insp-chips" id="insp-keuken">
+          <button class="insp-chip" data-val="italiaans">🍝 Italiaans</button>
+          <button class="insp-chip" data-val="spaans">🥘 Spaans</button>
+          <button class="insp-chip" data-val="mexicaans">🌮 Mexicaans</button>
+          <button class="insp-chip" data-val="aziatisch">🍜 Aziatisch</button>
+          <button class="insp-chip" data-val="indonesisch">🍛 Indonesisch</button>
+          <button class="insp-chip" data-val="grieks">🫒 Grieks</button>
+          <button class="insp-chip" data-val="turks">🧆 Turks</button>
+          <button class="insp-chip" data-val="indiaas">🍲 Indiaas</button>
+          <button class="insp-chip" data-val="japans">🍱 Japans</button>
+          <button class="insp-chip" data-val="thais">🌶️ Thais</button>
+          <button class="insp-chip" data-val="chinees">🥡 Chinees</button>
+          <button class="insp-chip" data-val="netherlands">🧀 Nederlands</button>
+          <button class="insp-chip" data-val="mediterraan">🫙 Mediterraan</button>
+          <button class="insp-chip" data-val="vegatarisch">🥦 Vegetarisch</button>
+          <button class="insp-chip" data-val="veganistisch">🌱 Veganistisch</button>
+          <button class="insp-chip selected" data-val="verrassing">🎲 Verrassing!</button>
+        </div>
+      </div>
+
+      <!-- Stap 2: Personen -->
+      <div class="insp-stap" id="insp-stap-2" style="margin-top:12px">
+        <div class="insp-vraag">Voor hoeveel personen?</div>
+        <div class="insp-chips" id="insp-personen">
+          <button class="insp-chip" data-val="1">👤 1</button>
+          <button class="insp-chip" data-val="2">👥 2</button>
+          <button class="insp-chip selected" data-val="4">👨‍👩‍👧‍👦 4</button>
+          <button class="insp-chip" data-val="6">🎉 6+</button>
+        </div>
+      </div>
+
+      <!-- Stap 3: Soort maaltijd -->
+      <div class="insp-stap" id="insp-stap-3" style="margin-top:12px">
+        <div class="insp-vraag">Wat voor maaltijd?</div>
+        <div class="insp-chips" id="insp-maaltijd">
+          <button class="insp-chip" data-val="ontbijt">🥐 Ontbijt</button>
+          <button class="insp-chip" data-val="lunch">🥗 Lunch</button>
+          <button class="insp-chip selected" data-val="diner">🍽️ Diner</button>
+          <button class="insp-chip" data-val="snack">🍿 Snack</button>
+          <button class="insp-chip" data-val="dessert">🍰 Dessert</button>
+        </div>
+      </div>
+
+      <!-- Zoek knop -->
+      <button onclick="zoekInspiratie()" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:14px">
+        ✨ Geef me ideeën!
+      </button>
+
+      <!-- Resultaten -->
+      <div id="insp-resultaten" style="margin-top:14px"></div>
+    </div>
   </div>
-
+  
   <!-- ===== PRIJZEN VIEW ===== -->
-
   <div class="view" id="view-prijzen">
     <!-- Melding balk voor feedback -->
     <div id="prijs-melding" style="display:none;padding:9px 12px;border-radius:10px;font-size:0.82rem;margin-bottom:10px;font-weight:500"></div>
@@ -495,9 +546,8 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     </button>
     <div class="prijs-resultaat" id="prijs-resultaat"></div>
   </div>
-
+  
   <!-- ===== IDEEËN VIEW ===== -->
-
   <div class="view" id="view-ideeen">
     <div style="background:white;border-radius:14px;padding:14px;border:1px solid var(--border);margin-bottom:14px">
       <div style="font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:10px">💡 Stuur een idee</div>
@@ -511,9 +561,8 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     </div>
     <div id="ideeen-lijst-wrap" style="display:none"><div id="ideeen-lijst"></div></div>
   </div>
-
+  
   <!-- ===== ADMIN VIEW ===== -->
-
   <div class="view" id="view-admin">
     <div class="admin-stats">
       <div class="admin-stat"><div class="admin-stat-num" id="admin-actief">0</div><div class="admin-stat-lbl">Actief</div></div>
@@ -526,25 +575,21 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
     </div>
     <div id="admin-regs-wrap" style="display:none"><div id="admin-regs"></div></div>
 
-```
-<div onclick="toggleAdminSectie('ideeen')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;margin-top:8px">
-  <span style="font-family:'Playfair Display',serif;font-size:0.95rem">Ideeën</span>
-  <span id="ideeen-arrow">▶</span>
-</div>
-<div id="admin-ideeen-wrap" style="display:none"><div id="admin-ideeen"></div></div>
-<button onclick="wisselGezin()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;margin-top:16px;color:var(--muted)">
-  🔄 Van gezin wisselen
-</button>
-<button onclick="deelApp()" class="deel-btn">📲 Deel app-link</button>
-<div id="deel-ok" style="color:var(--green);font-size:0.8rem;text-align:center;margin-top:6px;display:none">✅ Link gekopieerd!</div>
-```
-
+    <div onclick="toggleAdminSectie('ideeen')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;margin-top:8px">
+      <span style="font-family:'Playfair Display',serif;font-size:0.95rem">Ideeën</span>
+      <span id="ideeen-arrow">▶</span>
+    </div>
+    <div id="admin-ideeen-wrap" style="display:none"><div id="admin-ideeen"></div></div>
+    <button onclick="wisselGezin()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;margin-top:16px;color:var(--muted)">
+      🔄 Van gezin wisselen
+    </button>
+    <button onclick="deelApp()" class="deel-btn">📲 Deel app-link</button>
+    <div id="deel-ok" style="color:var(--green);font-size:0.8rem;text-align:center;margin-top:6px;display:none">✅ Link gekopieerd!</div>
   </div>
-
+  
 </div>
 
 <!-- Personen modal -->
-
 <div class="modal" id="personen-modal" onclick="sluitModals(event,'personen-modal')">
   <div class="modal-card">
     <div class="modal-titel">👥 Personen instellen</div>
@@ -556,7 +601,6 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 </div>
 
 <!-- Recept modal -->
-
 <div class="modal" id="recept-modal" onclick="sluitModals(event,'recept-modal')">
   <div class="modal-card">
     <div class="modal-titel" id="recept-modal-titel">📖 Nieuw recept</div>
@@ -585,8 +629,17 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
   </div>
 </div>
 
-<!-- Vind winkel modal -->
+<!-- Plan in weekmenu modal -->
+<div class="modal" id="plan-modal" onclick="sluitModals(event,'plan-modal')">
+  <div class="modal-card">
+    <div class="modal-titel">&#x1F4C5; Op welke dag?</div>
+    <div id="plan-recept-naam" style="font-size:0.85rem;color:var(--muted);margin-bottom:14px"></div>
+    <div id="plan-dag-knoppen" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button class="modal-sluiten" onclick="sluitModals(null,'plan-modal')">Annuleren</button>
+  </div>
+</div>
 
+<!-- Vind winkel modal -->
 <div class="modal" id="winkel-modal" onclick="sluitModals(event,'winkel-modal')">
   <div class="vw-card">
     <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:4px">📍 Dichtstbijzijnde winkels</div>
@@ -597,7 +650,6 @@ body{margin:0;font-family:'DM Sans',sans-serif;background:#f5f0eb;color:#1a1a1a;
 </div>
 
 <!-- Firebase SDK -->
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js";
@@ -1708,7 +1760,8 @@ function renderRecepten() {
     if (vid) btns += '<button class="recept-btn" data-id="' + rid + '" data-vid="' + esc(vid) + '" onclick="speelAf(this.getAttribute(\'data-id\'),this.getAttribute(\'data-vid\'))">&#x25B6; Afspelen</button>';
     if (r.url) btns += '<a href="' + esc(r.url) + '" target="_blank" style="text-decoration:none;display:inline-block;padding:6px 14px;border-radius:8px;background:#3d6b4f;color:white;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600">' + pl + ' Openen &#x2197;</a>';
     btns += '<button class="recept-btn edit" data-id="' + rid + '" onclick="openReceptForm(this.getAttribute(\'data-id\'))">Bewerken</button>';
-    btns += '<button class="recept-btn del" data-id="' + rid + '" onclick="verwijderRecept(this.getAttribute(\'data-id\'))">Verwijderen</button>';
+    btns += '<button class="recept-btn del recept-del-btn" data-id="' + rid + '">Verwijderen</button>';
+    btns += '<button class="recept-btn recept-plan-btn" data-id="' + rid + '" data-naam="' + esc(r.naam) + '" style="background:#e8f0ea;border-color:var(--green);color:var(--green)">&#x1F4C5; Plan in week</button>';
 
     // Titel
     var titel = r.url
@@ -1750,6 +1803,13 @@ function renderRecepten() {
       detail.style.display = open ? 'none' : 'block';
       if (arrow) arrow.textContent = open ? '▶' : '▼';
     };
+  });
+  // Bind del + plan knoppen
+  el.querySelectorAll('.recept-del-btn').forEach(function(btn) {
+    btn.onclick = function(e) { e.stopPropagation(); verwijderRecept(btn.getAttribute('data-id')); };
+  });
+  el.querySelectorAll('.recept-plan-btn').forEach(function(btn) {
+    btn.onclick = function(e) { e.stopPropagation(); openPlanModal(btn.getAttribute('data-id'), btn.getAttribute('data-naam')); };
   });
 }
 
@@ -2348,6 +2408,7 @@ function toonWinkelLinks(lat, lon, inh, sub) {
   html += mapsLink('frituur snackbar patatzaak', '#fff8e1', '🍟', 'Frituur & Snackbar');
   html += mapsLink('pizzeria pizza bezorgen', '#fff0e8', '🍕', 'Pizzeria');
   html += mapsLink('speciaalbier winkel biershop', '#f5f0e8', '🍺', 'Speciaal Bierwinkel');
+  html += mapsLink('restaurant eten', '#f0f8e8', '🍽️', 'Restaurant');
 
   if (lat) {
     html += '<div id="overpass-resultaten" style="margin-top:4px"><div style="text-align:center;padding:8px;color:var(--muted);font-size:0.8rem">🔍 Exacte adressen ophalen...</div></div>';
@@ -2408,6 +2469,7 @@ async function zoekWinkelsOverpass(lat, lon, inh, sub) {
     else if (amenity==='fast_food' || n.indexOf('frituur')>-1 || n.indexOf('patatzaak')>-1 || n.indexOf('snackbar')>-1 || n.indexOf('frietboer')>-1) cats.frituur.push(w);
     else if (amenity==='restaurant' && (n.indexOf('pizza')>-1 || (el.tags&&(el.tags.cuisine||'').indexOf('pizza')>-1))) cats.pizza=(cats.pizza||[]), cats.pizza.push(w);
     else if (shop==='alcohol' && (n.indexOf('bier')>-1 || n.indexOf('speciaalbier')>-1)) cats.bier=(cats.bier||[]), cats.bier.push(w);
+    else if (amenity==='restaurant') cats.rest=(cats.rest||[]), cats.rest.push(w);
   });
 
   // Bouw HTML voor gevonden winkels
@@ -2670,6 +2732,158 @@ function toggleGoedgekeurdeIdeeen() {
   if (arrow) arrow.textContent = open ? '▶' : '▼';
 }
 
+function openPlanModal(receptId, receptNaam) {
+  var el = document.getElementById('plan-dag-knoppen');
+  var naamEl = document.getElementById('plan-recept-naam');
+  if (!el) return;
+  if (naamEl) naamEl.textContent = receptNaam;
+  var html = '';
+  for (var i = 0; i < 7; i++) {
+    var key = dagKey(i);
+    var huidig = menu[key] || '';
+    var isToday = (weekOffset === 0 && i === vandaagIdx());
+    var label = DAGEN[i] + (isToday ? ' (vandaag)' : '') + (huidig ? ' — ' + huidig : '');
+    var bg = isToday ? 'var(--green-light)' : 'white';
+    html += '<button class="plan-dag-btn" data-dag="' + i + '" '
+      + 'style="padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:' + bg + ';'
+      + 'font-family:DM Sans,sans-serif;font-size:0.88rem;text-align:left;cursor:pointer;color:var(--ink);width:100%">'
+      + esc(label) + '</button>';
+  }
+  el.innerHTML = html;
+  // Sla receptId + naam op als data op het modal zelf
+  var modal = document.getElementById('plan-modal');
+  modal.setAttribute('data-recept-id', receptId);
+  modal.setAttribute('data-recept-naam', receptNaam);
+  // Bind knoppen
+  el.querySelectorAll('.plan-dag-btn').forEach(function(btn) {
+    btn.onclick = function() {
+      var dagIdx = parseInt(btn.getAttribute('data-dag'));
+      var rId = modal.getAttribute('data-recept-id');
+      var rNaam = modal.getAttribute('data-recept-naam');
+      planInWeek(dagIdx, rId, rNaam);
+    };
+  });
+  modal.classList.add('open');
+}
+
+async function planInWeek(dagIdx, receptId, receptNaam) {
+  await kiesRecept(dagIdx, receptNaam, receptId);
+  sluitModals(null, 'plan-modal');
+  var melding = document.createElement('div');
+  melding.textContent = '✅ ' + receptNaam + ' ingepland op ' + DAGEN[dagIdx];
+  melding.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#3d6b4f;color:white;padding:10px 18px;border-radius:20px;font-size:0.85rem;font-weight:600;z-index:999;font-family:DM Sans,sans-serif;white-space:nowrap';
+  document.body.appendChild(melding);
+  setTimeout(function(){ document.body.removeChild(melding); }, 2500);
+}
+
+// ── Inspiratie zoeker ──────────────────────────────────────────────────────
+
+// Chip selectie
+document.addEventListener('click', function(e) {
+  var chip = e.target.closest('.insp-chip');
+  if (!chip) return;
+  var group = chip.closest('.insp-chips');
+  if (!group) return;
+  // Single select per groep
+  group.querySelectorAll('.insp-chip').forEach(function(c){ c.classList.remove('selected'); });
+  chip.classList.add('selected');
+});
+
+function getInspKeuze(groupId) {
+  var el = document.getElementById(groupId);
+  if (!el) return null;
+  var sel = el.querySelector('.insp-chip.selected');
+  return sel ? sel.getAttribute('data-val') : null;
+}
+
+async function zoekInspiratie() {
+  var keuken = getInspKeuze('insp-keuken') || 'verrassing';
+  var personen = getInspKeuze('insp-personen') || '4';
+  var maaltijd = getInspKeuze('insp-maaltijd') || 'diner';
+  var el = document.getElementById('insp-resultaten');
+  if (!el) return;
+
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)"><div style="font-size:1.5rem;margin-bottom:8px">✨</div>Ideeën ophalen...</div>';
+
+  var prompt = 'Geef mij 4 leuke receptideeën voor een ' + maaltijd + ' voor ' + personen + ' personen'
+    + (keuken === 'verrassing' ? '' : ' met ' + keuken + ' keuken') + '.'
+    + ' Geef voor elk recept: naam, korte omschrijving (max 2 zinnen), bereidingstijd, moeilijkheidsgraad (Makkelijk/Gemiddeld/Uitdagend), en een directe YouTube zoeklink.'
+    + ' Antwoord ALLEEN in dit JSON formaat, geen uitleg erbuiten:'
+    + ' [{"naam":"...","omschr":"...","tijd":"...","niveau":"...","youtube_zoek":"https://www.youtube.com/results?search_query=recept+..."}]';
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    var data = await resp.json();
+    var tekst = (data.content && data.content[0] && data.content[0].text) || '';
+    // Verwijder mogelijke markdown code fences
+    tekst = tekst.replace(/```json|```/g, '').trim();
+    var recepten_ai = JSON.parse(tekst);
+    renderInspiratieResultaten(recepten_ai, keuken, personen, maaltijd);
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:10px;font-size:0.85rem">❌ Ophalen mislukt. Probeer opnieuw.</div>';
+  }
+}
+
+function renderInspiratieResultaten(lijst, keuken, personen, maaltijd) {
+  var el = document.getElementById('insp-resultaten');
+  if (!el || !lijst || !lijst.length) return;
+  var niveauKleur = {Makkelijk:'#e8f5e9', Gemiddeld:'#fff3e0', Uitdagend:'#fce4ec'};
+  var niveauTxt = {Makkelijk:'#2e7d32', Gemiddeld:'#e65100', Uitdagend:'#c62828'};
+  var html = '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">4 ideeën voor een <strong>'
+    + maaltijd + '</strong> voor <strong>' + personen + ' pers.</strong>'
+    + (keuken !== 'verrassing' ? ' &middot; <strong>' + keuken + '</strong>' : '') + '</div>';
+
+  for (var i = 0; i < lijst.length; i++) {
+    var r = lijst[i];
+    var nk = niveauKleur[r.niveau] || '#f5f5f5';
+    var nt = niveauTxt[r.niveau] || '#666';
+    var ytUrl = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent(r.naam + ' recept'));
+    html += '<div class="insp-recept-kaart">';
+    html += '<div class="insp-recept-naam">' + esc(r.naam) + '</div>';
+    html += '<div class="insp-recept-tags">';
+    if (r.tijd) html += '<span class="recept-tag">&#x23F1; ' + esc(r.tijd) + '</span>';
+    if (r.niveau) html += '<span class="recept-tag" style="background:' + nk + ';color:' + nt + '">' + esc(r.niveau) + '</span>';
+    html += '</div>';
+    html += '<div class="insp-recept-beschr">' + esc(r.omschr) + '</div>';
+    html += '<div style="display:flex;gap:7px;flex-wrap:wrap">';
+    html += '<a href="' + esc(ytUrl) + '" target="_blank" style="text-decoration:none;padding:7px 12px;border-radius:8px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600">&#x25B6; YouTube zoeken</a>';
+    html += '<button class="insp-opslaan-btn" data-naam="' + esc(r.naam) + '" data-omschr="' + esc(r.omschr) + '" data-tijd="' + esc(r.tijd||'') + '" data-pers="' + esc(personen) + '" data-url="' + esc(ytUrl) + '" data-maaltijd="' + esc(maaltijd) + '" style="padding:7px 12px;border-radius:8px;border:1.5px solid var(--green);background:var(--green-light);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer">+ Bewaar in kookboek</button>';
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+  // Bind opslaan knoppen
+  el.querySelectorAll('.insp-opslaan-btn').forEach(function(btn) {
+    btn.onclick = function() { slaAIReceptOp(btn); };
+  });
+}
+
+async function slaAIReceptOp(btn) {
+  var naam = btn.getAttribute('data-naam');
+  var omschr = btn.getAttribute('data-omschr');
+  var tijd = btn.getAttribute('data-tijd');
+  var pers = btn.getAttribute('data-pers');
+  var url = btn.getAttribute('data-url');
+  var cat = btn.getAttribute('data-maaltijd') || 'diner';
+  var id = 'r-' + Date.now();
+  await window._set(getRef('recepten/' + id), {
+    id:id, naam:naam, url:url, cat:cat,
+    omschr:omschr, pers:pers, tijd:tijd,
+    ing:[], aangemaakt:Date.now()
+  });
+  btn.textContent = '✅ Opgeslagen!';
+  btn.style.background = '#e8f5e9';
+  btn.style.borderColor = '#2e7d32';
+  btn.disabled = true;
+}
+
 // ============================================================
 // EVENT BINDINGS (na DOM geladen)
 // ============================================================
@@ -2713,6 +2927,5 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('#ac-dropdown') && e.target.id !== 'item-input') sluitAC();
 });
 </script>
-
 </body>
 </html>
