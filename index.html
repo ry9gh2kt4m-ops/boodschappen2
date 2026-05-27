@@ -655,120 +655,105 @@
 </div>
 
 <script>
-// ============================================================
-// WINKEL DEFINITIES
-// ============================================================
-const WINKELS_DEF = {
-  ah:       {naam:'Albert Heijn', logo:'🔵', kleur:'#003087', f:1.00, super:true},
-  jumbo:    {naam:'Jumbo',        logo:'🟡', kleur:'#C67800', f:0.95, super:true},
-  lidl:     {naam:'Lidl',         logo:'🔴', kleur:'#0050AA', f:0.82, super:true},
-  aldi:     {naam:'Aldi',         logo:'🟢', kleur:'#005A1E', f:0.78, super:true},
-  plus:     {naam:'Plus',         logo:'🟩', kleur:'#006400', f:0.97, super:true},
-  dirk:     {naam:'Dirk',         logo:'🟠', kleur:'#CC0000', f:0.88, super:true},
-  etos:     {naam:'Etos',         logo:'🩷', kleur:'#CC0055', f:1.05, drogist:true},
-  kruidvat: {naam:'Kruidvat',     logo:'🟣', kleur:'#6A00C4', f:0.95, drogist:true},
-  gall:     {naam:'Gall & Gall',  logo:'🍷', kleur:'#8B0000', f:0.92, slijterij:true},
-  mitra:    {naam:'Mitra',        logo:'🥃', kleur:'#7B4000', f:0.90, slijterij:true},
-  speciaal: {naam:'Speciaal Bier',logo:'🍺', kleur:'#8B6914', f:1.10, speciaal:true}
-};
+// ── Ontbrekende helper functies ──────────────────────────────────────────────
+
+function detectPlatformInfo(url) {
+  if (!url) return null;
+  var u = url.toLowerCase();
+  // YouTube
+  var ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return {type:'youtube', id:ytMatch[1], embedbaar:true, label:'YouTube', kleur:'#ff0000'};
+  // Overige platformen
+  if (u.indexOf('tiktok') > -1) return {type:'tiktok', id:null, embedbaar:false, label:'TikTok', kleur:'#010101'};
+  if (u.indexOf('instagram') > -1) return {type:'instagram', id:null, embedbaar:false, label:'Instagram', kleur:'#c13584'};
+  if (u.indexOf('facebook') > -1 || u.indexOf('fb.com') > -1) return {type:'facebook', id:null, embedbaar:false, label:'Facebook', kleur:'#1877f2'};
+  if (u.indexOf('pinterest') > -1) return {type:'pinterest', id:null, embedbaar:false, label:'Pinterest', kleur:'#e60023'};
+  return {type:'link', id:null, embedbaar:false, label:'Link', kleur:'#3d6b4f'};
+}
+
+function getYouTubeThumbnail(videoId) {
+  if (!videoId) return null;
+  return 'https://img.youtube.com/vi/' + videoId + '/mqdefault.jpg';
+}
+
+
+// Actieve categorie filters voor prijsvergelijking
+if (typeof actieveCats === 'undefined') {
+  var actieveCats = {super:true, drogist:true, slijterij:true, speciaal:false};
+}
+
+// ── WINKELS_DEF ──────────────────────────────────────────────────────────────
+if (typeof WINKELS_DEF === 'undefined') {
+  var WINKELS_DEF = {
+    ah:       {naam:'Albert Heijn', logo:'🔵', kleur:'#003087', f:1.00, super:true},
+    jumbo:    {naam:'Jumbo',        logo:'🟡', kleur:'#C67800', f:0.95, super:true},
+    lidl:     {naam:'Lidl',         logo:'🔴', kleur:'#0050AA', f:0.82, super:true},
+    aldi:     {naam:'Aldi',         logo:'🟢', kleur:'#005A1E', f:0.78, super:true},
+    plus:     {naam:'Plus',         logo:'🟩', kleur:'#006400', f:0.97, super:true},
+    dirk:     {naam:'Dirk',         logo:'🟠', kleur:'#CC0000', f:0.88, super:true},
+    etos:     {naam:'Etos',         logo:'🩷', kleur:'#CC0055', f:1.05, drogist:true},
+    kruidvat: {naam:'Kruidvat',     logo:'🟣', kleur:'#6A00C4', f:0.95, drogist:true},
+    gall:     {naam:'Gall & Gall',  logo:'🍷', kleur:'#8B0000', f:0.92, slijterij:true},
+    mitra:    {naam:'Mitra',        logo:'🥃', kleur:'#7B4000', f:0.90, slijterij:true},
+    speciaal: {naam:'Speciaal Bier',logo:'🍺', kleur:'#8B6914', f:1.10, speciaal:true}
+  };
+}
+
 
 // ============================================================
-// PRIJZEN DATABASE
+// PRIJZEN DATABASE (voor vergelijkPrijzen tab)
 // ============================================================
-const PRIJZEN_DB = [
-  {n:'Melk halfvolle 1L',       c:'koel',  p:1.09},
-  {n:'Melk volle 1L',           c:'koel',  p:1.19},
-  {n:'Karnemelk 1L',            c:'koel',  p:0.99},
-  {n:'Yoghurt naturel 500g',    c:'koel',  p:1.09},
-  {n:'Kwark mager 500g',        c:'koel',  p:1.49},
-  {n:'Slagroom 250ml',          c:'koel',  p:1.39},
-  {n:'Boter 250g',              c:'koel',  p:2.49},
-  {n:'Eieren 6st',              c:'koel',  p:1.99},
-  {n:'Eieren 10st',             c:'koel',  p:2.99},
-  {n:'Kaas jong 500g',          c:'koel',  p:3.49},
-  {n:'Kaas belegen 500g',       c:'koel',  p:3.79},
-  {n:'Mozzarella 125g',         c:'koel',  p:1.29},
-  {n:'Feta 200g',               c:'koel',  p:1.79},
-  {n:'Brie 200g',               c:'koel',  p:2.49},
-  {n:'Vla 1L',                  c:'koel',  p:1.19},
-  {n:'Kipfilet 600g',           c:'vlees', p:5.99},
-  {n:'Rundergehakt 500g',       c:'vlees', p:4.49},
-  {n:'Half-om-half 500g',       c:'vlees', p:3.99},
-  {n:'Speklapjes 400g',         c:'vlees', p:3.99},
-  {n:'Bacon 150g',              c:'vlees', p:2.49},
-  {n:'Ham 150g',                c:'vlees', p:2.29},
-  {n:'Zalm filet',              c:'vlees', p:5.99},
-  {n:'Garnalen gepeld 150g',    c:'vlees', p:4.99},
-  {n:'Rookworst 300g',          c:'vlees', p:2.99},
-  {n:'Appels 6st',              c:'agf',   p:1.99},
-  {n:'Bananen 1kg',             c:'agf',   p:1.49},
-  {n:'Blauwe bessen 125g',      c:'agf',   p:2.49},
-  {n:'Frambozen 125g',          c:'agf',   p:2.99},
-  {n:'Aardbeien 400g',          c:'agf',   p:2.99},
-  {n:'Mango 1st',               c:'agf',   p:1.49},
-  {n:'Avocado 2st',             c:'agf',   p:1.99},
-  {n:'Tomaten 500g',            c:'agf',   p:1.99},
-  {n:'Komkommer 1st',           c:'agf',   p:0.89},
-  {n:'Paprika rood 3st',        c:'agf',   p:1.49},
-  {n:'Uien 1kg',                c:'agf',   p:0.99},
-  {n:'Knoflook bol',            c:'agf',   p:0.49},
-  {n:'Wortelen 1kg',            c:'agf',   p:0.99},
-  {n:'Broccoli 1st',            c:'agf',   p:1.49},
-  {n:'Sla ijsberg',             c:'agf',   p:0.99},
-  {n:'Spinazie 300g',           c:'agf',   p:1.99},
-  {n:'Champignons 250g',        c:'agf',   p:1.79},
-  {n:'Aardappelen 1.5kg',       c:'agf',   p:1.99},
-  {n:'Spaghetti 500g',          c:'kruid', p:0.99},
-  {n:'Penne 500g',              c:'kruid', p:0.99},
-  {n:'Fusilli 500g',            c:'kruid', p:0.99},
-  {n:'Rijst basmati 1kg',       c:'kruid', p:2.49},
-  {n:'Rijst wit 1kg',           c:'kruid', p:1.99},
-  {n:'Couscous 500g',           c:'kruid', p:1.79},
-  {n:'Havermout 500g',          c:'kruid', p:1.49},
-  {n:'Cruesli 500g',            c:'kruid', p:2.99},
-  {n:'Granola 400g',            c:'kruid', p:3.49},
-  {n:'Muesli 500g',             c:'kruid', p:2.49},
-  {n:'Cornflakes 375g',         c:'kruid', p:1.99},
-  {n:'Brood volkoren 800g',     c:'kruid', p:2.09},
-  {n:'Brood wit 800g',          c:'kruid', p:1.49},
-  {n:'Pindakaas 350g',          c:'kruid', p:1.99},
-  {n:'Nutella 400g',            c:'kruid', p:3.49},
-  {n:'Jam aardbei 450g',        c:'kruid', p:1.99},
-  {n:'Honing 350g',             c:'kruid', p:3.49},
-  {n:'Hagelslag 400g',          c:'kruid', p:1.99},
-  {n:'Tomatenpuree 200g',       c:'kruid', p:0.99},
-  {n:'Passata 690g',            c:'kruid', p:1.09},
-  {n:'Olijfolie 500ml',         c:'kruid', p:4.99},
-  {n:'Zonnebloemolie 1L',       c:'kruid', p:2.49},
-  {n:'Ketchup 600g',            c:'kruid', p:2.99},
-  {n:'Mayonaise 500ml',         c:'kruid', p:1.99},
-  {n:'Pesto 190g',              c:'kruid', p:2.49},
-  {n:'Sambal 200g',             c:'kruid', p:1.99},
-  {n:'Kikkererwten blik',       c:'kruid', p:0.99},
-  {n:'Friet 1kg',               c:'diep',  p:2.49},
-  {n:'Doperwten 450g',          c:'diep',  p:1.29},
-  {n:'Kroketten 8st',           c:'diep',  p:2.99},
-  {n:'Ijs vanille 900ml',       c:'diep',  p:2.99},
-  {n:'Water Spa 6x1.5L',        c:'drank', p:3.99},
-  {n:'Cola 1.5L',               c:'drank', p:2.29},
-  {n:'Koffie 250g',             c:'drank', p:3.99},
-  {n:'Thee 40st',               c:'drank', p:2.49},
-  {n:'Heineken 6-pack',         c:'drank', p:5.99},
-  {n:'Hertog Jan 6-pack',       c:'drank', p:6.99},
-  {n:'Grolsch 6-pack',          c:'drank', p:6.49},
-  {n:'Wijn rood 75cl',          c:'drank', p:5.99},
-  {n:'Wijn wit 75cl',           c:'drank', p:5.99},
-  {n:'Toiletpapier 16st',       c:'nonfood',p:4.99},
-  {n:'Wasmiddel 1.5L',          c:'nonfood',p:6.99},
-  {n:'Vaatwastabletten 40st',   c:'nonfood',p:6.99},
-  {n:'Afwasmiddel 750ml',       c:'nonfood',p:2.49},
-  {n:'Shampoo 250ml',           c:'nonfood',p:3.99},
-  {n:'Douchegel 300ml',         c:'nonfood',p:1.49},
-  {n:'Deodorant 150ml',         c:'nonfood',p:3.49},
-  {n:'Tandpasta 75ml',          c:'nonfood',p:2.49},
-  {n:'Paracetamol 30st',        c:'nonfood',p:2.99},
-  {n:'Ibuprofen 24st',          c:'nonfood',p:3.99}
-];
+if (typeof PRIJZEN_DB === 'undefined') {
+  var PRIJZEN_DB = [
+    {n:'Melk halfvolle 1L',c:'koel',p:1.09},{n:'Melk volle 1L',c:'koel',p:1.19},
+    {n:'Karnemelk 1L',c:'koel',p:0.99},{n:'Yoghurt naturel 500g',c:'koel',p:1.09},
+    {n:'Kwark mager 500g',c:'koel',p:1.49},{n:'Slagroom 250ml',c:'koel',p:1.39},
+    {n:'Boter 250g',c:'koel',p:2.49},{n:'Eieren 6st',c:'koel',p:1.99},
+    {n:'Eieren 10st',c:'koel',p:2.99},{n:'Kaas jong 500g',c:'koel',p:3.49},
+    {n:'Kaas belegen 500g',c:'koel',p:3.79},{n:'Mozzarella 125g',c:'koel',p:1.29},
+    {n:'Feta 200g',c:'koel',p:1.79},{n:'Brie 200g',c:'koel',p:2.49},
+    {n:'Vla 1L',c:'koel',p:1.19},{n:'Kipfilet 600g',c:'vlees',p:5.99},
+    {n:'Rundergehakt 500g',c:'vlees',p:4.49},{n:'Half-om-half 500g',c:'vlees',p:3.99},
+    {n:'Speklapjes 400g',c:'vlees',p:3.99},{n:'Bacon 150g',c:'vlees',p:2.49},
+    {n:'Ham 150g',c:'vlees',p:2.29},{n:'Zalm filet',c:'vlees',p:5.99},
+    {n:'Garnalen gepeld 150g',c:'vlees',p:4.99},{n:'Rookworst 300g',c:'vlees',p:2.99},
+    {n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},
+    {n:'Blauwe bessen 125g',c:'agf',p:2.49},{n:'Frambozen 125g',c:'agf',p:2.99},
+    {n:'Aardbeien 400g',c:'agf',p:2.99},{n:'Mango 1st',c:'agf',p:1.49},
+    {n:'Avocado 2st',c:'agf',p:1.99},{n:'Tomaten 500g',c:'agf',p:1.99},
+    {n:'Komkommer 1st',c:'agf',p:0.89},{n:'Paprika rood 3st',c:'agf',p:1.49},
+    {n:'Uien 1kg',c:'agf',p:0.99},{n:'Knoflook bol',c:'agf',p:0.49},
+    {n:'Wortelen 1kg',c:'agf',p:0.99},{n:'Broccoli 1st',c:'agf',p:1.49},
+    {n:'Sla ijsberg',c:'agf',p:0.99},{n:'Spinazie 300g',c:'agf',p:1.99},
+    {n:'Champignons 250g',c:'agf',p:1.79},{n:'Aardappelen 1.5kg',c:'agf',p:1.99},
+    {n:'Spaghetti 500g',c:'kruid',p:0.99},{n:'Penne 500g',c:'kruid',p:0.99},
+    {n:'Rijst basmati 1kg',c:'kruid',p:2.49},{n:'Rijst wit 1kg',c:'kruid',p:1.99},
+    {n:'Couscous 500g',c:'kruid',p:1.79},{n:'Havermout 500g',c:'kruid',p:1.49},
+    {n:'Cruesli 500g',c:'kruid',p:2.99},{n:'Granola 400g',c:'kruid',p:3.49},
+    {n:'Muesli 500g',c:'kruid',p:2.49},{n:'Cornflakes 375g',c:'kruid',p:1.99},
+    {n:'Brood volkoren 800g',c:'kruid',p:2.09},{n:'Brood wit 800g',c:'kruid',p:1.49},
+    {n:'Pindakaas 350g',c:'kruid',p:1.99},{n:'Nutella 400g',c:'kruid',p:3.49},
+    {n:'Jam aardbei 450g',c:'kruid',p:1.99},{n:'Honing 350g',c:'kruid',p:3.49},
+    {n:'Hagelslag 400g',c:'kruid',p:1.99},{n:'Tomatenpuree 200g',c:'kruid',p:0.99},
+    {n:'Passata 690g',c:'kruid',p:1.09},{n:'Olijfolie 500ml',c:'kruid',p:4.99},
+    {n:'Zonnebloemolie 1L',c:'kruid',p:2.49},{n:'Ketchup 600g',c:'kruid',p:2.99},
+    {n:'Mayonaise 500ml',c:'kruid',p:1.99},{n:'Pesto 190g',c:'kruid',p:2.49},
+    {n:'Sambal 200g',c:'kruid',p:1.99},{n:'Kikkererwten blik',c:'kruid',p:0.99},
+    {n:'Friet 1kg',c:'diep',p:2.49},{n:'Doperwten 450g',c:'diep',p:1.29},
+    {n:'Kroketten 8st',c:'diep',p:2.99},{n:'Ijs vanille 900ml',c:'diep',p:2.99},
+    {n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},
+    {n:'Koffie 250g',c:'drank',p:3.99},{n:'Thee 40st',c:'drank',p:2.49},
+    {n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},
+    {n:'Grolsch 6-pack',c:'drank',p:6.49},{n:'Wijn rood 75cl',c:'drank',p:5.99},
+    {n:'Wijn wit 75cl',c:'drank',p:5.99},{n:'Toiletpapier 16st',c:'nonfood',p:4.99},
+    {n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},{n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},
+    {n:'Afwasmiddel 750ml',c:'nonfood',p:2.49},{n:'Shampoo 250ml',c:'nonfood',p:3.99},
+    {n:'Douchegel 300ml',c:'nonfood',p:1.49},{n:'Deodorant 150ml',c:'nonfood',p:3.49},
+    {n:'Tandpasta 75ml',c:'nonfood',p:2.49},{n:'Paracetamol 30st',c:'nonfood',p:2.99},
+    {n:'Ibuprofen 24st',c:'nonfood',p:3.99}
+  ];
+}
+
 
 let items = [], menu = {}, gezinsCode = '', currentPerson = 'Jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
 let personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
@@ -1226,9 +1211,9 @@ function fbListenGeleerd() {
 
 function fbListenRecepten() {
   if (unsubRecepten) unsubRecepten();
-  unsubRecepten = window._onValue(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'), function(snap) {
+  unsubRecepten = window._onValue(window._ref(window._db, `gezinnen/${gezinsCode}/recepten`), snap => {
     const data = snap.val() || {};
-    recepten = Object.values(data).sort(function(a,b){return b.aangemaakt - a.aangemaakt;});
+    recepten = Object.values(data).sort((a,b) => b.aangemaakt - a.aangemaakt);
     renderRecepten();
   });
 }
@@ -2224,6 +2209,94 @@ async function registreerGezin() {
   document.getElementById('setup-wachten').style.display = 'block';
 }
 
+
+
+// ── Prijsvergelijking hulpfuncties ───────────────────────────────────────────
+
+function isAanbiedingArtikel(naam) {
+  // Check of een artikel in de aanbiedingsdatabase zit
+  // Voor nu: altijd false (geen live folder data)
+  return false;
+}
+
+function folderUrl(winkel, artikel) {
+  // Geeft een link naar de folder van een winkel
+  var urls = {
+    ah: 'https://www.ah.nl/bonus',
+    jumbo: 'https://www.jumbo.com/aanbiedingen',
+    lidl: 'https://www.lidl.nl/aanbiedingen',
+    aldi: 'https://www.aldi.nl/aanbiedingen.html',
+    plus: 'https://www.plus.nl/aanbiedingen',
+    dirk: 'https://www.dirk.nl/aanbiedingen',
+    etos: 'https://www.etos.nl/aanbiedingen',
+    kruidvat: 'https://www.kruidvat.nl/aanbiedingen',
+    gall: 'https://www.gall.nl/acties',
+    mitra: 'https://www.mitra.nl/acties'
+  };
+  return urls[winkel] || null;
+}
+
+function slaGeleerdeWinkelOp(naam, winkel) {
+  // Sla geleerde winkelvoorkeur op
+  try {
+    var k = naam.toLowerCase().trim().replace(/[^a-z0-9]/g,'_');
+    if (window._set && getRef) {
+      window._set(getRef('geleerde_winkels/' + k), winkel);
+    }
+  } catch(e) {}
+}
+
+
+function minPerArtikel(naam, actieveWinkels, gevonden) {
+  var rij = null;
+  for (var i = 0; i < gevonden.length; i++) {
+    if (gevonden[i].naam === naam) { rij = gevonden[i]; break; }
+  }
+  if (!rij) return Infinity;
+  var min = Infinity;
+  for (var wi = 0; wi < actieveWinkels.length; wi++) {
+    var prijs = rij[actieveWinkels[wi]];
+    if (prijs !== null && prijs !== undefined && prijs < min) min = prijs;
+  }
+  return min;
+}
+
+function berekenGemInterval(laats) {
+  if (!laats || laats.length < 2) return 7 * 24 * 60 * 60 * 1000;
+  var som = 0;
+  for (var i = 1; i < laats.length; i++) som += laats[i] - laats[i-1];
+  return som / (laats.length - 1);
+}
+
+async function fbSaveItem(item) {
+  if (!item || !item.id) return;
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + item.id), item);
+  } catch(e) {}
+}
+
+function zoekPrijs(naam) {
+  if (!naam || !PRIJZEN_DB) return null;
+  var n = naam.toLowerCase().trim();
+  // Exacte of gedeeltelijke match
+  for (var i = 0; i < PRIJZEN_DB.length; i++) {
+    var p = PRIJZEN_DB[i];
+    var pn = p.n.toLowerCase();
+    if (n === pn || pn.indexOf(n) > -1 || n.indexOf(pn.split(' ')[0]) > -1) {
+      // Bouw prijzenobject op per winkel
+      var result = {};
+      var winkels = Object.keys(WINKELS_DEF);
+      for (var wi = 0; wi < winkels.length; wi++) {
+        var w = winkels[wi];
+        var def = WINKELS_DEF[w];
+        result[w] = Math.round(p.p * (def.f || 1.0) * 100) / 100;
+      }
+      return result;
+    }
+  }
+  return null;
+}
+
 async function vergelijkPrijzen() {
   const todoItems = items.filter(i => !i.done);
   if (!todoItems.length) return;
@@ -2562,29 +2635,32 @@ function sluitVindWinkelBuiten(e) {
 
 function deelAppLink() {
   var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var tekst = 'He! Wat leuk dat je onze boodschappen-app wilt gebruiken.\n\n'
-    + 'Zo begin je:\n'
-    + '1. Open de app via: ' + link + '\n'
+  var tekst = 'He! Gebruik onze boodschappen-app\n\n'
+    + '1. Open de app: ' + link + '\n'
     + '2. Tik op "Nieuw gezin aanmelden"\n'
-    + '3. Vul je gezinsnaam en e-mailadres in\n'
+    + '3. Vul je naam en e-mailadres in\n'
     + '4. Je ontvangt toegang zodra ik je heb goedgekeurd\n\n'
-    + 'App-icoontje op je telefoon zetten:\n'
-    + '- iPhone: open link in Safari > tik op vakje met pijl omhoog > "Zet op beginscherm"\n'
-    + '- Samsung/Android: open link in Chrome > tik drie puntjes rechtsboven > "Toevoegen aan startscherm"\n\n'
-    + 'Vragen? Stuur me een berichtje!';
+    + 'App-icoontje op je telefoon:\n'
+    + '- iPhone: open in Safari > tik op vakje met pijl omhoog > "Zet op beginscherm"\n'
+    + '- Samsung/Android: open in Chrome > tik drie puntjes > "Toevoegen aan startscherm"';
   if (navigator.share) {
     navigator.share({title: 'Onze Boodschappen App', text: tekst, url: link});
-  } else {
-    navigator.clipboard.writeText(tekst).then(function() {
+    return;
+  }
+  var kopieer = tekst + '\n\n' + link;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(kopieer).then(function() {
       var el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = 'Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+      if (el) { el.textContent = 'Link gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
     }).catch(function() {
       var ta = document.createElement('textarea');
-      ta.value = tekst;
-      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-      var el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = 'Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+      ta.value = kopieer; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
     });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = kopieer; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
   }
 }
 
