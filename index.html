@@ -2446,14 +2446,29 @@ function sluitVindWinkelBuiten(e) {
 }
 
 function deelAppLink() {
-  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  const tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
+  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  var tekst = 'He! Wat leuk dat je onze boodschappen-app wilt gebruiken.\n\n'
+    + 'Zo begin je:\n'
+    + '1. Open de app via: ' + link + '\n'
+    + '2. Tik op "Nieuw gezin aanmelden"\n'
+    + '3. Vul je gezinsnaam en e-mailadres in\n'
+    + '4. Je ontvangt toegang zodra ik je heb goedgekeurd\n\n'
+    + 'App-icoontje op je telefoon zetten:\n'
+    + '- iPhone: open link in Safari > tik op vakje met pijl omhoog > "Zet op beginscherm"\n'
+    + '- Samsung/Android: open link in Chrome > tik drie puntjes rechtsboven > "Toevoegen aan startscherm"\n\n'
+    + 'Vragen? Stuur me een berichtje!';
   if (navigator.share) {
-    navigator.share({ title: 'Boodschappen App', text: tekst });
+    navigator.share({title: 'Onze Boodschappen App', text: tekst, url: link});
   } else {
-    navigator.clipboard.writeText(tekst).then(() => {
-      const el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+    navigator.clipboard.writeText(tekst).then(function() {
+      var el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = 'Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+    }).catch(function() {
+      var ta = document.createElement('textarea');
+      ta.value = tekst;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      var el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = 'Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
     });
   }
 }
@@ -2486,28 +2501,4 @@ function kopieerAppLink() {
 
 </div>
 </body>
-</html>function deelApp() {
-  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var tekst = 'He! Gebruik onze boodschappen-app\n\n'
-    + '1. Open de app: ' + link + '\n'
-    + '2. Tik op "Nieuw gezin aanmelden"\n'
-    + '3. Vul je naam en e-mailadres in\n'
-    + '4. Ik keur je aanmelding goed, dan kun je direct aan de slag!\n\n'
-    + 'Zet een icoontje op je telefoon:\n'
-    + '- iPhone: open link in Safari > tik op vakje met pijl omhoog > "Zet op beginscherm"\n'
-    + '- Samsung/Android: open link in Chrome > tik drie puntjes rechtsbovenin > "Toevoegen aan startscherm"';
-  if (navigator.share) {
-    navigator.share({title: 'Onze Boodschappen App', text: tekst, url: link});
-    return;
-  }
-  navigator.clipboard.writeText(tekst + '\n\n' + link).then(function() {
-    var ok = document.getElementById('deel-ok');
-    if (ok) { ok.style.display='block'; setTimeout(function(){ok.style.display='none';}, 3000); }
-  }).catch(function() {
-    var ta = document.createElement('textarea');
-    ta.value = tekst + '\n\n' + link;
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    var ok = document.getElementById('deel-ok');
-    if (ok) { ok.style.display='block'; setTimeout(function(){ok.style.display='none';}, 3000); }
-  });
-}
+</html>
