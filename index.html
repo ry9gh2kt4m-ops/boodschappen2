@@ -337,6 +337,8 @@
 .vw-loading{text-align:center;padding:24px;color:var(--muted);font-size:0.85rem}
 .vw-fout{text-align:center;padding:20px;color:var(--red);font-size:0.85rem}
 .vw-sluiten{width:100%;padding:10px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-top:6px}
+.insp-chip{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:0.78rem;cursor:pointer;color:var(--muted);transition:all 0.15s}
+.insp-chip.selected{border-color:var(--green);background:var(--green-pale);color:var(--green);font-weight:600}
 </style>
 </head>
 <body>
@@ -652,108 +654,66 @@
     <button class="btn-persoon-add" onclick="voegPersoonToe()">＋ Persoon toevoegen</button>
     <button class="btn-persoon-save" onclick="slaPersonenOp()">Opslaan ✓</button>
   </div>
+
+    <!-- Inspiratie sectie -->
+    <div style="margin-top:20px;border-top:2px solid var(--border);padding-top:16px">
+      <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:4px">✨ Inspiratie zoeken</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px">Laat je verrassen — ontvang receptideeën op maat</div>
+      <div style="margin-bottom:10px"><div style="font-size:0.82rem;font-weight:600;color:var(--ink);margin-bottom:7px">Welke keuken?</div>
+        <div id="insp-keuken" style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="insp-chip" data-val="italiaans">🍝 Italiaans</button>
+          <button class="insp-chip" data-val="spaans">🥘 Spaans</button>
+          <button class="insp-chip" data-val="mexicaans">🌮 Mexicaans</button>
+          <button class="insp-chip" data-val="aziatisch">🍜 Aziatisch</button>
+          <button class="insp-chip" data-val="indonesisch">🍛 Indonesisch</button>
+          <button class="insp-chip" data-val="grieks">🫒 Grieks</button>
+          <button class="insp-chip" data-val="indiaas">🍲 Indiaas</button>
+          <button class="insp-chip" data-val="japans">🍱 Japans</button>
+          <button class="insp-chip" data-val="thais">🌶️ Thais</button>
+          <button class="insp-chip" data-val="netherlands">🧀 Nederlands</button>
+          <button class="insp-chip" data-val="mediterraan">🫙 Mediterraan</button>
+          <button class="insp-chip" data-val="vegetarisch">🥦 Vegetarisch</button>
+          <button class="insp-chip selected" data-val="verrassing">🎲 Verrassing!</button>
+        </div>
+      </div>
+      <div style="margin-bottom:10px"><div style="font-size:0.82rem;font-weight:600;color:var(--ink);margin-bottom:7px">Voor hoeveel personen?</div>
+        <div id="insp-personen" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="insp-chip" data-val="1">👤 1</button>
+          <button class="insp-chip" data-val="2">👥 2</button>
+          <button class="insp-chip selected" data-val="4">👨‍👩‍👧‍👦 4</button>
+          <button class="insp-chip" data-val="6">🎉 6+</button>
+        </div>
+      </div>
+      <div style="margin-bottom:14px"><div style="font-size:0.82rem;font-weight:600;color:var(--ink);margin-bottom:7px">Wat voor maaltijd?</div>
+        <div id="insp-maaltijd" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="insp-chip" data-val="ontbijt">🥐 Ontbijt</button>
+          <button class="insp-chip" data-val="lunch">🥗 Lunch</button>
+          <button class="insp-chip selected" data-val="diner">🍽️ Diner</button>
+          <button class="insp-chip" data-val="snack">🍿 Snack</button>
+          <button class="insp-chip" data-val="dessert">🍰 Dessert</button>
+        </div>
+      </div>
+      <button onclick="zoekInspiratie()" style="width:100%;padding:12px;border:none;border-radius:12px;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:14px">✨ Geef me ideeën!</button>
+      <div id="insp-resultaten"></div>
+    </div>
 </div>
 
 <script>
-// ── Ontbrekende helper functies ──────────────────────────────────────────────
 
-function detectPlatformInfo(url) {
-  if (!url) return null;
-  var u = url.toLowerCase();
-  // YouTube
-  var ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
-  if (ytMatch) return {type:'youtube', id:ytMatch[1], embedbaar:true, label:'YouTube', kleur:'#ff0000'};
-  // Overige platformen
-  if (u.indexOf('tiktok') > -1) return {type:'tiktok', id:null, embedbaar:false, label:'TikTok', kleur:'#010101'};
-  if (u.indexOf('instagram') > -1) return {type:'instagram', id:null, embedbaar:false, label:'Instagram', kleur:'#c13584'};
-  if (u.indexOf('facebook') > -1 || u.indexOf('fb.com') > -1) return {type:'facebook', id:null, embedbaar:false, label:'Facebook', kleur:'#1877f2'};
-  if (u.indexOf('pinterest') > -1) return {type:'pinterest', id:null, embedbaar:false, label:'Pinterest', kleur:'#e60023'};
-  return {type:'link', id:null, embedbaar:false, label:'Link', kleur:'#3d6b4f'};
-}
-
-function getYouTubeThumbnail(videoId) {
-  if (!videoId) return null;
-  return 'https://img.youtube.com/vi/' + videoId + '/mqdefault.jpg';
-}
-
-
-// Actieve categorie filters voor prijsvergelijking
-if (typeof actieveCats === 'undefined') {
-  var actieveCats = {super:true, drogist:true, slijterij:true, speciaal:false};
-}
-
-// ── WINKELS_DEF ──────────────────────────────────────────────────────────────
-if (typeof WINKELS_DEF === 'undefined') {
-  var WINKELS_DEF = {
-    ah:       {naam:'Albert Heijn', logo:'🔵', kleur:'#003087', f:1.00, super:true},
-    jumbo:    {naam:'Jumbo',        logo:'🟡', kleur:'#C67800', f:0.95, super:true},
-    lidl:     {naam:'Lidl',         logo:'🔴', kleur:'#0050AA', f:0.82, super:true},
-    aldi:     {naam:'Aldi',         logo:'🟢', kleur:'#005A1E', f:0.78, super:true},
-    plus:     {naam:'Plus',         logo:'🟩', kleur:'#006400', f:0.97, super:true},
-    dirk:     {naam:'Dirk',         logo:'🟠', kleur:'#CC0000', f:0.88, super:true},
-    etos:     {naam:'Etos',         logo:'🩷', kleur:'#CC0055', f:1.05, drogist:true},
-    kruidvat: {naam:'Kruidvat',     logo:'🟣', kleur:'#6A00C4', f:0.95, drogist:true},
-    gall:     {naam:'Gall & Gall',  logo:'🍷', kleur:'#8B0000', f:0.92, slijterij:true},
-    mitra:    {naam:'Mitra',        logo:'🥃', kleur:'#7B4000', f:0.90, slijterij:true},
-    speciaal: {naam:'Speciaal Bier',logo:'🍺', kleur:'#8B6914', f:1.10, speciaal:true}
-  };
-}
-
-
-// ============================================================
-// PRIJZEN DATABASE (voor vergelijkPrijzen tab)
-// ============================================================
-if (typeof PRIJZEN_DB === 'undefined') {
-  var PRIJZEN_DB = [
-    {n:'Melk halfvolle 1L',c:'koel',p:1.09},{n:'Melk volle 1L',c:'koel',p:1.19},
-    {n:'Karnemelk 1L',c:'koel',p:0.99},{n:'Yoghurt naturel 500g',c:'koel',p:1.09},
-    {n:'Kwark mager 500g',c:'koel',p:1.49},{n:'Slagroom 250ml',c:'koel',p:1.39},
-    {n:'Boter 250g',c:'koel',p:2.49},{n:'Eieren 6st',c:'koel',p:1.99},
-    {n:'Eieren 10st',c:'koel',p:2.99},{n:'Kaas jong 500g',c:'koel',p:3.49},
-    {n:'Kaas belegen 500g',c:'koel',p:3.79},{n:'Mozzarella 125g',c:'koel',p:1.29},
-    {n:'Feta 200g',c:'koel',p:1.79},{n:'Brie 200g',c:'koel',p:2.49},
-    {n:'Vla 1L',c:'koel',p:1.19},{n:'Kipfilet 600g',c:'vlees',p:5.99},
-    {n:'Rundergehakt 500g',c:'vlees',p:4.49},{n:'Half-om-half 500g',c:'vlees',p:3.99},
-    {n:'Speklapjes 400g',c:'vlees',p:3.99},{n:'Bacon 150g',c:'vlees',p:2.49},
-    {n:'Ham 150g',c:'vlees',p:2.29},{n:'Zalm filet',c:'vlees',p:5.99},
-    {n:'Garnalen gepeld 150g',c:'vlees',p:4.99},{n:'Rookworst 300g',c:'vlees',p:2.99},
-    {n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},
-    {n:'Blauwe bessen 125g',c:'agf',p:2.49},{n:'Frambozen 125g',c:'agf',p:2.99},
-    {n:'Aardbeien 400g',c:'agf',p:2.99},{n:'Mango 1st',c:'agf',p:1.49},
-    {n:'Avocado 2st',c:'agf',p:1.99},{n:'Tomaten 500g',c:'agf',p:1.99},
-    {n:'Komkommer 1st',c:'agf',p:0.89},{n:'Paprika rood 3st',c:'agf',p:1.49},
-    {n:'Uien 1kg',c:'agf',p:0.99},{n:'Knoflook bol',c:'agf',p:0.49},
-    {n:'Wortelen 1kg',c:'agf',p:0.99},{n:'Broccoli 1st',c:'agf',p:1.49},
-    {n:'Sla ijsberg',c:'agf',p:0.99},{n:'Spinazie 300g',c:'agf',p:1.99},
-    {n:'Champignons 250g',c:'agf',p:1.79},{n:'Aardappelen 1.5kg',c:'agf',p:1.99},
-    {n:'Spaghetti 500g',c:'kruid',p:0.99},{n:'Penne 500g',c:'kruid',p:0.99},
-    {n:'Rijst basmati 1kg',c:'kruid',p:2.49},{n:'Rijst wit 1kg',c:'kruid',p:1.99},
-    {n:'Couscous 500g',c:'kruid',p:1.79},{n:'Havermout 500g',c:'kruid',p:1.49},
-    {n:'Cruesli 500g',c:'kruid',p:2.99},{n:'Granola 400g',c:'kruid',p:3.49},
-    {n:'Muesli 500g',c:'kruid',p:2.49},{n:'Cornflakes 375g',c:'kruid',p:1.99},
-    {n:'Brood volkoren 800g',c:'kruid',p:2.09},{n:'Brood wit 800g',c:'kruid',p:1.49},
-    {n:'Pindakaas 350g',c:'kruid',p:1.99},{n:'Nutella 400g',c:'kruid',p:3.49},
-    {n:'Jam aardbei 450g',c:'kruid',p:1.99},{n:'Honing 350g',c:'kruid',p:3.49},
-    {n:'Hagelslag 400g',c:'kruid',p:1.99},{n:'Tomatenpuree 200g',c:'kruid',p:0.99},
-    {n:'Passata 690g',c:'kruid',p:1.09},{n:'Olijfolie 500ml',c:'kruid',p:4.99},
-    {n:'Zonnebloemolie 1L',c:'kruid',p:2.49},{n:'Ketchup 600g',c:'kruid',p:2.99},
-    {n:'Mayonaise 500ml',c:'kruid',p:1.99},{n:'Pesto 190g',c:'kruid',p:2.49},
-    {n:'Sambal 200g',c:'kruid',p:1.99},{n:'Kikkererwten blik',c:'kruid',p:0.99},
-    {n:'Friet 1kg',c:'diep',p:2.49},{n:'Doperwten 450g',c:'diep',p:1.29},
-    {n:'Kroketten 8st',c:'diep',p:2.99},{n:'Ijs vanille 900ml',c:'diep',p:2.99},
-    {n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},
-    {n:'Koffie 250g',c:'drank',p:3.99},{n:'Thee 40st',c:'drank',p:2.49},
-    {n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},
-    {n:'Grolsch 6-pack',c:'drank',p:6.49},{n:'Wijn rood 75cl',c:'drank',p:5.99},
-    {n:'Wijn wit 75cl',c:'drank',p:5.99},{n:'Toiletpapier 16st',c:'nonfood',p:4.99},
-    {n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},{n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},
-    {n:'Afwasmiddel 750ml',c:'nonfood',p:2.49},{n:'Shampoo 250ml',c:'nonfood',p:3.99},
-    {n:'Douchegel 300ml',c:'nonfood',p:1.49},{n:'Deodorant 150ml',c:'nonfood',p:3.49},
-    {n:'Tandpasta 75ml',c:'nonfood',p:2.49},{n:'Paracetamol 30st',c:'nonfood',p:2.99},
-    {n:'Ibuprofen 24st',c:'nonfood',p:3.99}
-  ];
-}
-
+var actieveCats={super:true,drogist:true,slijterij:true,speciaal:false};
+var WINKELS_DEF={ah:{naam:'Albert Heijn',logo:'🔵',kleur:'#003087',f:1.00,super:true},jumbo:{naam:'Jumbo',logo:'🟡',kleur:'#C67800',f:0.95,super:true},lidl:{naam:'Lidl',logo:'🔴',kleur:'#0050AA',f:0.82,super:true},aldi:{naam:'Aldi',logo:'🟢',kleur:'#005A1E',f:0.78,super:true},plus:{naam:'Plus',logo:'🟩',kleur:'#006400',f:0.97,super:true},dirk:{naam:'Dirk',logo:'🟠',kleur:'#CC0000',f:0.88,super:true},etos:{naam:'Etos',logo:'🩷',kleur:'#CC0055',f:1.05,drogist:true},kruidvat:{naam:'Kruidvat',logo:'🟣',kleur:'#6A00C4',f:0.95,drogist:true},gall:{naam:'Gall & Gall',logo:'🍷',kleur:'#8B0000',f:0.92,slijterij:true},mitra:{naam:'Mitra',logo:'🥃',kleur:'#7B4000',f:0.90,slijterij:true},speciaal:{naam:'Speciaal Bier',logo:'🍺',kleur:'#8B6914',f:1.10,speciaal:true}};
+var PRIJZEN_DB=[{n:'Melk halfvolle 1L',c:'koel',p:1.09},{n:'Melk volle 1L',c:'koel',p:1.19},{n:'Karnemelk 1L',c:'koel',p:0.99},{n:'Yoghurt naturel 500g',c:'koel',p:1.09},{n:'Boter 250g',c:'koel',p:2.49},{n:'Eieren 6st',c:'koel',p:1.99},{n:'Eieren 10st',c:'koel',p:2.99},{n:'Kaas jong 500g',c:'koel',p:3.49},{n:'Kaas belegen 500g',c:'koel',p:3.79},{n:'Mozzarella 125g',c:'koel',p:1.29},{n:'Feta 200g',c:'koel',p:1.79},{n:'Vla 1L',c:'koel',p:1.19},{n:'Kipfilet 600g',c:'vlees',p:5.99},{n:'Rundergehakt 500g',c:'vlees',p:4.49},{n:'Half-om-half 500g',c:'vlees',p:3.99},{n:'Bacon 150g',c:'vlees',p:2.49},{n:'Ham 150g',c:'vlees',p:2.29},{n:'Zalm filet',c:'vlees',p:5.99},{n:'Rookworst 300g',c:'vlees',p:2.99},{n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},{n:'Blauwe bessen 125g',c:'agf',p:2.49},{n:'Aardbeien 400g',c:'agf',p:2.99},{n:'Avocado 2st',c:'agf',p:1.99},{n:'Tomaten 500g',c:'agf',p:1.99},{n:'Komkommer 1st',c:'agf',p:0.89},{n:'Paprika rood 3st',c:'agf',p:1.49},{n:'Uien 1kg',c:'agf',p:0.99},{n:'Knoflook bol',c:'agf',p:0.49},{n:'Wortelen 1kg',c:'agf',p:0.99},{n:'Broccoli 1st',c:'agf',p:1.49},{n:'Sla ijsberg',c:'agf',p:0.99},{n:'Spinazie 300g',c:'agf',p:1.99},{n:'Champignons 250g',c:'agf',p:1.79},{n:'Aardappelen 1.5kg',c:'agf',p:1.99},{n:'Spaghetti 500g',c:'kruid',p:0.99},{n:'Penne 500g',c:'kruid',p:0.99},{n:'Rijst basmati 1kg',c:'kruid',p:2.49},{n:'Havermout 500g',c:'kruid',p:1.49},{n:'Cruesli 500g',c:'kruid',p:2.99},{n:'Brood volkoren 800g',c:'kruid',p:2.09},{n:'Pindakaas 350g',c:'kruid',p:1.99},{n:'Tomatenpuree 200g',c:'kruid',p:0.99},{n:'Olijfolie 500ml',c:'kruid',p:4.99},{n:'Ketchup 600g',c:'kruid',p:2.99},{n:'Mayonaise 500ml',c:'kruid',p:1.99},{n:'Friet 1kg',c:'diep',p:2.49},{n:'Kroketten 8st',c:'diep',p:2.99},{n:'Ijs vanille 900ml',c:'diep',p:2.99},{n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},{n:'Koffie 250g',c:'drank',p:3.99},{n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},{n:'Wijn rood 75cl',c:'drank',p:5.99},{n:'Wijn wit 75cl',c:'drank',p:5.99},{n:'Toiletpapier 16st',c:'nonfood',p:4.99},{n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},{n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},{n:'Shampoo 250ml',c:'nonfood',p:3.99},{n:'Paracetamol 30st',c:'nonfood',p:2.99}];
+function detectPlatformInfo(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);if(m)return{type:'youtube',id:m[1],embedbaar:true,label:'YouTube',kleur:'#ff0000'};var u=url.toLowerCase();if(u.indexOf('tiktok')>-1)return{type:'tiktok',id:null,embedbaar:false,label:'TikTok',kleur:'#010101'};if(u.indexOf('instagram')>-1)return{type:'instagram',id:null,embedbaar:false,label:'Instagram',kleur:'#c13584'};if(u.indexOf('facebook')>-1)return{type:'facebook',id:null,embedbaar:false,label:'Facebook',kleur:'#1877f2'};if(u.indexOf('pinterest')>-1)return{type:'pinterest',id:null,embedbaar:false,label:'Pinterest',kleur:'#e60023'};return{type:'link',id:null,embedbaar:false,label:'Link',kleur:'#3d6b4f'};}
+function getYouTubeThumbnail(id){return id?'https://img.youtube.com/vi/'+id+'/mqdefault.jpg':null;}
+function filterRecepten(){renderRecepten();}
+function detectPlatform(url){return detectPlatformInfo(url);}
+function setPersoon(naam){currentPerson=naam;renderPersonenKnoppen();}
+function isAanbiedingArtikel(){return false;}
+function folderUrl(w){return({ah:'https://www.ah.nl/bonus',jumbo:'https://www.jumbo.com/aanbiedingen',lidl:'https://www.lidl.nl/aanbiedingen',aldi:'https://www.aldi.nl/aanbiedingen.html',plus:'https://www.plus.nl/aanbiedingen',dirk:'https://www.dirk.nl/aanbiedingen',etos:'https://www.etos.nl/aanbiedingen',kruidvat:'https://www.kruidvat.nl/aanbiedingen'})[w]||null;}
+function slaGeleerdeWinkelOp(naam,winkel){try{var k=naam.toLowerCase().replace(/[^a-z0-9]/g,'_');window._set(getRef('geleerde_winkels/'+k),winkel);}catch(e){}}
+function berekenGemInterval(l){if(!l||l.length<2)return 604800000;var s=0;for(var i=1;i<l.length;i++)s+=l[i]-l[i-1];return s/(l.length-1);}
+async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
+function zoekPrijs(naam){if(!naam)return null;var n=naam.toLowerCase().trim();for(var i=0;i<PRIJZEN_DB.length;i++){var pn=PRIJZEN_DB[i].n.toLowerCase();if(n===pn||pn.indexOf(n)>-1||n.indexOf(pn.split(' ')[0])>-1){var res={},wks=Object.keys(WINKELS_DEF);for(var w=0;w<wks.length;w++)res[wks[w]]=Math.round(PRIJZEN_DB[i].p*(WINKELS_DEF[wks[w]].f||1)*100)/100;return res;}}return null;}
 
 let items = [], menu = {}, gezinsCode = '', currentPerson = 'Jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
 let personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
@@ -845,13 +805,13 @@ function setSyncStatus(saving) {
 
 // ---- Tabs ----
 function switchTab(tab) {
-  var tabs = ['boodschappen', 'menu', 'kookboek', 'prijzen', 'ideeen', 'admin'];
+  var tabs = ['boodschappen','menu','kookboek','prijzen','ideeen','admin'];
   for (var ti = 0; ti < tabs.length; ti++) {
     var t = tabs[ti];
     var view = document.getElementById('view-' + t);
-    var btn = document.getElementById('tab-' + t);
-    if (view) view.style.display = t === tab ? 'block' : 'none';
-    if (btn) btn.className = 'tab' + (t === tab ? ' active' : '');
+    var btn  = document.getElementById('tab-'  + t);
+    if (view) view.style.display = (t === tab) ? 'block' : 'none';
+    if (btn)  btn.className = 'tab' + (t === tab ? ' active' : '');
   }
 }
 
@@ -1059,25 +1019,6 @@ document.getElementById('mic-btn').onclick=async()=>{
   document.getElementById('item-input').value='';
   try{recognition.start();}catch(e){setMicStatus('Start mislukt.','active');}
 };
-
-// ── Ontbrekende kleine functies ──────────────────────────────────────────────
-
-function filterRecepten() {
-  // Alias voor renderRecepten (wordt aangeroepen bij zoeken)
-  renderRecepten();
-}
-
-function detectPlatform(url) {
-  // Alias voor detectPlatformInfo
-  return detectPlatformInfo(url);
-}
-
-function setPersoon(naam) {
-  // Selecteer een persoon
-  currentPerson = naam;
-  renderPersonenKnoppen();
-}
-
 document.getElementById('add-btn').onclick=addItem;
 document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
 
@@ -1235,9 +1176,9 @@ function fbListenGeleerd() {
 
 function fbListenRecepten() {
   if (unsubRecepten) unsubRecepten();
-  unsubRecepten = window._onValue(window._ref(window._db, `gezinnen/${gezinsCode}/recepten`), snap => {
-    const data = snap.val() || {};
-    recepten = Object.values(data).sort((a,b) => b.aangemaakt - a.aangemaakt);
+  unsubRecepten = window._onValue(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'), function(snap) {
+    var data = snap.val() || {};
+    recepten = Object.values(data).sort(function(a,b){return b.aangemaakt-a.aangemaakt;});
     renderRecepten();
   });
 }
@@ -2233,94 +2174,6 @@ async function registreerGezin() {
   document.getElementById('setup-wachten').style.display = 'block';
 }
 
-
-
-// ── Prijsvergelijking hulpfuncties ───────────────────────────────────────────
-
-function isAanbiedingArtikel(naam) {
-  // Check of een artikel in de aanbiedingsdatabase zit
-  // Voor nu: altijd false (geen live folder data)
-  return false;
-}
-
-function folderUrl(winkel, artikel) {
-  // Geeft een link naar de folder van een winkel
-  var urls = {
-    ah: 'https://www.ah.nl/bonus',
-    jumbo: 'https://www.jumbo.com/aanbiedingen',
-    lidl: 'https://www.lidl.nl/aanbiedingen',
-    aldi: 'https://www.aldi.nl/aanbiedingen.html',
-    plus: 'https://www.plus.nl/aanbiedingen',
-    dirk: 'https://www.dirk.nl/aanbiedingen',
-    etos: 'https://www.etos.nl/aanbiedingen',
-    kruidvat: 'https://www.kruidvat.nl/aanbiedingen',
-    gall: 'https://www.gall.nl/acties',
-    mitra: 'https://www.mitra.nl/acties'
-  };
-  return urls[winkel] || null;
-}
-
-function slaGeleerdeWinkelOp(naam, winkel) {
-  // Sla geleerde winkelvoorkeur op
-  try {
-    var k = naam.toLowerCase().trim().replace(/[^a-z0-9]/g,'_');
-    if (window._set && getRef) {
-      window._set(getRef('geleerde_winkels/' + k), winkel);
-    }
-  } catch(e) {}
-}
-
-
-function minPerArtikel(naam, actieveWinkels, gevonden) {
-  var rij = null;
-  for (var i = 0; i < gevonden.length; i++) {
-    if (gevonden[i].naam === naam) { rij = gevonden[i]; break; }
-  }
-  if (!rij) return Infinity;
-  var min = Infinity;
-  for (var wi = 0; wi < actieveWinkels.length; wi++) {
-    var prijs = rij[actieveWinkels[wi]];
-    if (prijs !== null && prijs !== undefined && prijs < min) min = prijs;
-  }
-  return min;
-}
-
-function berekenGemInterval(laats) {
-  if (!laats || laats.length < 2) return 7 * 24 * 60 * 60 * 1000;
-  var som = 0;
-  for (var i = 1; i < laats.length; i++) som += laats[i] - laats[i-1];
-  return som / (laats.length - 1);
-}
-
-async function fbSaveItem(item) {
-  if (!item || !item.id) return;
-  try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + item.id), item);
-  } catch(e) {}
-}
-
-function zoekPrijs(naam) {
-  if (!naam || !PRIJZEN_DB) return null;
-  var n = naam.toLowerCase().trim();
-  // Exacte of gedeeltelijke match
-  for (var i = 0; i < PRIJZEN_DB.length; i++) {
-    var p = PRIJZEN_DB[i];
-    var pn = p.n.toLowerCase();
-    if (n === pn || pn.indexOf(n) > -1 || n.indexOf(pn.split(' ')[0]) > -1) {
-      // Bouw prijzenobject op per winkel
-      var result = {};
-      var winkels = Object.keys(WINKELS_DEF);
-      for (var wi = 0; wi < winkels.length; wi++) {
-        var w = winkels[wi];
-        var def = WINKELS_DEF[w];
-        result[w] = Math.round(p.p * (def.f || 1.0) * 100) / 100;
-      }
-      return result;
-    }
-  }
-  return null;
-}
-
 async function vergelijkPrijzen() {
   const todoItems = items.filter(i => !i.done);
   if (!todoItems.length) return;
@@ -2558,40 +2411,36 @@ function vindDichtstbijzijndeWinkel() {
   );
 }
 
-async function zoekWinkelsOpLocatie(lat, lon, inhoud, sub) {
-  // Zoek breed: op type EN op naam van bekende ketens
-  var superQ = '[out:json][timeout:20];(node["shop"="supermarket"](around:5000,' + lat + ',' + lon + ');way["shop"="supermarket"](around:5000,' + lat + ',' + lon + ');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar|AH",i](around:5000,' + lat + ',' + lon + ');way["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk|Coop|Spar",i](around:5000,' + lat + ',' + lon + '););out center 20;';
-  var drogQ = '[out:json][timeout:20];(node["shop"="chemist"](around:5000,' + lat + ',' + lon + ');node["shop"="drugstore"](around:5000,' + lat + ',' + lon + ');way["shop"="chemist"](around:5000,' + lat + ',' + lon + ');node["name"~"Kruidvat|Etos|Trekpleister|DA drogist",i](around:5000,' + lat + ',' + lon + ');way["name"~"Kruidvat|Etos|Trekpleister",i](around:5000,' + lat + ',' + lon + '););out center 20;';
-  try {
-    var responses = await Promise.all([
-      fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:'data='+encodeURIComponent(superQ)}),
-      fetch('https://overpass-api.de/api/interpreter', {method:'POST', body:'data='+encodeURIComponent(drogQ)})
-    ]);
-    var superData = await responses[0].json();
-    var drogData = await responses[1].json();
-    var supermarkten = verwerkOverpassData(superData.elements, lat, lon);
-    var drogisten = verwerkOverpassData(drogData.elements, lat, lon);
-    var superKetens = ['albert heijn','ah','jumbo','lidl','aldi','plus','dirk','coop','spar','vomar','deen'];
-    var drogKetens = ['kruidvat','etos','da ','trekpleister'];
-    supermarkten = filterOpKetens(supermarkten, superKetens).sort(function(a,b){return a.afstand-b.afstand;}).slice(0,3);
-    drogisten = filterOpKetens(drogisten, drogKetens).sort(function(a,b){return a.afstand-b.afstand;}).slice(0,3);
-    var ahItems = items.filter(function(i){return !i.done && (i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
-    var kvItems = items.filter(function(i){return !i.done && (i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
-    if (sub) sub.textContent = 'Dichtstbijzijnde winkels:';
-    var html = '';
-    if (supermarkten.length > 0) {
-      html += '<div class="vw-sectie-titel">&#128722; Supermarkt' + (ahItems > 0 ? ' (' + ahItems + ' product' + (ahItems>1?'en':'') + ' op lijst)' : '') + '</div>';
-      for (var si=0; si<supermarkten.length; si++) html += renderWinkelCard(supermarkten[si], '&#128722;', '#ebf3ff', '#003087');
-    }
-    if (drogisten.length > 0) {
-      html += '<div class="vw-sectie-titel">&#128138; Drogisterij' + (kvItems > 0 ? ' (' + kvItems + ' product' + (kvItems>1?'en':'') + ' op lijst)' : '') + '</div>';
-      for (var di=0; di<drogisten.length; di++) html += renderWinkelCard(drogisten[di], '&#128138;', '#f3e8ff', '#6a00c4');
-    }
-    if (!html) html = '<div class="vw-loading">Geen winkels gevonden binnen 5km.</div>';
-    inhoud.innerHTML = html;
-  } catch(e) {
-    inhoud.innerHTML = '<div class="vw-fout">&#10060; Ophalen mislukt. Controleer je internet.</div>';
-  }
+async function zoekWinkelsOpLocatie(lat,lon,inhoud,sub){
+  if(sub)sub.textContent='Winkels bij jou in de buurt:';
+  var base='https://www.google.com/maps/search/';
+  function btn(zoek,ico,bg,lbl){var url=base+encodeURIComponent(zoek)+'/@'+lat+','+lon+',14z';return '<div style="background:white;border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:9px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">'+ico+'</div><div style="flex:1;font-weight:600;font-size:0.88rem">'+lbl+'</div><a href="'+url+'" target="_blank" style="background:var(--green);color:white;padding:7px 11px;border-radius:9px;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap">&#128506; Open</a></div>';}
+  var ahN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))!=='kruidvat';}).length;
+  var kvN=items.filter(function(i){return !i.done&&(i.winkel||detectWinkel(i.name))==='kruidvat';}).length;
+  var html='<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px">&#128722; Supermarkt'+(ahN?' ('+ahN+' op lijst)':'')+'</div>'
+    +btn('supermarkt Albert Heijn Jumbo Lidl Aldi','&#128722;','#ebf3ff','Supermarkt')
+    +'<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:10px 0 6px">&#128138; Drogisterij'+(kvN?' ('+kvN+' op lijst)':'')+'</div>'
+    +btn('drogisterij kruidvat etos','&#128138;','#f3e8ff','Drogisterij')
+    +'<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:10px 0 6px">&#127863; Slijterij</div>'
+    +btn('slijterij gall mitra','&#127863;','#fde8f0','Slijterij')
+    +'<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:10px 0 6px">&#127839; Frituur</div>'
+    +btn('frituur snackbar patatzaak','&#127839;','#fff8e1','Frituur & Snackbar')
+    +'<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:10px 0 6px">&#127829; Pizzeria</div>'
+    +btn('pizzeria','&#127829;','#fff0e8','Pizzeria')
+    +'<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:10px 0 6px">&#127866; Speciaal Bier</div>'
+    +btn('speciaalbier biershop','&#127866;','#f5f0e8','Speciaal Bierwinkel')
+    +'<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:10px 0 6px">&#127869; Restaurant</div>'
+    +btn('restaurant','&#127869;','#f0f8e8','Restaurant')
+    +'<div id="ovp-extra"><div style="font-size:0.75rem;color:var(--muted);text-align:center;padding:6px">&#128269; Exacte adressen ophalen...</div></div>';
+  inhoud.innerHTML=html;
+  var R=20000,q='[out:json][timeout:25];(node["shop"="supermarket"](around:'+R+','+lat+','+lon+');way["shop"="supermarket"](around:'+R+','+lat+','+lon+');node["name"~"Albert Heijn|Jumbo|Lidl|Aldi|Plus|Dirk",i](around:'+R+','+lat+','+lon+');node["shop"="chemist"](around:'+R+','+lat+','+lon+');node["name"~"Kruidvat|Etos",i](around:'+R+','+lat+','+lon+');node["shop"="alcohol"](around:'+R+','+lat+','+lon+');node["amenity"="fast_food"](around:5000,'+lat+','+lon+');node["amenity"="restaurant"](around:3000,'+lat+','+lon+'););out center 60;';
+  fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)}).then(function(r){return r.json();}).then(function(data){
+    var els=data.elements||[],cats={super:[],drog:[],slij:[],frituur:[],rest:[]};
+    els.forEach(function(el){var lt=el.lat||(el.center&&el.center.lat),ln=el.lon||(el.center&&el.center.lon);if(!lt||!ln||!el.tags||!el.tags.name)return;var n=el.tags.name.toLowerCase(),shop=el.tags.shop||'',amenity=el.tags.amenity||'',af=berekenAfstand(lat,lon,lt,ln),adr=(el.tags['addr:street']||'')+(el.tags['addr:housenumber']?' '+el.tags['addr:housenumber']:''),w={naam:el.tags.name,adres:adr,afstand:af,lat:lt,lon:ln};if(shop==='supermarket'||['albert heijn','jumbo','lidl','aldi','plus','dirk','coop'].some(function(k){return n.indexOf(k)>-1;}))cats.super.push(w);else if(shop==='chemist'||['kruidvat','etos'].some(function(k){return n.indexOf(k)>-1;}))cats.drog.push(w);else if(shop==='alcohol'||['gall','mitra','slijterij'].some(function(k){return n.indexOf(k)>-1;}))cats.slij.push(w);else if(amenity==='fast_food'||['frituur','snackbar','patatzaak'].some(function(k){return n.indexOf(k)>-1;}))cats.frituur.push(w);else if(amenity==='restaurant')cats.rest.push(w);});
+    function sec(lst,ico,bg){if(!lst.length)return'';lst.sort(function(a,b){return a.afstand-b.afstand;});var h='';lst.slice(0,3).forEach(function(w){var af=w.afstand<1000?w.afstand+'m':(w.afstand/1000).toFixed(1).replace('.',',')+'km',nav='https://www.google.com/maps/dir/?api=1&destination='+w.lat+','+w.lon;h+='<div style="background:white;border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:9px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">'+ico+'</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:0.88rem">'+esc(w.naam)+'</div><div style="font-size:0.73rem;color:var(--muted)">'+esc(w.adres||'')+'</div><div style="font-size:0.72rem;color:var(--green);font-weight:600">&#128205; '+af+'</div></div><a href="'+nav+'" target="_blank" style="background:var(--green);color:white;padding:7px 11px;border-radius:9px;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;text-decoration:none">&#128506;</a></div>';});return h;}
+    var ov=sec(cats.super,'&#128722;','#ebf3ff')+sec(cats.drog,'&#128138;','#f3e8ff')+sec(cats.slij,'&#127863;','#fde8f0')+sec(cats.frituur,'&#127839;','#fff8e1')+sec(cats.rest,'&#127869;','#f0f8e8');
+    var extra=document.getElementById('ovp-extra');if(extra)extra.innerHTML=ov||'';
+  }).catch(function(){var extra=document.getElementById('ovp-extra');if(extra)extra.innerHTML='';});
 }
 
 function verwerkOverpassData(elementen, userLat, userLon) {
@@ -2658,33 +2507,15 @@ function sluitVindWinkelBuiten(e) {
 }
 
 function deelAppLink() {
-  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var tekst = 'He! Gebruik onze boodschappen-app\n\n'
-    + '1. Open de app: ' + link + '\n'
-    + '2. Tik op "Nieuw gezin aanmelden"\n'
-    + '3. Vul je naam en e-mailadres in\n'
-    + '4. Je ontvangt toegang zodra ik je heb goedgekeurd\n\n'
-    + 'App-icoontje op je telefoon:\n'
-    + '- iPhone: open in Safari > tik op vakje met pijl omhoog > "Zet op beginscherm"\n'
-    + '- Samsung/Android: open in Chrome > tik drie puntjes > "Toevoegen aan startscherm"';
+  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  const tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
   if (navigator.share) {
-    navigator.share({title: 'Onze Boodschappen App', text: tekst, url: link});
-    return;
-  }
-  var kopieer = tekst + '\n\n' + link;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(kopieer).then(function() {
-      var el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = 'Link gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
-    }).catch(function() {
-      var ta = document.createElement('textarea');
-      ta.value = kopieer; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta);
-    });
+    navigator.share({ title: 'Boodschappen App', text: tekst });
   } else {
-    var ta = document.createElement('textarea');
-    ta.value = kopieer; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
+    navigator.clipboard.writeText(tekst).then(() => {
+      const el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+    });
   }
 }
 
@@ -2702,7 +2533,12 @@ function kopieerAppLink() {
     const el = document.getElementById('kopier-bevestiging');
     if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
   });
-}</script>
+}
+function getInspKeuze(id){var el=document.getElementById(id);var sel=el&&el.querySelector('.insp-chip.selected');return sel?sel.getAttribute('data-val'):null;}
+async function zoekInspiratie(){var keuken=getInspKeuze('insp-keuken')||'verrassing',personen=getInspKeuze('insp-personen')||'4',maaltijd=getInspKeuze('insp-maaltijd')||'diner',el=document.getElementById('insp-resultaten');if(!el)return;el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">✨ Ideeën ophalen...</div>';try{var resp=await fetch('https://boodschappen-prijs.jorg-103.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'inspiratie',keuken:keuken,personen:personen,maaltijd:maaltijd})});if(!resp.ok)throw new Error('Worker '+resp.status);var data=await resp.json();if(data.error)throw new Error(data.error);if(!data.recepten||!data.recepten.length)throw new Error('Geen recepten');renderInspiratieResultaten(data.recepten,keuken,personen,maaltijd);}catch(e){el.innerHTML='<div style="color:var(--red);padding:12px;border-radius:10px;background:#faeae9;font-size:0.85rem">❌ '+e.message+'<br><br><button onclick="zoekInspiratie()" style="background:var(--green);color:white;border:none;border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Opnieuw</button></div>';}}
+function renderInspiratieResultaten(lijst,keuken,personen,maaltijd){var el=document.getElementById('insp-resultaten');if(!el||!lijst.length)return;var nBg={Makkelijk:'#e8f5e9',Gemiddeld:'#fff3e0',Uitdagend:'#fce4ec'},nKl={Makkelijk:'#2e7d32',Gemiddeld:'#e65100',Uitdagend:'#c62828'};var html='<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">Ideeën voor <strong>'+maaltijd+'</strong>, <strong>'+personen+' pers.</strong>'+(keuken!=='verrassing'?' · <strong>'+keuken+'</strong>':'')+'</div>';lijst.forEach(function(r){var yt=r.youtube_zoek||('https://www.youtube.com/results?search_query='+encodeURIComponent(r.naam+' recept'));html+='<div style="background:white;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px"><div style="font-family:Playfair Display,serif;font-size:1rem;margin-bottom:6px">'+esc(r.naam)+'</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'+(r.tijd?'<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(--green-pale);color:var(--green)">⏱ '+esc(r.tijd)+'</span>':'')+(r.niveau?'<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:'+(nBg[r.niveau]||'#f5f5f5')+';color:'+(nKl[r.niveau]||'#666')+'">'+esc(r.niveau)+'</span>':'')+'</div><div style="font-size:0.82rem;color:var(--muted);line-height:1.5;margin-bottom:10px">'+esc(r.omschr)+'</div><div style="display:flex;gap:7px;flex-wrap:wrap"><a href="'+esc(yt)+'" target="_blank" style="text-decoration:none;padding:7px 12px;border-radius:8px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600">▶ YouTube</a><button data-naam="'+esc(r.naam)+'" data-omschr="'+esc(r.omschr)+'" data-tijd="'+esc(r.tijd||'')+'" data-pers="'+personen+'" data-url="'+esc(yt)+'" data-cat="'+maaltijd+'" class="insp-bewaar" style="padding:7px 12px;border-radius:8px;border:1.5px solid var(--green);background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer">+ Bewaar</button></div></div>';});el.innerHTML=html;el.querySelectorAll('.insp-bewaar').forEach(function(btn){btn.onclick=function(){var id='r-'+Date.now();window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/recepten/'+id),{id:id,naam:btn.getAttribute('data-naam'),youtube:btn.getAttribute('data-url'),categorie:btn.getAttribute('data-cat'),beschrijving:btn.getAttribute('data-omschr'),personen:btn.getAttribute('data-pers'),tijd:btn.getAttribute('data-tijd'),ingredienten:[],aangemaakt:Date.now()}).then(function(){btn.textContent='✅ Opgeslagen!';btn.disabled=true;}).catch(function(){btn.textContent='❌ Mislukt';});};});}
+document.addEventListener('click',function(e){var chip=e.target.closest('.insp-chip');if(!chip)return;var grp=chip.closest('[id^="insp-"]');if(!grp)return;grp.querySelectorAll('.insp-chip').forEach(function(c){c.classList.remove('selected');});chip.classList.add('selected');});
+</script>
 
 <!-- Vind Winkel Modal -->
 <div class="vw-modal" id="vw-modal" onclick="sluitVindWinkelBuiten(event)">
