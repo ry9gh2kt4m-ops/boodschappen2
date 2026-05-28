@@ -845,10 +845,14 @@ function setSyncStatus(saving) {
 
 // ---- Tabs ----
 function switchTab(tab) {
-  document.getElementById('view-boodschappen').style.display = tab === 'boodschappen' ? 'block' : 'none';
-  document.getElementById('view-menu').style.display = tab === 'menu' ? 'block' : 'none';
-  document.getElementById('tab-boodschappen').className = 'tab' + (tab === 'boodschappen' ? ' active' : '');
-  document.getElementById('tab-menu').className = 'tab' + (tab === 'menu' ? ' active' : '');
+  var tabs = ['boodschappen', 'menu', 'kookboek', 'prijzen', 'ideeen', 'admin'];
+  for (var ti = 0; ti < tabs.length; ti++) {
+    var t = tabs[ti];
+    var view = document.getElementById('view-' + t);
+    var btn = document.getElementById('tab-' + t);
+    if (view) view.style.display = t === tab ? 'block' : 'none';
+    if (btn) btn.className = 'tab' + (t === tab ? ' active' : '');
+  }
 }
 
 // ---- Boodschappen ----
