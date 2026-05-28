@@ -820,6 +820,7 @@ function initApp() {
   document.getElementById('main-app').style.display = 'block';
   isBeheerder = localStorage.getItem('beheerder')==='1' || gezinsCode==='familie-de-jong';
   if (isBeheerder) { var adminBtn=document.getElementById('tab-admin'); if(adminBtn) adminBtn.style.display='flex'; }
+  laadPersonen();
   fbListen();
   fbListenGeleerd();
   fbListenRecepten();
@@ -1054,6 +1055,25 @@ document.getElementById('mic-btn').onclick=async()=>{
   document.getElementById('item-input').value='';
   try{recognition.start();}catch(e){setMicStatus('Start mislukt.','active');}
 };
+
+// ── Ontbrekende kleine functies ──────────────────────────────────────────────
+
+function filterRecepten() {
+  // Alias voor renderRecepten (wordt aangeroepen bij zoeken)
+  renderRecepten();
+}
+
+function detectPlatform(url) {
+  // Alias voor detectPlatformInfo
+  return detectPlatformInfo(url);
+}
+
+function setPersoon(naam) {
+  // Selecteer een persoon
+  currentPerson = naam;
+  renderPersonenKnoppen();
+}
+
 document.getElementById('add-btn').onclick=addItem;
 document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
 
