@@ -755,12 +755,12 @@ function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/
 function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
 
 function fbListen() {
-  unsubItems = window._onValue(getRef('boodschappen'), snap => {
+  unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     const data = snap.val();
-    items = data ? Object.values(data).sort((a,b) => b.id - a.id) : [];
+    items = data ? Object.values(data).sort(function(a,b){return b.id-a.id;}) : [];
     render();
   });
-  unsubMenu = window._onValue(getRef('weekmenu'), snap => {
+  unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
     menu = snap.val() || {};
     renderMenu();
   });
@@ -815,10 +815,12 @@ function setPerson(p) {
   document.getElementById('btn-vrouw').className = 'person-btn' + (p==='vrouw' ? ' active-vrouw' : '');
 }
 
-function setFilter(el, f) {
+function setFilter(btn, f) {
   currentFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active'); render();
+  var chips = document.querySelectorAll('.filter-chip');
+  for (var fi = 0; fi < chips.length; fi++) chips[fi].classList.remove('active');
+  if (btn) btn.classList.add('active');
+  render();
 }
 
 async function addItem() {
@@ -832,13 +834,21 @@ async function addItem() {
 }
 
 async function toggleItem(id) {
-  items = items.map(i => i.id===id ? {...i, done: !i.done} : i);
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  for (var ti = 0; ti < items.length; ti++) {
+    if (items[ti].id === id) { items[ti].done = !items[ti].done; break; }
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
 }
 
 async function deleteItem(id) {
-  items = items.filter(i => i.id!==id);
-  setSyncStatus(true); await fbDelete(id); setSyncStatus(false);
+  items = items.filter(function(i){ return i.id !== id; });
+  render();
+  setSyncStatus(true);
+  try { await fbDelete(id); } catch(e) {}
+  setSyncStatus(false);
 }
 
 async function changeQty(id, delta) {
@@ -858,32 +868,28 @@ function toggleDone() {
 }
 
 function render() {
-  const filtered = currentFilter==='alle' ? items : items.filter(i => i.person===currentFilter);
-  const todo = filtered.filter(i => !i.done), done = filtered.filter(i => i.done);
+  var filtered = currentFilter === 'alle' ? items : items.filter(function(i){ return i.person === currentFilter; });
+  var todo = filtered.filter(function(i){ return !i.done; });
+  var done = filtered.filter(function(i){ return i.done; });
   document.getElementById('stat-total').textContent = items.length;
-  document.getElementById('stat-todo').textContent = items.filter(i => !i.done).length;
-  document.getElementById('stat-done').textContent = items.filter(i => i.done).length;
+  document.getElementById('stat-todo').textContent  = items.filter(function(i){ return !i.done; }).length;
+  document.getElementById('stat-done').textContent  = items.filter(function(i){ return i.done; }).length;
   document.getElementById('done-count').textContent = done.length;
-  renderList('todo-list', todo, false); renderList('done-list', done, true);
+  renderList('todo-list', todo, false);
+  renderList('done-list', done, true);
 }
 
+
 function renderList(id, list, isDone) {
-  const el = document.getElementById(id);
-  if (!list.length && !isDone) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>'; return; }
-  el.innerHTML = list.map(item => `
-    <div class="item ${item.done?'done':''} person-${item.person}">
-      <button class="check-btn" onclick="toggleItem(${item.id})">${item.done?'✓':''}</button>
-      <div class="item-main">
-        <div class="item-name">${esc(item.name)}</div>
-        <div style="margin-top:2px"><span class="item-person">${item.person==='jij'?'👤 Jij':'👤 Vrouw'}</span></div>
-      </div>
-      <div class="qty-controls">
-        <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
-        <span class="qty-num">${item.qty||1}</span>
-        <button class="qty-btn" onclick="changeQty(${item.id},+1)">+</button>
-      </div>
-      <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
-    </div>`).join('');
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!list.length && !isDone) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>';
+    return;
+  }
+  var html = '';
+  for (var li = 0; li < list.length; li++) html += renderItem(list[li]);
+  el.innerHTML = html;
 }
 
 // ---- Weekmenu ----
@@ -1021,28 +1027,32 @@ function setCatFilter(el, cat) { setReceptCat(el, cat); }
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function renderItem(item) {
-  const p = personen.find(x => x.naam === item.person) || {naam: item.person, kleur: '#3d6b4f', foto: null};
-  const bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-  const borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
-  const winkel = item.winkel || detectWinkel(item.name);
-  const winkelBadge = winkel === 'kruidvat'
+  var p = null;
+  for (var pi = 0; pi < personen.length; pi++) {
+    if (personen[pi].naam === item.person) { p = personen[pi]; break; }
+  }
+  if (!p) p = { naam: item.person || '', kleur: '#3d6b4f', foto: null };
+  var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+  var borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
+  var winkel = item.winkel || detectWinkel(item.name);
+  var winkelBadge = winkel === 'kruidvat'
     ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
     : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
-  const fotoHtml = p.foto
+  var fotoHtml = p.foto
     ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:2px;vertical-align:middle" />'
     : '&#128100;';
-  let catOptions = '';
-  for (let ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
-    const cc = BOODSCHAP_CATS[ci];
+  var catOptions = '';
+  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
+    var cc = BOODSCHAP_CATS[ci];
     catOptions += '<option value="' + cc.key + '"' + ((item.cat||'kruidenierswaren')===cc.key?' selected':'') + '>' + cc.icon + ' ' + cc.label + '</option>';
   }
-  let html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
+  var html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
   html += '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
   html += '<div class="item-main">';
   html += '<div class="item-name">' + esc(item.name) + '</div>';
   html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
   html += winkelBadge;
-  html += '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + '">' + fotoHtml + ' ' + esc(item.person) + '</span>';
+  html += '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + '">' + fotoHtml + ' ' + esc(p.naam) + '</span>';
   html += '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
   html += '</div></div>';
   html += '<div class="qty-controls">';
@@ -1428,8 +1438,14 @@ function logAankoopHistorie(naam) {
 }
 
 function laadPersonen() {
-  const opgeslagen = localStorage.getItem('personen_' + gezinsCode);
-  if (opgeslagen) personen = JSON.parse(opgeslagen);
+  var opgeslagen = localStorage.getItem('personen_' + gezinsCode);
+  if (opgeslagen) {
+    try { personen = JSON.parse(opgeslagen); } catch(e) { personen = []; }
+  }
+  // Zet currentPerson op eerste persoon als het nog niet gezet is
+  if (personen.length > 0 && (!currentPerson || currentPerson === 'Jij' || currentPerson === 'jij')) {
+    currentPerson = personen[0].naam;
+  }
   renderPersonenKnoppen();
 }
 
@@ -1458,7 +1474,7 @@ function renderPersonenKnoppen() {
   var pbtns = row.querySelectorAll('[data-naam]');
   for (var pbi=0; pbi<pbtns.length; pbi++) {
     (function(pb) {
-      pb.onclick = function() { setPerson(pb.getAttribute('data-naam')); };
+      pb.onclick = function() { setPersoon(pb.getAttribute('data-naam')); };
     })(pbtns[pbi]);
   }
   // Filter chips
