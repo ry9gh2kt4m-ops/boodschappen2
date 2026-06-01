@@ -712,23 +712,23 @@ function berekenGemInterval(l){if(!l||l.length<2)return 604800000;var s=0;for(va
 async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
 function zoekPrijs(naam){if(!naam)return null;var n=naam.toLowerCase().trim();for(var i=0;i<PRIJZEN_DB.length;i++){var pn=PRIJZEN_DB[i].n.toLowerCase();if(n===pn||pn.indexOf(n)>-1||n.indexOf(pn.split(' ')[0])>-1){var res={},wks=Object.keys(WINKELS_DEF);for(var w=0;w<wks.length;w++)res[wks[w]]=Math.round(PRIJZEN_DB[i].p*(WINKELS_DEF[wks[w]].f||1)*100)/100;return res;}}return null;}
 
-let items = [], menu = {}, gezinsCode = '', currentPerson = 'Jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
-let personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
-let geleerdeCategorieen = {}, geleerdeWinkels = {}, recepten = [], weekOffset = 0, isBeheerder = false, toonVerleden = false, receptCatFilter = 'alle', acSelectedIdx = -1, tempIngredienten = [];
-const KLEUR_BG = {'#3d6b4f':'#e8f0ea','#c4678a':'#fce8f0','#1a56a0':'#e8f0fa','#c47a2a':'#fdf0e0','#7a4db5':'#f0e8fa','#c4473a':'#faeae9'};
-let autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
+var items = [], menu = {}, gezinsCode = '', currentPerson = 'Jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
+var personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
+var geleerdeCategorieen = {}, geleerdeWinkels = {}, recepten = [], weekOffset = 0, isBeheerder = false, toonVerleden = false, receptCatFilter = 'alle', acSelectedIdx = -1, tempIngredienten = [];
+var KLEUR_BG = {'#3d6b4f':'#e8f0ea','#c4678a':'#fce8f0','#1a56a0':'#e8f0fa','#c47a2a':'#fdf0e0','#7a4db5':'#f0e8fa','#c4473a':'#faeae9'};
+var autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
 var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
-let unsubItems = null, unsubMenu = null;
+var unsubItems = null, unsubMenu = null;
 var unsubGeleerd = null, unsubRegistraties = null, unsubIdeeen = null, unsubRecepten = null;
-const DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+var DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 
 // ---- Gezinscode ----
 function sanitizeCode(code) { return code.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
 
 function startMetCode() {
-  const raw = document.getElementById('setup-code').value.trim();
-  const code = sanitizeCode(raw);
+  var raw = document.getElementById('setup-code').value.trim();
+  var code = sanitizeCode(raw);
   if (code.length < 3) { toonFout('Kies een code van minimaal 3 tekens.'); return; }
   localStorage.setItem('gezinscode', code);
   gezinsCode = code;
@@ -745,9 +745,9 @@ function wijzigCode() {
   document.getElementById('setup-code').value = '';
 }
 
-function toonFout(msg) { const el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; }
+function toonFout(msg) { var el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; }
 
-document.getElementById('setup-code').addEventListener('keydown', e => { if (e.key === 'Enter') startMetCode(); });
+document.getElementById('setup-code').addEventListener('keydown', function(e) { if (e.key === 'Enter') startMetCode(); });
 
 // ---- Firebase per gezin ----
 function getRef(pad) {
@@ -794,9 +794,9 @@ function initApp() {
   setSyncStatus(false);
 }
 
-document.addEventListener('fb-ready', () => {
+document.addEventListener('fb-ready', function() {
   document.getElementById('loading-screen').style.display = 'none';
-  const opgeslagen = localStorage.getItem('gezinscode');
+  var opgeslagen = localStorage.getItem('gezinscode');
   if (opgeslagen) { gezinsCode = opgeslagen; initApp(); }
   else { document.getElementById('setup-screen').style.display = 'block'; }
 });
@@ -871,13 +871,29 @@ async function deleteItem(id) {
 }
 
 async function changeQty(id, delta) {
-  items = items.map(i => i.id===id ? {...i, qty: Math.max(1,(i.qty||1)+delta)} : i);
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  for (var qi = 0; qi < items.length; qi++) {
+    if (items[qi].id === id) {
+      items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
+      break;
+    }
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
 }
 
 async function clearDone() {
-  const del = items.filter(i => i.done); items = items.filter(i => !i.done);
-  setSyncStatus(true); for (const i of del) await fbDelete(i.id); setSyncStatus(false);
+  var del = items.filter(function(i){ return i.done; });
+  items = items.filter(function(i){ return !i.done; });
+  render();
+  setSyncStatus(true);
+  try {
+    for (var di = 0; di < del.length; di++) {
+      await fbDelete(del[di].id);
+    }
+  } catch(e) {}
+  setSyncStatus(false);
 }
 
 function toggleDone() {
@@ -956,13 +972,13 @@ function renderList(id, list, isDone) {
 
 // ---- Weekmenu ----
 function getDagKey(i) {
-  const now = new Date(), day = now.getDay(), monday = new Date(now);
+  var now = new Date(), day = now.getDay(), monday = new Date(now);
   monday.setDate(now.getDate() - (day===0 ? 6 : day-1));
-  const d = new Date(monday); d.setDate(monday.getDate()+i);
+  var d = new Date(monday); d.setDate(monday.getDate()+i);
   return d.toISOString().split('T')[0];
 }
 function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
-function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
+function getTodayIndex() { var d = new Date().getDay(); return d===0?6:d-1; }
 
 function renderMenu() {
   var grid = document.getElementById('week-grid');
@@ -1018,21 +1034,21 @@ async function clearDag(i) {
 
 // ---- Voice ----
 function setupMic() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
   recognition = new SR(); recognition.lang='nl-NL'; recognition.continuous=false; recognition.interimResults=true;
 
-  recognition.onstart = () => {
+  recognition.onstart = function() {
     isListening=true;
     document.getElementById('mic-btn').classList.add('listening');
     document.getElementById('mic-btn').textContent='🔴';
     setMicStatus('Luisteren… spreek nu','active');
   };
 
-  recognition.onresult = (e) => {
-    let interim='', final='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const t=e.results[i][0].transcript;
+  recognition.onresult = function(e) {
+    var interim='', final='';
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      var t=e.results[i][0].transcript;
       e.results[i].isFinal?(final+=t):(interim+=t);
     }
     document.getElementById('item-input').value = final||interim;
@@ -1046,29 +1062,29 @@ function setupMic() {
     }
   };
 
-  recognition.onerror=(e)=>{
+  recognition.onerror=function(e){
     clearAutoAdd();
-    const m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
+    var m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
     setMicStatus(m[e.error]||'Fout.','active');
     stopMic(false);
   };
-  recognition.onend=()=>{ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
+  recognition.onend=function(){ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
 }
 
 function startCountdown(text) {
-  let secs = autoAddSeconds;
-  setMicStatus('✓ "'+text+'" — toevoegen in '+secs+'s (tik 🎙️ om te annuleren)', 'success');
-  countdownTimer = setInterval(() => {
+  var secs = autoAddSeconds;
+  setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
+  countdownTimer = setInterval(function() {
     secs--;
     if (secs > 0) {
-      setMicStatus('✓ "'+text+'" — toevoegen in '+secs+'s (tik 🎙️ om te annuleren)', 'success');
+      setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
     }
   }, 1000);
-  autoAddTimer = setTimeout(() => {
+  autoAddTimer = setTimeout(function() {
     clearInterval(countdownTimer);
     addItem();
     setMicStatus('✅ Toegevoegd!', 'success');
-    setTimeout(()=>setMicStatus(''), 2000);
+    setTimeout(function(){ setMicStatus(''); }, 2000);
   }, autoAddSeconds * 1000);
 }
 
@@ -1078,20 +1094,20 @@ function clearAutoAdd() {
   autoAddTimer = null; countdownTimer = null;
 }
 
-function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(()=>setMicStatus(''),3000); }
-function setMicStatus(m,c=''){const el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
+function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(function(){setMicStatus('');},3000); }
+function setMicStatus(m,c){if(c===undefined)c='';var el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
 
-document.getElementById('mic-btn').onclick=async()=>{
+document.getElementById('mic-btn').onclick=async function(){
   if(!recognition)return;
   // Als afteller bezig: annuleer
-  if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(()=>setMicStatus(''),1500); return; }
+  if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(function(){setMicStatus('');},1500); return; }
   if(isListening){recognition.stop();return;}
   try{await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){setMicStatus('🚫 Microfoon geweigerd.','active');return;}
   document.getElementById('item-input').value='';
   try{recognition.start();}catch(e){setMicStatus('Start mislukt.','active');}
 };
 document.getElementById('add-btn').onclick=addItem;
-document.getElementById('item-input').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
+document.getElementById('item-input').addEventListener('keydown',function(e){if(e.key==='Enter')addItem();});
 
 function bewerkRecept(id) { openReceptForm(id); }
 function setCatFilter(el, cat) { setReceptCat(el, cat); }
@@ -1149,7 +1165,7 @@ var BOODSCHAP_CATS = [
   {key:'nonfood',         label:'Non Food',          icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasverzachter','keukenrol','aluminiumfolie','ziplock','afvalzak','sponsje']},
   {key:'overig',          label:'Overig',            icon:'📦', items:[]}
 ];
-const KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
+var KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 
 
 function detectCat(naam) {
@@ -1211,7 +1227,7 @@ function detectWinkel(naam) {
 }
 
 async function slaGeleerdeCategorie(naam, cat) {
-  const key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  var key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
   geleerdeCategorieen[key] = cat;
   await window._set(getRef('geleerde_cats/' + key), cat);
 }
@@ -1270,9 +1286,9 @@ function fbListenRecepten() {
 
 function fbListenIdeeen() {
   if (unsubIdeeen) unsubIdeeen();
-  unsubIdeeen = window._onValue(window._ref(window._db, 'ideeen'), snap => {
-    const data = snap.val() || {};
-    const ideeen = Object.values(data).sort((a,b) => b.timestamp - a.timestamp);
+  unsubIdeeen = window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
+    var data = snap.val() || {};
+    var ideeen = Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;});
     renderIdeeen(ideeen);
   });
 }
@@ -1383,15 +1399,15 @@ function zoekAutocomplete(val) {
 
 
 function sluitAutocomplete() {
-  const dropdown = document.getElementById('autocomplete-dropdown');
+  var dropdown = document.getElementById('autocomplete-dropdown');
   if (dropdown) dropdown.style.display = 'none';
   acSelectedIdx = -1;
 }
 
 function navigeerAutocomplete(e) {
-  const dropdown = document.getElementById('autocomplete-dropdown');
+  var dropdown = document.getElementById('autocomplete-dropdown');
   if (!dropdown || dropdown.style.display === 'none') return;
-  const items = dropdown.querySelectorAll('.ac-item');
+  var items = dropdown.querySelectorAll('.ac-item');
   if (!items.length) return;
 
   if (e.key === 'ArrowDown') {
@@ -1407,7 +1423,7 @@ function navigeerAutocomplete(e) {
     items[acSelectedIdx].click(); return;
   } else { return; }
 
-  items.forEach((item, i) => item.classList.toggle('selected', i === acSelectedIdx));
+  for(var _ai=0;_ai<items.length;_ai++){items[_ai].classList.toggle('selected',_ai===acSelectedIdx);};
   if (acSelectedIdx >= 0) items[acSelectedIdx].scrollIntoView({block:'nearest'});
 }
 
@@ -1584,7 +1600,7 @@ function setPerson(p) {
 
 function setFilter(el, f) {
   currentFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  var _fc=document.querySelectorAll('.filter-chip');for(var _fci=0;_fci<_fc.length;_fci++)_fc[_fci].classList.remove('active');;
   el.classList.add('active'); render();
 }
 
@@ -1614,28 +1630,28 @@ function sluitPersonenModal(e) {
 }
 
 function verwerkFoto(event, i) {
-  const file = event.target.files[0];
+  var file = event.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
+  var reader = new FileReader();
+  reader.onload = function(e) {
     // Verklein foto naar max 100x100px
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const size = 100;
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var size = 100;
       canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      const min = Math.min(img.width, img.height);
-      const sx = (img.width - min) / 2, sy = (img.height - min) / 2;
+      var ctx = canvas.getContext('2d');
+      var min = Math.min(img.width, img.height);
+      var sx = (img.width - min) / 2, sy = (img.height - min) / 2;
       ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
       // Sla tijdelijk op
       if (!personen[i]) return;
       personen[i].foto = dataUrl;
       // Update preview
-      const preview = document.getElementById('foto-preview-' + i);
+      var preview = document.getElementById('foto-preview-' + i);
       if (preview) {
-        const imgEl = document.createElement('img');
+        var imgEl = document.createElement('img');
         imgEl.src = dataUrl;
         preview.replaceWith(imgEl);
         imgEl.id = 'foto-preview-' + i;
@@ -1659,15 +1675,20 @@ function verwijderPersoon(i) {
 }
 
 function slaPersonenOp() {
-  personen = personen.map((p, i) => ({
-    naam: (document.getElementById('persoon-naam-'+i) ? document.getElementById('persoon-naam-'+i).value.trim() : p.naam),
-    kleur: (document.getElementById('persoon-kleur-'+i) ? document.getElementById('persoon-kleur-'+i).value : p.kleur),
-    foto: p.foto || null
-  })).filter(p => p.naam);
+  var nieuwePersonen = [];
+  for (var i = 0; i < personen.length; i++) {
+    var p = personen[i];
+    var naamEl  = document.getElementById('persoon-input-' + i);
+    var kleurEl = document.getElementById('persoon-kleur-' + i);
+    var naam  = naamEl  ? naamEl.value.trim()  : p.naam;
+    var kleur = kleurEl ? kleurEl.value        : p.kleur;
+    if (naam) nieuwePersonen.push({ naam: naam, kleur: kleur, foto: p.foto || null });
+  }
+  personen = nieuwePersonen;
   slaPersonenLocalOp();
   renderPersonenKnoppen();
-  document.getElementById('personen-modal').style.display = 'none';
-  render();
+  var modal = document.getElementById('personen-modal');
+  if (modal) modal.style.display = 'none';
 }
 
 function getISOWeek(d) {
@@ -1689,11 +1710,11 @@ function toggleVerledenDagen() {
 }
 
 function toggleReceptPicker(i) {
-  const picker = document.getElementById('recept-picker-' + i);
+  var picker = document.getElementById('recept-picker-' + i);
   if (!picker) return;
-  const isOpen = picker.classList.contains('open');
+  var isOpen = picker.classList.contains('open');
   // Sluit alle pickers
-  document.querySelectorAll('.recept-picker').forEach(p => p.classList.remove('open'));
+  var _rp = document.querySelectorAll('.recept-picker'); for (var _rpi=0;_rpi<_rp.length;_rpi++) _rp[_rpi].classList.remove('open');;
   if (!isOpen) {
     picker.classList.add('open');
     renderReceptPicker(i);
@@ -1727,15 +1748,15 @@ function renderReceptPicker(dagIdx) {
 
 async function kiesRecept(dagIdx, naam, receptId) {
   // Vul naam in het invoerveld
-  const input = document.getElementById('dag-input-' + dagIdx);
+  var input = document.getElementById('dag-input-' + dagIdx);
   if (input) input.value = naam;
   // Sla direct op inclusief receptId voor link
-  const key = getDagKey(dagIdx);
+  var key = getDagKey(dagIdx);
   menu[key] = naam;
   menu[key + '_receptId'] = receptId;
   setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
   // Sluit picker
-  document.querySelectorAll('.recept-picker').forEach(p => p.classList.remove('open'));
+  var _rp=document.querySelectorAll('.recept-picker');for(var _rpi=0;_rpi<_rp.length;_rpi++)_rp[_rpi].classList.remove('open');;
 }
 
 function getYouTubeId(url) {
@@ -1748,7 +1769,7 @@ function openReceptForm(id) {
   document.getElementById('recept-edit-id').value = id || '';
   document.getElementById('recept-naam').value = '';
   document.getElementById('recept-youtube').value = '';
-  const pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
+  var pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
   document.getElementById('recept-beschrijving').value = '';
   document.getElementById('recept-personen').value = '';
   document.getElementById('recept-tijd').value = '';
@@ -1757,7 +1778,7 @@ function openReceptForm(id) {
   document.getElementById('recept-error').style.display = 'none';
 
   if (id) {
-    const r = recepten.find(x => x.id === id);
+    var r = recepten.find(function(x){ return x.id === id; });
     if (r) {
       document.getElementById('recept-naam').value = r.naam || '';
       document.getElementById('recept-youtube').value = r.youtube || '';
@@ -1782,8 +1803,8 @@ function sluitReceptModal(e) {
 function voegIngredientToe(waarde) {
   tempIngredienten.push(waarde || '');
   renderIngredientenInvoer();
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('.ingredient-input');
+  setTimeout(function() {
+    var inputs = document.querySelectorAll('.ingredient-input');
     if (inputs.length) inputs[inputs.length-1].focus();
   }, 50);
 }
@@ -1946,17 +1967,17 @@ function speelAf(receptId, videoId) {
 }
 
 async function slaReceptOp() {
-  const naam = document.getElementById('recept-naam').value.trim();
-  const youtube = document.getElementById('recept-youtube').value.trim();
-  const errEl = document.getElementById('recept-error');
+  var naam = document.getElementById('recept-naam').value.trim();
+  var youtube = document.getElementById('recept-youtube').value.trim();
+  var errEl = document.getElementById('recept-error');
   errEl.style.display = 'none';
 
   if (!naam) { errEl.textContent = 'Vul een naam in.'; errEl.style.display = 'block'; return; }
   if (!youtube) { errEl.textContent = 'Vul een video of recept link in.'; errEl.style.display = 'block'; return; }
   if (!youtube.startsWith('http')) { errEl.textContent = 'Plak een volledige link (beginnend met https://).'; errEl.style.display = 'block'; return; }
 
-  const editId = document.getElementById('recept-edit-id').value;
-  const id = editId || 'recept-' + Date.now();
+  var editId = document.getElementById('recept-edit-id').value;
+  var id = editId || 'recept-' + Date.now();
 
   await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), {
     id, naam,
@@ -1965,7 +1986,7 @@ async function slaReceptOp() {
     beschrijving: document.getElementById('recept-beschrijving').value.trim(),
     personen: document.getElementById('recept-personen').value || null,
     tijd: document.getElementById('recept-tijd').value.trim() || null,
-    ingredienten: tempIngredienten.filter(i => i.trim()),
+    ingredienten: tempIngredienten.filter(function(i){ return i.trim(); }),
     aangemaakt: editId ? ((function(){ var _r = recepten.find(function(r){return r.id===editId;}); return _r ? _r.aangemaakt : Date.now(); })()) : Date.now()
   });
 
@@ -1978,49 +1999,78 @@ async function verwijderRecept(id) {
 }
 
 function toggleIngCheck(receptId, idx) {
-  const el = document.getElementById('ingcheck-' + receptId + '-' + idx);
+  var el = document.getElementById('ingcheck-' + receptId + '-' + idx);
   if (el) el.classList.toggle('checked');
-  const checked = el ? el.classList.contains('checked') : false;
+  var checked = el ? el.classList.contains('checked') : false;
   if (el) el.textContent = checked ? '✓' : '';
 }
 
 async function voegAlleIngredientenToe(receptId) {
-  const r = recepten.find(x => x.id === receptId);
-  if (!r || !r.ingredienten) return;
-  const nieuweItems = r.ingredienten
-    .filter(ing => ing.trim())
-    .map(ing => ({ id: Date.now() + Math.random(), name: ing.trim(), person: currentPerson, done: false, qty: 1, cat: detectCat(ing) }));
-  items.unshift(...nieuweItems);
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
-  // Toon bevestiging
-  const btn = document.querySelector('#ing-' + receptId + ' .btn-add-boodschappen');
-  if (btn) {
-    btn.textContent = '✅ ' + nieuweItems.length + ' ingrediënten toegevoegd!';
-    btn.style.background = '#5a8f6d';
-    setTimeout(() => { btn.innerHTML = '🛒 Alle ingrediënten op boodschappenlijst'; btn.style.background = ''; }, 3000);
+  var r = null;
+  for (var _ri = 0; _ri < recepten.length; _ri++) {
+    if (recepten[_ri].id === receptId) { r = recepten[_ri]; break; }
   }
-  // Switch naar boodschappen tab
-  setTimeout(() => switchTab('boodschappen'), 1500);
+  if (!r || !r.ingredienten || !r.ingredienten.length) return;
+  var nieuweItems = [];
+  for (var _ii = 0; _ii < r.ingredienten.length; _ii++) {
+    var _ing = r.ingredienten[_ii];
+    if (!_ing || !_ing.trim()) continue;
+    nieuweItems.push({
+      id: Date.now() + Math.floor(Math.random() * 1000) + _ii,
+      name: _ing.trim(),
+      person: currentPerson,
+      done: false,
+      qty: 1,
+      cat: detectCat(_ing),
+      winkel: detectWinkel(_ing)
+    });
+  }
+  if (!nieuweItems.length) return;
+  for (var _ni = 0; _ni < nieuweItems.length; _ni++) {
+    items.unshift(nieuweItems[_ni]);
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
+  var btn = document.getElementById('ing-' + receptId);
+  if (btn) {
+    btn.innerHTML = '✅ ' + nieuweItems.length + ' ingrediënten toegevoegd!';
+    btn.style.background = '#5a8f6d';
+    setTimeout(function() {
+      btn.innerHTML = '🛒 Alle ingrediënten op boodschappenlijst';
+      btn.style.background = '';
+    }, 3000);
+  }
+  setTimeout(function(){ switchTab('boodschappen'); }, 1500);
 }
 
 async function stuurIdee() {
-  const tekst = document.getElementById('idee-tekst').value.trim();
+  var tekst = document.getElementById('idee-tekst').value.trim();
   if (!tekst) return;
-  // Gebruik registratienaam als beschikbaar, anders gezinscode
-  const regSnap = await new Promise(res => window._onValue(window._ref(window._db, 'registraties/' + gezinsCode + '/naam'), res, {onlyOnce:true}));
-  const naam = regSnap.val() || gezinsCode;
-  const id = 'idee-' + Date.now();
-  await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam, tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
+  var naam = gezinsCode;
+  try {
+    var regSnap = await new Promise(function(resolve) {
+      window._onValue(window._ref(window._db, 'registraties/' + gezinsCode + '/naam'), function(snap) {
+        resolve(snap);
+      }, {onlyOnce: true});
+    });
+    naam = regSnap.val() || gezinsCode;
+  } catch(e) { naam = gezinsCode; }
+  var id = 'idee-' + Date.now();
+  await window._set(window._ref(window._db, 'ideeen/' + id), {
+    id: id, naam: naam, tekst: tekst, status: 'nieuw', timestamp: Date.now(), gezin: gezinsCode
+  });
   document.getElementById('idee-tekst').value = '';
   document.getElementById('idee-bevestiging').style.display = 'block';
-  setTimeout(() => document.getElementById('idee-bevestiging').style.display = 'none', 3000);
+  setTimeout(function(){ document.getElementById('idee-bevestiging').style.display = 'none'; }, 3000);
 }
 
 function renderIdeeen(ideeen) {
   document.getElementById('beheer-sectie').style.display = 'none';
   document.getElementById('publiek-sectie').style.display = 'block';
-  const goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
-  const el = document.getElementById('ideeen-publiek');
+  var goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
+  var el = document.getElementById('ideeen-publiek');
   if (!el) return;
   if (!goedgekeurd.length) {
     el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>';
@@ -2047,7 +2097,7 @@ async function openAdminTab() {
 
   try {
     // Check of er al een credential is opgeslagen
-    const credId = localStorage.getItem('admin_cred_id');
+    var credId = localStorage.getItem('admin_cred_id');
     if (credId) {
       // Verifieer met bestaande credential
       await verifieerFaceId(credId);
@@ -2067,10 +2117,10 @@ async function openAdminTab() {
 }
 
 async function registreerFaceId() {
-  const challenge = new Uint8Array(32);
+  var challenge = new Uint8Array(32);
   crypto.getRandomValues(challenge);
 
-  const credential = await navigator.credentials.create({
+  var credential = await navigator.credentials.create({
     publicKey: {
       challenge,
       rp: { name: 'Boodschappen App', id: location.hostname },
@@ -2089,16 +2139,16 @@ async function registreerFaceId() {
   });
 
   // Sla credential ID op
-  const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+  var credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
   localStorage.setItem('admin_cred_id', credId);
   activeerBeheerder();
 }
 
 async function verifieerFaceId(credIdB64) {
-  const challenge = new Uint8Array(32);
+  var challenge = new Uint8Array(32);
   crypto.getRandomValues(challenge);
 
-  const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+  var credIdBytes = Uint8Array.from(atob(credIdB64), function(c){ return c.charCodeAt(0); });
 
   await navigator.credentials.get({
     publicKey: {
@@ -2116,7 +2166,7 @@ function activeerBeheerder() {
   isBeheerder = true;
   localStorage.setItem('beheerder', '1');
   // Toon admin tab
-  const btn = document.getElementById('tab-admin');
+  var btn = document.getElementById('tab-admin');
   if (btn) btn.style.display = 'flex';
   fbListenIdeeen();
   fbListenRegistraties();
@@ -2273,9 +2323,9 @@ function startAppMet(opgeslagen) {
 }
 
 async function registreerGezin() {
-  const naam = document.getElementById('reg-naam').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const errEl = document.getElementById('reg-error');
+  var naam = document.getElementById('reg-naam').value.trim();
+  var email = document.getElementById('reg-email').value.trim();
+  var errEl = document.getElementById('reg-error');
   errEl.style.display = 'none';
 
   if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
@@ -2492,17 +2542,18 @@ async function vergelijkPrijzen() {
 
 function toggleCat(cat) {
   if (cat === 'alle') {
-    // Reset knop — alles aan
     actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
   } else {
-    // Simpel aan/uit per chip — zorg dat altijd minstens 1 actief blijft
-    const nieuw = { ...actieveCats, [cat]: !actieveCats[cat] };
-    if (Object.values(nieuw).some(v => v)) actieveCats = nieuw;
-    // Anders alles aanzetten
+    var nieuw = { super: actieveCats.super, drogist: actieveCats.drogist, slijterij: actieveCats.slijterij, speciaal: actieveCats.speciaal };
+    nieuw[cat] = !actieveCats[cat];
+    var eenActief = false;
+    var ks = Object.keys(nieuw);
+    for (var ki=0; ki<ks.length; ki++) { if (nieuw[ks[ki]]) { eenActief = true; break; } }
+    if (eenActief) actieveCats = nieuw;
     else actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
   }
   updateCatChipUI();
-  const res = document.getElementById('prijs-resultaat');
+  var res = document.getElementById('prijs-resultaat');
   if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
 }
 
@@ -2640,31 +2691,31 @@ function sluitVindWinkelBuiten(e) {
 }
 
 function deelAppLink() {
-  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  const tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
+  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  var tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
   if (navigator.share) {
     navigator.share({ title: 'Boodschappen App', text: tekst });
   } else {
-    navigator.clipboard.writeText(tekst).then(() => {
-      const el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+    navigator.clipboard.writeText(tekst).then(function() {
+      var el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
     });
   }
 }
 
 function kopieerAppLink() {
-  const link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  navigator.clipboard.writeText(link).then(() => {
-    const el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
-  }).catch(() => {
+  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  navigator.clipboard.writeText(link).then(function() {
+    var el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+  }).catch(function() {
     // Fallback
-    const ta = document.createElement('textarea');
+    var ta = document.createElement('textarea');
     ta.value = link; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
-    const el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2500); }
+    var el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
   });
 }
 // ── Inspiratie Wizard ─────────────────────────────────────────────────────────
