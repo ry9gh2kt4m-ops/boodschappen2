@@ -763,7 +763,7 @@ function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
 
 function fbListen() {
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
-    const data = snap.val();
+    var data = snap.val();
     items = data ? Object.values(data).sort(function(a,b){return b.id-a.id;}) : [];
     render();
   });
@@ -810,7 +810,8 @@ function switchTab(tab) {
     var view = document.getElementById('view-' + t);
     var btn  = document.getElementById('tab-'  + t);
     if (view) view.style.display = (t === tab) ? 'block' : 'none';
-    if (t === tab && t === 'kookboek') { setTimeout(function(){ if(typeof inspInit==='function' && !window._inspStarted){ window._inspStarted=true; inspInit(); }},50); }
+    if (t === tab && t === 'kookboek') { setTimeout(function(){ renderRecepten(); if(typeof inspInit==='function' && !window._inspStarted){ window._inspStarted=true; inspInit(); }},50); }
+    if (t === tab && t === 'menu') { setTimeout(function(){ renderMenu(); }, 50); }
     if (btn)  btn.className = 'tab' + (t === tab ? ' active' : '');
   }
 }
@@ -916,7 +917,7 @@ function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl
 function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
 
 function renderMenu() {
-  var grid = document.getElementById('menu-grid');
+  var grid = document.getElementById('week-grid');
   if (!grid) return;
   var todayIdx = getTodayIndex();
   var html = '';
@@ -928,9 +929,9 @@ function renderMenu() {
     html += '<div class="dag-header" onclick="toggleDag(' + i + ')">';
     html += '<div class="dag-naam">' + DAGEN[i] + (isToday ? ' <span class="vandaag-badge">vandaag</span>' : '') + '</div>';
     html += '<div class="dag-datum">' + getDatumLabel(i) + '</div>';
-    html += '</div>';
-    html += '<div class="dag-preview' + (gerecht ? ' gevuld' : '') + '">' + (gerecht || 'Nog niet ingevuld…') + '</div>';
     html += '<span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>';
+    html += '</div>';
+    html += '<div class="dag-preview' + (gerecht ? ' gevuld' : '') + '">' + (gerecht ? esc(gerecht) : 'Nog niet ingevuld…') + '</div>';
     html += '<div class="dag-body" id="dag-body-' + i + '">';
     html += '<div class="dag-gerecht">' + (gerecht ? '🍽️ ' + esc(gerecht) : 'Nog niets gepland.') + '</div>';
     html += '<div class="dag-input-row">';
@@ -943,9 +944,18 @@ function renderMenu() {
 }
 
 function toggleDag(i) {
-  const body = document.getElementById('dag-body-'+i), isOpen = body.classList.contains('open');
-  document.querySelectorAll('.dag-body').forEach(b => b.classList.remove('open'));
-  if (!isOpen) { body.classList.add('open'); setTimeout(function(){ var _di=document.getElementById('dag-input-'+i); if(_di) _di.focus(); },100); }
+  var body = document.getElementById('dag-body-' + i);
+  if (!body) return;
+  var isOpen = body.classList.contains('open');
+  var allBodies = document.querySelectorAll('.dag-body');
+  for (var bi = 0; bi < allBodies.length; bi++) allBodies[bi].classList.remove('open');
+  if (!isOpen) {
+    body.classList.add('open');
+    setTimeout(function() {
+      var inp = document.getElementById('dag-input-' + i);
+      if (inp) inp.focus();
+    }, 100);
+  }
 }
 
 async function saveDag(i) {
