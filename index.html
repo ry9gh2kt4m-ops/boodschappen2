@@ -348,6 +348,11 @@
 .recept-card-insp.open{border-color:var(--green);box-shadow:0 2px 12px rgba(61,107,79,0.12)}
 .ing-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.84rem}
 .ing-item:last-child{border-bottom:none}
+.cat-sectie{margin-bottom:10px}
+.cat-header{display:flex;align-items:center;gap:6px;padding:6px 10px 4px;position:sticky;top:0;z-index:10;background:var(--cream);border-bottom:1px solid var(--border);margin-bottom:2px}
+.cat-icon{font-size:1rem}
+.cat-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);flex:1}
+.cat-count{font-size:0.7rem;background:var(--green-pale);color:var(--green);border-radius:10px;padding:1px 7px;font-weight:600}
 </style>
 </head>
 <body>
@@ -897,12 +902,55 @@ function render() {
 function renderList(id, list, isDone) {
   var el = document.getElementById(id);
   if (!el) return;
+
   if (!list.length && !isDone) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">🌿</div><div>Lijstje is leeg!</div></div>';
     return;
   }
+
+  if (isDone) {
+    // Afgevinkte items: gewoon op volgorde, geen categorie-indeling
+    var html = '';
+    for (var li = 0; li < list.length; li++) html += renderItem(list[li]);
+    el.innerHTML = html;
+    return;
+  }
+
+  // Todo items: groepeer per categorie in looproutevolgorde
+  var CAT_VOLGORDE = ['agf','vlees','koeling','kruidenierswaren','diepvries','drank','nonfood','overig'];
+  var CAT_INFO = {};
+  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
+    CAT_INFO[BOODSCHAP_CATS[ci].key] = BOODSCHAP_CATS[ci];
+  }
+
+  // Groepeer items per categorie
+  var groepen = {};
+  for (var ii = 0; ii < list.length; ii++) {
+    var item = list[ii];
+    var cat = item.cat || 'overig';
+    if (!groepen[cat]) groepen[cat] = [];
+    groepen[cat].push(item);
+  }
+
   var html = '';
-  for (var li = 0; li < list.length; li++) html += renderItem(list[li]);
+  for (var gi = 0; gi < CAT_VOLGORDE.length; gi++) {
+    var catKey = CAT_VOLGORDE[gi];
+    var groep  = groepen[catKey];
+    if (!groep || !groep.length) continue;
+
+    var info = CAT_INFO[catKey] || { label: catKey, icon: '📦' };
+    html += '<div class="cat-sectie">';
+    html += '<div class="cat-header">'
+      + '<span class="cat-icon">' + info.icon + '</span>'
+      + '<span class="cat-label">' + info.label + '</span>'
+      + '<span class="cat-count">' + groep.length + '</span>'
+      + '</div>';
+    for (var ji = 0; ji < groep.length; ji++) {
+      html += renderItem(groep[ji]);
+    }
+    html += '</div>';
+  }
+
   el.innerHTML = html;
 }
 
@@ -1091,14 +1139,15 @@ function renderItem(item) {
 
 // ---- Nieuwe features ----
 
-const BOODSCHAP_CATS = [
-  {key:'agf', label:'AGF', icon:'🥦', items:['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','bosbes','framboos','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','courgette','prei','peterselie','basilicum','bloemkool']},
-  {key:'vlees', label:'Vlees & Vis', icon:'🥩', items:['gehakt','kip','kipfilet','spek','bacon','ham','salami','worst','rookworst','biefstuk','zalm','tonijn','garnalen','vis','schnitzel']},
-  {key:'kruidenierswaren', label:'Kruidenierswaren', icon:'🛒', items:['pasta','spaghetti','rijst','couscous','quinoa','havermout','cruesli','muesli','cornflakes','granola','brood','bloem','suiker','zout','peper','olie','ketchup','mayonaise','pesto','sambal','jam','pindakaas','nutella','honing','bonen','soep','bouillon','chips','koekjes','chocolade','waterontharder','ontkalker']},
-  {key:'koeling', label:'Koeling', icon:'🧊', items:['melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk','sap']},
-  {key:'diepvries', label:'Diepvries', icon:'❄️', items:['friet','pizza','kroketten','ijs','diepvries','doperwten']},
-  {key:'drank', label:'Drank', icon:'🥤', items:['bier','wijn','water','cola','fanta','sprite','limonade','koffie','thee','heineken','hertog jan','prosecco','vodka','gin','rum','whisky']},
-  {key:'nonfood', label:'Non Food', icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines']}
+var BOODSCHAP_CATS = [
+  {key:'agf',             label:'AGF',              icon:'🥦', items:['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','bosbes','framboos','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','courgette','prei','peterselie','basilicum','bloemkool','citroen','limoen','kiwi','meloen','ananas','gember','radijs','venkel','selderij','sjalot','bieslook','koriander','dille','munt','tijm','rozemarijn','oregano']},
+  {key:'vlees',           label:'Vlees & Vis',       icon:'🥩', items:['gehakt','kip','kipfilet','spek','bacon','ham','salami','worst','rookworst','biefstuk','zalm','tonijn','garnalen','vis','schnitzel','lam','varken','rund','tartaar','ossenhaas','kipschnitzel','forel','makreel','mosselen','inktvis','surimi']},
+  {key:'koeling',         label:'Koeling',           icon:'🧊', items:['melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk','sap','mozzarella','brie','camembert','feta','roomkaas','crème fraîche','zure room','tofu','tempeh','verse pasta','verse soep']},
+  {key:'kruidenierswaren',label:'Kruidenierswaren',  icon:'🛒', items:['pasta','spaghetti','rijst','couscous','quinoa','havermout','cruesli','muesli','cornflakes','granola','brood','bloem','suiker','zout','peper','olie','olijfolie','ketchup','mayonaise','pesto','sambal','jam','pindakaas','nutella','honing','bonen','soep','bouillon','chips','koekjes','chocolade','crackers','beschuit','roggebrood','toast','ontbijtkoek','noten','rozijnen','dadels','tomatenpuree','tomatensaus','kokosmelk','sojasaus','worcester','balsamico','azijn','mosterd']},
+  {key:'diepvries',       label:'Diepvries',         icon:'❄️', items:['friet','pizza','kroketten','ijs','diepvries','doperwten','spinazie blokjes','haricots','edamame','garnalen diepvries','vissticks','bami','nasi','loempia','falafel']},
+  {key:'drank',           label:'Drank',             icon:'🥤', items:['bier','wijn','water','cola','fanta','sprite','limonade','koffie','thee','heineken','hertog jan','grolsch','amstel','prosecco','vodka','gin','rum','whisky','tequila','aperol','baileys','energie','sportdrank','vruchtensap','smoothie']},
+  {key:'nonfood',         label:'Non Food',          icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasverzachter','keukenrol','aluminiumfolie','ziplock','afvalzak','sponsje']},
+  {key:'overig',          label:'Overig',            icon:'📦', items:[]}
 ];
 const KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 
@@ -1106,20 +1155,29 @@ const KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpa
 function detectCat(naam) {
   var n = naam.toLowerCase().trim();
   var key = n.replace(/[^a-z0-9]/g, '_');
+
   // Check geleerde categorieën
   if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
   for (var gk in geleerdeCategorieen) {
     var woord = gk.replace(/_/g, ' ');
-    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
+    if (woord.length > 2 && (n === woord || n.indexOf(woord + ' ') === 0 || n.indexOf(' ' + woord) > -1)) {
       return geleerdeCategorieen[gk];
     }
   }
-  // Standaard detectie op basis van BOODSCHAP_CATS
+
   for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
     var cat = BOODSCHAP_CATS[ci];
     for (var wi = 0; wi < cat.items.length; wi++) {
       var w = cat.items[wi];
-      if (n.indexOf(w) > -1 || (w.indexOf(n) > -1 && n.length > 3)) return cat.key;
+      // Exacte match: altijd
+      if (n === w) return cat.key;
+      // Korte woorden (<=3 chars): alleen exacte match
+      if (w.length <= 3) continue;
+      // Langere woorden: veilige partiële match via woordgrens
+      var re_woord = new RegExp('(^|[\\s\\-])' + w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '([\\s\\-]|$)');
+      if (re_woord.test(n)) return cat.key;
+      // Artikel-naam is deel van item (bijv. 'melk' in 'karnemelk')
+      if (w.indexOf(n) > -1 && n.length > 4) return cat.key;
     }
   }
   return 'overig';
