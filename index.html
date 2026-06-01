@@ -745,13 +745,20 @@ function toonFout(msg) { const el = document.getElementById('setup-error'); el.t
 document.getElementById('setup-code').addEventListener('keydown', e => { if (e.key === 'Enter') startMetCode(); });
 
 // ---- Firebase per gezin ----
-function getRef(pad) { return window._ref(window._db, `gezinnen/${gezinsCode}/${pad}`); }
+function getRef(pad) {
+  return window._ref(window._db, 'gezinnen/' + gezinsCode + '/' + pad);
+}
 
-function fbSave(items) {
-  const obj = {}; items.forEach(i => { obj[i.id] = i; });
+function fbSave(itemsLijst) {
+  var obj = {};
+  for (var si = 0; si < itemsLijst.length; si++) {
+    obj[itemsLijst[si].id] = itemsLijst[si];
+  }
   return window._set(getRef('boodschappen'), obj);
 }
-function fbDelete(id) { return window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/boodschappen/${id}`)); }
+function fbDelete(id) {
+  return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
+}
 function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
 
 function fbListen() {
@@ -824,13 +831,19 @@ function setFilter(btn, f) {
 }
 
 async function addItem() {
-  const name = document.getElementById('item-input').value.trim();
+  var name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  const _newItem = { id: Date.now(), name, person: currentPerson, done: false, qty: 1, cat: typeof detectCat==='function'?detectCat(name):'overig', winkel: typeof detectWinkel==='function'?detectWinkel(name):'ah' };
-  items.unshift(_newItem);
-  if (typeof slaGeleerdeCategorie==='function') slaGeleerdeCategorie(name, _newItem.cat);
+  var id = Date.now();
+  var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
+  var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
+  var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
+  items.unshift(newItem);
+  render();
   document.getElementById('item-input').value = '';
-  setSyncStatus(true); await fbSave(items); setSyncStatus(false);
+  if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) { console.log('fbSave fout:', e.message); }
+  setSyncStatus(false);
 }
 
 async function toggleItem(id) {
@@ -903,29 +916,30 @@ function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl
 function getTodayIndex() { const d = new Date().getDay(); return d===0?6:d-1; }
 
 function renderMenu() {
-  const grid = document.getElementById('week-grid');
-  const todayIdx = getTodayIndex();
-  grid.innerHTML = DAGEN.map((dag, i) => {
-    const key = getDagKey(i), gerecht = menu[key]||'', isToday = i===todayIdx;
-    return `<div class="dag-card ${isToday?'dag-vandaag':''}">
-      <div class="dag-header" onclick="toggleDag(${i})">
-        <div style="flex-shrink:0">
-          <div class="dag-naam">${dag}${isToday?'<span class="dag-label">Vandaag</span>':''}</div>
-          <div class="dag-datum">${getDatumLabel(i)}</div>
-        </div>
-        <div class="dag-preview ${gerecht?'gevuld':''}">${gerecht||'Nog niet ingevuld…'}</div>
-        <span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>
-      </div>
-      <div class="dag-body" id="dag-body-${i}">
-        <div class="dag-gerecht">${gerecht?'🍽️ '+esc(gerecht):'Nog niets gepland.'}</div>
-        <div class="dag-input-row">
-          <input class="dag-input" id="dag-input-${i}" type="text" placeholder="bijv. Pasta bolognese" value="${esc(gerecht)}" />
-          <button class="dag-save-btn" onclick="saveDag(${i})">Opslaan</button>
-          ${gerecht?`<button class="dag-clear-btn" onclick="clearDag(${i})">✕</button>`:''}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  var grid = document.getElementById('menu-grid');
+  if (!grid) return;
+  var todayIdx = getTodayIndex();
+  var html = '';
+  for (var i = 0; i < DAGEN.length; i++) {
+    var key = getDagKey(i);
+    var gerecht = menu[key] || '';
+    var isToday = i === todayIdx;
+    html += '<div class="dag-card' + (isToday ? ' dag-vandaag' : '') + '">';
+    html += '<div class="dag-header" onclick="toggleDag(' + i + ')">';
+    html += '<div class="dag-naam">' + DAGEN[i] + (isToday ? ' <span class="vandaag-badge">vandaag</span>' : '') + '</div>';
+    html += '<div class="dag-datum">' + getDatumLabel(i) + '</div>';
+    html += '</div>';
+    html += '<div class="dag-preview' + (gerecht ? ' gevuld' : '') + '">' + (gerecht || 'Nog niet ingevuld…') + '</div>';
+    html += '<span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>';
+    html += '<div class="dag-body" id="dag-body-' + i + '">';
+    html += '<div class="dag-gerecht">' + (gerecht ? '🍽️ ' + esc(gerecht) : 'Nog niets gepland.') + '</div>';
+    html += '<div class="dag-input-row">';
+    html += '<input class="dag-input" id="dag-input-' + i + '" type="text" placeholder="bijv. Pasta bolognese" value="' + esc(gerecht) + '" />';
+    html += '<button class="dag-save-btn" onclick="saveDag(' + i + ')">Opslaan</button>';
+    if (gerecht) html += '<button class="dag-clear-btn" onclick="clearDag(' + i + ')">✕</button>';
+    html += '</div></div></div>';
+  }
+  grid.innerHTML = html;
 }
 
 function toggleDag(i) {
@@ -985,11 +999,11 @@ function setupMic() {
 
 function startCountdown(text) {
   let secs = autoAddSeconds;
-  setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+  setMicStatus('✓ "'+text+'" — toevoegen in '+secs+'s (tik 🎙️ om te annuleren)', 'success');
   countdownTimer = setInterval(() => {
     secs--;
     if (secs > 0) {
-      setMicStatus(`✓ "${text}" — toevoegen in ${secs}s (tik 🎙️ om te annuleren)`, 'success');
+      setMicStatus('✓ "'+text+'" — toevoegen in '+secs+'s (tik 🎙️ om te annuleren)', 'success');
     }
   }, 1000);
   autoAddTimer = setTimeout(() => {
@@ -1507,18 +1521,24 @@ function setFilter(el, f) {
 }
 
 function openPersonenInstellingen() {
-  const el = document.getElementById('personen-invoer');
-  el.innerHTML = personen.map((p, i) => `
-    <div class="persoon-rij" id="persoon-rij-${i}">
-      <label class="foto-upload-label" title="Foto uploaden" id="foto-label-${i}">
-        <span id="foto-preview-${i}">${p.foto ? '<img src="' + p.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />' : '📷'}</span>
-        <input type="file" accept="image/*" onchange="verwerkFoto(event,${i})" />
-      </label>
-      <input class="persoon-input" value="${p.naam}" placeholder="Naam" maxlength="20" id="persoon-naam-${i}" />
-      <input type="color" value="${p.kleur}" class="persoon-kleur" id="persoon-kleur-${i}" />
-      <span>${personen.length > 1 ? '<button class="persoon-verwijder" onclick="verwijderPersoon(' + i + ')">&#10005;</button>' : ''}</span>
-    </div>`).join('');
-  document.getElementById('personen-modal').style.display = 'flex';
+  var el = document.getElementById('personen-invoer');
+  if (!el) return;
+  var html = '';
+  for (var i = 0; i < personen.length; i++) {
+    var p = personen[i];
+    html += '<div class="persoon-rij" id="persoon-rij-' + i + '">';
+    html += '<label class="foto-upload-label" title="Foto uploaden" id="foto-label-' + i + '">';
+    html += '<span id="foto-preview-' + i + '">' + (p.foto ? '<img src="' + p.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />' : '📷') + '</span>';
+    html += '<input type="file" accept="image/*" onchange="verwerkFoto(event,' + i + ')" />';
+    html += '</label>';
+    html += '<input class="persoon-input" value="' + esc(p.naam) + '" placeholder="Naam" oninput="updatePersoonNaam(' + i + ',this.value)" />';
+    html += '<input type="color" value="' + p.kleur + '" onchange="updatePersoonKleur(' + i + ',this.value)" style="width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0" />';
+    html += '<button onclick="verwijderPersoon(' + i + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+  var modal = document.getElementById('personen-modal');
+  if (modal) modal.style.display = 'flex';
 }
 
 function sluitPersonenModal(e) {
@@ -1612,25 +1632,29 @@ function toggleReceptPicker(i) {
   }
 }
 
-function renderReceptPicker(i) {
-  const lijst = document.getElementById('recept-picker-lijst-' + i);
+function renderReceptPicker(dagIdx) {
+  var lijst = document.getElementById('recept-picker-lijst-' + dagIdx);
   if (!lijst) return;
   if (!recepten.length) {
-    lijst.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);padding:8px">Nog geen recepten in je kookboek. Voeg eerst recepten toe via de 📖 Kookboek tab.</div>';
+    lijst.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);padding:8px">Nog geen recepten in je kookboek.</div>';
     return;
   }
-  const catLabel = { ontbijt:'🥐', lunch:'🥗', diner:'🍽️', snack:'🍿', dessert:'🍰', overig:'📦' };
-  lijst.innerHTML = recepten.map(r => {
-    const vidId = getYouTubeId(r.youtube);
-    const thumb = vidId ? getYouTubeThumbnail(vidId) : null;
-    return `<div class="recept-keuze" onclick="kiesRecept(${i},'${esc(r.naam)}','${r.id}')">
-      <span class="recept-keuze-thumb-wrap">${thumb ? '<img class="recept-keuze-thumb" src="' + thumb + '" />' : '<div class="recept-keuze-thumb" style="background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem">' + (catLabel[r.categorie]||'&#127869;') + '</div>'}</span>
-      <div>
-        <div class="recept-keuze-naam">${esc(r.naam)}</div>
-        <div class="recept-keuze-cat">${catLabel[r.categorie]||'📦'} ${r.categorie||'overig'}${r.tijd?' · ⏱ '+esc(r.tijd):''}</div>
-      </div>
-    </div>`;
-  }).join('');
+  var catLabel = { ontbijt:'🥐', lunch:'🥗', diner:'🍽️', snack:'🍿', dessert:'🍰', overig:'📦' };
+  var html = '';
+  for (var ri = 0; ri < recepten.length; ri++) {
+    var r = recepten[ri];
+    var vidId = getYouTubeId(r.youtube);
+    var thumb = vidId ? getYouTubeThumbnail(vidId) : null;
+    var thumbHtml = thumb
+      ? '<img class="recept-keuze-thumb" src="' + thumb + '" />'
+      : '<div class="recept-keuze-thumb" style="background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem">' + (catLabel[r.categorie] || '&#127869;') + '</div>';
+    html += '<div class="recept-keuze" onclick="kiesRecept(' + dagIdx + ',\'' + esc(r.naam) + '\',\'' + r.id + '\')">';
+    html += '<span class="recept-keuze-thumb-wrap">' + thumbHtml + '</span>';
+    html += '<div><div class="recept-keuze-naam">' + esc(r.naam) + '</div>';
+    html += '<div class="recept-keuze-cat">' + (catLabel[r.categorie] || '📦') + ' ' + (r.categorie || 'overig') + (r.tijd ? ' · ⏱ ' + esc(r.tijd) : '') + '</div>';
+    html += '</div></div>';
+  }
+  lijst.innerHTML = html;
 }
 
 async function kiesRecept(dagIdx, naam, receptId) {
@@ -1702,15 +1726,19 @@ function verwijderIngredient(i) {
 }
 
 function renderIngredientenInvoer() {
-  const el = document.getElementById('ingredienten-invoer');
+  var el = document.getElementById('ingredienten-invoer');
   if (!el) return;
-  el.innerHTML = tempIngredienten.map((ing, i) => `
-    <div class="ingredient-input-rij">
-      <input class="ingredient-input" value="${esc(ing)}" placeholder="bijv. 200g spaghetti"
-        oninput="tempIngredienten[${i}]=this.value"
-        onkeydown="if(event.key==='Enter'){event.preventDefault();voegIngredientToe()}" />
-      <button onclick="verwijderIngredient(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>
-    </div>`).join('');
+  var html = '';
+  for (var ii = 0; ii < tempIngredienten.length; ii++) {
+    var ing = tempIngredienten[ii];
+    html += '<div class="ingredient-input-rij">';
+    html += '<input class="ingredient-input" value="' + esc(ing) + '" placeholder="bijv. 200g spaghetti"';
+    html += ' oninput="tempIngredienten[' + ii + ']=this.value"';
+    html += ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();voegIngredientToe()}" />';
+    html += '<button onclick="verwijderIngredient(' + ii + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
 }
 
 function renderRecepten() {
@@ -1862,7 +1890,7 @@ async function slaReceptOp() {
   const editId = document.getElementById('recept-edit-id').value;
   const id = editId || 'recept-' + Date.now();
 
-  await window._set(window._ref(window._db, `gezinnen/${gezinsCode}/recepten/${id}`), {
+  await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), {
     id, naam,
     youtube,
     categorie: document.getElementById('recept-cat').value,
@@ -1878,11 +1906,11 @@ async function slaReceptOp() {
 
 async function verwijderRecept(id) {
   if (!confirm('Recept verwijderen?')) return;
-  await window._remove(window._ref(window._db, `gezinnen/${gezinsCode}/recepten/${id}`));
+  await window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id));
 }
 
 function toggleIngCheck(receptId, idx) {
-  const el = document.getElementById(`ingcheck-${receptId}-${idx}`);
+  const el = document.getElementById('ingcheck-' + receptId + '-' + idx);
   if (el) el.classList.toggle('checked');
   const checked = el ? el.classList.contains('checked') : false;
   if (el) el.textContent = checked ? '✓' : '';
@@ -1897,9 +1925,9 @@ async function voegAlleIngredientenToe(receptId) {
   items.unshift(...nieuweItems);
   setSyncStatus(true); await fbSave(items); setSyncStatus(false);
   // Toon bevestiging
-  const btn = document.querySelector(`#ing-${receptId} .btn-add-boodschappen`);
+  const btn = document.querySelector('#ing-' + receptId + ' .btn-add-boodschappen');
   if (btn) {
-    btn.textContent = `✅ ${nieuweItems.length} ingrediënten toegevoegd!`;
+    btn.textContent = '✅ ' + nieuweItems.length + ' ingrediënten toegevoegd!';
     btn.style.background = '#5a8f6d';
     setTimeout(() => { btn.innerHTML = '🛒 Alle ingrediënten op boodschappenlijst'; btn.style.background = ''; }, 3000);
   }
@@ -1911,7 +1939,7 @@ async function stuurIdee() {
   const tekst = document.getElementById('idee-tekst').value.trim();
   if (!tekst) return;
   // Gebruik registratienaam als beschikbaar, anders gezinscode
-  const regSnap = await new Promise(res => window._onValue(window._ref(window._db, `registraties/${gezinsCode}/naam`), res, {onlyOnce:true}));
+  const regSnap = await new Promise(res => window._onValue(window._ref(window._db, 'registraties/' + gezinsCode + '/naam'), res, {onlyOnce:true}));
   const naam = regSnap.val() || gezinsCode;
   const id = 'idee-' + Date.now();
   await window._set(window._ref(window._db, 'ideeen/' + id), { id, naam, tekst, status:'nieuw', timestamp: Date.now(), gezin: gezinsCode });
