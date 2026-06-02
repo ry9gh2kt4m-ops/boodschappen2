@@ -1023,13 +1023,26 @@ function toggleDag(i) {
 }
 
 async function saveDag(i) {
-  menu[getDagKey(i)] = document.getElementById('dag-input-'+i).value.trim();
-  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+  var val = document.getElementById('dag-input-' + i);
+  if (!val) return;
+  var gerecht = val.value.trim();
+  if (gerecht) {
+    menu[getDagKey(i)] = gerecht;
+  } else {
+    delete menu[getDagKey(i)];
+  }
+  renderMenu();
+  setSyncStatus(true);
+  try { await fbSaveMenu(menu); } catch(e) { console.log('saveDag fout:', e.message); }
+  setSyncStatus(false);
 }
 
 async function clearDag(i) {
   delete menu[getDagKey(i)];
-  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
+  renderMenu();
+  setSyncStatus(true);
+  try { await fbSaveMenu(menu); } catch(e) { console.log('clearDag fout:', e.message); }
+  setSyncStatus(false);
 }
 
 // ---- Voice ----
