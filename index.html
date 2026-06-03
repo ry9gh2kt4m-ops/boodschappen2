@@ -775,57 +775,19 @@ function fbListen() {
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     var data = snap.val();
     if (!data) { items = []; render(); return; }
-
     var vals = [];
-    var migratePromises = [];
-
-    // Verzamel alle items (zowel object als array/gemengd)
-    var rawItems = [];
-    if (Array.isArray(data)) {
-      for (var ai = 0; ai < data.length; ai++) {
-        if (data[ai] && data[ai].name) rawItems.push({ key: String(ai), item: data[ai] });
-      }
-    } else {
-      var ks = Object.keys(data);
-      for (var ki = 0; ki < ks.length; ki++) {
-        if (data[ks[ki]] && data[ks[ki]].name) rawItems.push({ key: ks[ki], item: data[ks[ki]] });
-      }
+    var ks = Object.keys(data);
+    for (var ki = 0; ki < ks.length; ki++) {
+      var item = data[ks[ki]];
+      if (item && item.name) vals.push(item);
     }
-
-    // Migreer numerieke keys naar string-keys
-    for (var ri = 0; ri < rawItems.length; ri++) {
-      var entry = rawItems[ri];
-      var item  = entry.item;
-      var key   = entry.key;
-      var isNumeric = /^\d+$/.test(key);
-
-      if (isNumeric) {
-        // Migreer: sla op met string-key, verwijder numerieke key
-        var newKey = 'i-' + key;
-        item.id = newKey;
-        try {
-          migratePromises.push(
-            window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newKey), item)
-          );
-          migratePromises.push(
-            window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key))
-          );
-        } catch(e) {}
-      } else {
-        // Zorg dat item.id overeenkomt met de key
-        if (!item.id) item.id = key;
-      }
-      vals.push(item);
-    }
-
     items = vals.sort(function(a,b) {
-      var ia = String(a.id).replace('i-','');
-      var ib = String(b.id).replace('i-','');
+      var ia = String(a.id||'').replace('i-','');
+      var ib = String(b.id||'').replace('i-','');
       return Number(ib) - Number(ia);
     });
     render();
   });
-
   unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
     menu = snap.val() || {};
     renderMenu();
@@ -833,17 +795,62 @@ function fbListen() {
 }
 
 // ---- Init ----
+function migreerNumeriekeBoodschappen(callback) {
+  var gedaan = false;
+  var unsub = window._onValue(getRef('boodschappen'), function(snap) {
+    if (gedaan) return;
+    gedaan = true;
+    // Unsub na korte delay om sync-problemen te vermijden
+    setTimeout(function(){ try{ unsub(); }catch(e){} }, 0);
+
+    var data = snap.val();
+    if (!data) { callback(); return; }
+
+    var ks = Object.keys(data);
+    var teVerplaatsen = [];
+    for (var ki = 0; ki < ks.length; ki++) {
+      if (/^\d+$/.test(ks[ki])) teVerplaatsen.push(ks[ki]);
+    }
+
+    if (teVerplaatsen.length === 0) { callback(); return; }
+
+    var promises = [];
+    for (var mi = 0; mi < teVerplaatsen.length; mi++) {
+      var oldKey = teVerplaatsen[mi];
+      var item   = data[oldKey];
+      if (!item || !item.name) continue;
+      var newKey = 'i-' + oldKey;
+      var migrItem = {
+        id: newKey, name: item.name, person: item.person || '',
+        done: item.done || false, qty: item.qty || 1,
+        cat: item.cat || 'overig', winkel: item.winkel || 'ah'
+      };
+      promises.push(window._set(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newKey), migrItem
+      ));
+      promises.push(window._remove(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + oldKey)
+      ));
+    }
+    Promise.all(promises).then(callback).catch(callback);
+  });
+}
 function initApp() {
   document.getElementById('gezin-naam').textContent = gezinsCode;
   document.getElementById('main-app').style.display = 'block';
-  isBeheerder = localStorage.getItem('beheerder')==='1' || gezinsCode==='familie-de-jong';
-  if (isBeheerder) { var adminBtn=document.getElementById('tab-admin'); if(adminBtn) adminBtn.style.display='flex'; }
+  isBeheerder = localStorage.getItem('beheerder') === '1' || gezinsCode === 'familie-de-jong';
+  if (isBeheerder) {
+    var adminBtn = document.getElementById('tab-admin');
+    if (adminBtn) adminBtn.style.display = 'flex';
+  }
   laadPersonen();
-  fbListen();
-  fbListenGeleerd();
-  fbListenRecepten();
-  fbListenIdeeen();
-  if (isBeheerder) fbListenRegistraties();
+  migreerNumeriekeBoodschappen(function() {
+    fbListen();
+    fbListenGeleerd();
+    fbListenRecepten();
+    fbListenIdeeen();
+    if (isBeheerder) fbListenRegistraties();
+  });
   setupMic();
   setSyncStatus(false);
 }
@@ -893,40 +900,61 @@ function setFilter(btn, f) {
 async function addItem() {
   var name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  var id = 'i-' + Date.now();
+  var ts  = String(Date.now());
+  var id  = 'i-' + ts;
   var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
   var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
-  var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
+  var newItem = {
+    id: id, name: name, person: currentPerson,
+    done: false, qty: 1, cat: cat, winkel: winkel
+  };
   items.unshift(newItem);
   render();
   document.getElementById('item-input').value = '';
   if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
   setSyncStatus(true);
   try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), newItem);
-  } catch(e) { console.log('addItem fout:', e.message); }
+    await window._set(
+      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id),
+      newItem
+    );
+  } catch(e) {
+    console.log('addItem opslaan mislukt:', e.message);
+  }
   setSyncStatus(false);
 }
 
 async function toggleItem(id) {
   var item = null;
   for (var ti = 0; ti < items.length; ti++) {
-    if (items[ti].id === id) { items[ti].done = !items[ti].done; item = items[ti]; break; }
+    if (String(items[ti].id) === String(id)) {
+      items[ti].done = !items[ti].done;
+      item = items[ti];
+      break;
+    }
   }
   render();
   if (!item) return;
   setSyncStatus(true);
   try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item);
+    await window._set(
+      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + String(id)),
+      item
+    );
   } catch(e) {}
   setSyncStatus(false);
 }
 
 async function deleteItem(id) {
-  items = items.filter(function(i){ return i.id !== id; });
+  var sid = String(id);
+  items = items.filter(function(i){ return String(i.id) !== sid; });
   render();
   setSyncStatus(true);
-  try { await fbDelete(id); } catch(e) {}
+  try {
+    await window._remove(
+      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid)
+    );
+  } catch(e) {}
   setSyncStatus(false);
 }
 
@@ -949,13 +977,16 @@ async function changeQty(id, delta) {
 }
 
 async function clearDone() {
-  var del = items.filter(function(i){ return i.done; });
-  items = items.filter(function(i){ return !i.done; });
+  var teDel = items.filter(function(i){ return i.done; });
+  items     = items.filter(function(i){ return !i.done; });
   render();
   setSyncStatus(true);
   try {
-    for (var di = 0; di < del.length; di++) {
-      await fbDelete(del[di].id);
+    for (var di = 0; di < teDel.length; di++) {
+      var sid = String(teDel[di].id);
+      await window._remove(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid)
+      );
     }
   } catch(e) {}
   setSyncStatus(false);
