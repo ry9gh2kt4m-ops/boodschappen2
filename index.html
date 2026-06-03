@@ -755,23 +755,77 @@ function getRef(pad) {
 }
 
 function fbSave(itemsLijst) {
-  var obj = {};
+  // Sla elk item individueel op met string-sleutel
+  var promises = [];
   for (var si = 0; si < itemsLijst.length; si++) {
-    obj[itemsLijst[si].id] = itemsLijst[si];
+    var item = itemsLijst[si];
+    var key = String(item.id);
+    promises.push(window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key), item));
   }
-  return window._set(getRef('boodschappen'), obj);
+  return Promise.all(promises);
 }
 function fbDelete(id) {
   return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
 }
-function fbSaveMenu(m) { return window._set(getRef('weekmenu'), m); }
+async function fbSaveMenu(m) {
+  return window._set(getRef('weekmenu'), m || {});
+}
 
 function fbListen() {
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     var data = snap.val();
-    items = data ? Object.values(data).sort(function(a,b){return b.id-a.id;}) : [];
+    if (!data) { items = []; render(); return; }
+
+    var vals = [];
+    var migratePromises = [];
+
+    // Verzamel alle items (zowel object als array/gemengd)
+    var rawItems = [];
+    if (Array.isArray(data)) {
+      for (var ai = 0; ai < data.length; ai++) {
+        if (data[ai] && data[ai].name) rawItems.push({ key: String(ai), item: data[ai] });
+      }
+    } else {
+      var ks = Object.keys(data);
+      for (var ki = 0; ki < ks.length; ki++) {
+        if (data[ks[ki]] && data[ks[ki]].name) rawItems.push({ key: ks[ki], item: data[ks[ki]] });
+      }
+    }
+
+    // Migreer numerieke keys naar string-keys
+    for (var ri = 0; ri < rawItems.length; ri++) {
+      var entry = rawItems[ri];
+      var item  = entry.item;
+      var key   = entry.key;
+      var isNumeric = /^\d+$/.test(key);
+
+      if (isNumeric) {
+        // Migreer: sla op met string-key, verwijder numerieke key
+        var newKey = 'i-' + key;
+        item.id = newKey;
+        try {
+          migratePromises.push(
+            window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newKey), item)
+          );
+          migratePromises.push(
+            window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key))
+          );
+        } catch(e) {}
+      } else {
+        // Zorg dat item.id overeenkomt met de key
+        if (!item.id) item.id = key;
+      }
+      vals.push(item);
+    }
+
+    items = vals.sort(function(a,b) {
+      var ia = String(a.id).replace('i-','');
+      var ib = String(b.id).replace('i-','');
+      return Number(ib) - Number(ia);
+    });
     render();
   });
+
   unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
     menu = snap.val() || {};
     renderMenu();
@@ -839,7 +893,7 @@ function setFilter(btn, f) {
 async function addItem() {
   var name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  var id = Date.now();
+  var id = 'i-' + Date.now();
   var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
   var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
   var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
@@ -848,17 +902,23 @@ async function addItem() {
   document.getElementById('item-input').value = '';
   if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
   setSyncStatus(true);
-  try { await fbSave(items); } catch(e) { console.log('fbSave fout:', e.message); }
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), newItem);
+  } catch(e) { console.log('addItem fout:', e.message); }
   setSyncStatus(false);
 }
 
 async function toggleItem(id) {
+  var item = null;
   for (var ti = 0; ti < items.length; ti++) {
-    if (items[ti].id === id) { items[ti].done = !items[ti].done; break; }
+    if (items[ti].id === id) { items[ti].done = !items[ti].done; item = items[ti]; break; }
   }
   render();
+  if (!item) return;
   setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item);
+  } catch(e) {}
   setSyncStatus(false);
 }
 
@@ -871,15 +931,20 @@ async function deleteItem(id) {
 }
 
 async function changeQty(id, delta) {
+  var item = null;
   for (var qi = 0; qi < items.length; qi++) {
     if (items[qi].id === id) {
       items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
+      item = items[qi];
       break;
     }
   }
   render();
+  if (!item) return;
   setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item);
+  } catch(e) {}
   setSyncStatus(false);
 }
 
@@ -1260,7 +1325,7 @@ async function wisselWinkel(id) {
   await slaGeleerdeWinkelOp(item.name, nieuweWinkel);
   render();
   setSyncStatus(true);
-  try { await fbSave(items); } finally { setSyncStatus(false); }
+  try { var _witem=null; for(var _wi=0;_wi<items.length;_wi++){if(items[_wi].id===id){_witem=items[_wi];break;}} if(_witem) await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+id),_witem); } finally { setSyncStatus(false); }
 }
 
 async function changeCat(id, cat) {
@@ -1290,9 +1355,17 @@ function fbListenGeleerd() {
 
 function fbListenRecepten() {
   if (unsubRecepten) unsubRecepten();
-  unsubRecepten = window._onValue(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'), function(snap) {
-    var data = snap.val() || {};
-    recepten = Object.values(data).sort(function(a,b){return b.aangemaakt-a.aangemaakt;});
+  unsubRecepten = window._onValue(window._ref(window._db,
+    'gezinnen/' + gezinsCode + '/recepten'), function(snap) {
+    var data = snap.val();
+    if (!data || typeof data !== 'object') { recepten = []; renderRecepten(); return; }
+    var vals = [];
+    var ks = Object.keys(data);
+    for (var ki = 0; ki < ks.length; ki++) {
+      var r = data[ks[ki]];
+      if (r && r.naam) vals.push(r);
+    }
+    recepten = vals.sort(function(a,b){ return (b.aangemaakt||0)-(a.aangemaakt||0); });
     renderRecepten();
   });
 }
@@ -1799,7 +1872,7 @@ function openReceptForm(id) {
       document.getElementById('recept-personen').value = r.personen || '';
       document.getElementById('recept-tijd').value = r.tijd || '';
       document.getElementById('recept-cat').value = r.categorie || 'diner';
-      tempIngredienten = r.ingredienten ? [...r.ingredienten] : [];
+      tempIngredienten = r.ingredienten ? r.ingredienten.slice() : [];
     }
   }
   document.getElementById('recept-modal').style.display = 'flex';
@@ -1867,13 +1940,13 @@ function renderRecepten() {
   var html = '';
   for (var ri = 0; ri < gefilterd.length; ri++) {
     var r = gefilterd[ri];
-    var vidId   = getYouTubeId(r.youtube);
-    var platform = detectPlatformInfo(r.youtube);
+    var vidId   = r.youtube ? getYouTubeId(r.youtube) : null;
+    var platform = r.youtube ? detectPlatformInfo(r.youtube) : null;
     var thumb   = vidId ? getYouTubeThumbnail(vidId) : null;
     var platKleur = (platform && platform.kleur) ? platform.kleur : 'var(--green)';
     var platLabel = (platform && platform.label) ? platform.label : '';
     var platEmoji = platLabel ? platLabel.split(' ')[0] : '🔗';
-    var heeftLink = !!r.youtube;
+    var heeftLink = !!(r.youtube && r.youtube.length > 5);
 
     html += '<div class="recept-card" id="recept-' + r.id + '">';
 
@@ -1980,30 +2053,57 @@ function speelAf(receptId, videoId) {
 }
 
 async function slaReceptOp() {
-  var naam = document.getElementById('recept-naam').value.trim();
+  var naam    = document.getElementById('recept-naam').value.trim();
   var youtube = document.getElementById('recept-youtube').value.trim();
-  var errEl = document.getElementById('recept-error');
+  var errEl   = document.getElementById('recept-error');
   errEl.style.display = 'none';
 
-  if (!naam) { errEl.textContent = 'Vul een naam in.'; errEl.style.display = 'block'; return; }
-  if (!youtube) { errEl.textContent = 'Vul een video of recept link in.'; errEl.style.display = 'block'; return; }
-  if (!youtube.startsWith('http')) { errEl.textContent = 'Plak een volledige link (beginnend met https://).'; errEl.style.display = 'block'; return; }
+  if (!naam) {
+    errEl.textContent = 'Vul een naam in.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (youtube && !youtube.startsWith('http')) {
+    errEl.textContent = 'Plak een volledige link (beginnend met https://).';
+    errEl.style.display = 'block';
+    return;
+  }
 
   var editId = document.getElementById('recept-edit-id').value;
-  var id = editId || 'recept-' + Date.now();
+  var id     = editId || ('recept-' + Date.now());
 
-  await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), {
-    id, naam,
-    youtube,
-    categorie: document.getElementById('recept-cat').value,
+  // Bewaar aangemaakt-tijdstip van bestaand recept
+  var oudeAangemaakt = Date.now();
+  if (editId) {
+    for (var ri = 0; ri < recepten.length; ri++) {
+      if (recepten[ri].id === editId) { oudeAangemaakt = recepten[ri].aangemaakt; break; }
+    }
+  }
+
+  var ingLijst = [];
+  for (var ii = 0; ii < tempIngredienten.length; ii++) {
+    if (tempIngredienten[ii].trim()) ingLijst.push(tempIngredienten[ii].trim());
+  }
+
+  var receptObj = {
+    id:           id,
+    naam:         naam,
+    youtube:      youtube,
+    categorie:    document.getElementById('recept-cat').value,
     beschrijving: document.getElementById('recept-beschrijving').value.trim(),
-    personen: document.getElementById('recept-personen').value || null,
-    tijd: document.getElementById('recept-tijd').value.trim() || null,
-    ingredienten: tempIngredienten.filter(function(i){ return i.trim(); }),
-    aangemaakt: editId ? ((function(){ var _r = recepten.find(function(r){return r.id===editId;}); return _r ? _r.aangemaakt : Date.now(); })()) : Date.now()
-  });
+    personen:     document.getElementById('recept-personen').value || null,
+    tijd:         document.getElementById('recept-tijd').value.trim() || null,
+    ingredienten: ingLijst,
+    aangemaakt:   oudeAangemaakt
+  };
 
-  document.getElementById('recept-modal').style.display = 'none';
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
+    document.getElementById('recept-modal').style.display = 'none';
+  } catch(e) {
+    errEl.textContent = 'Opslaan mislukt: ' + e.message;
+    errEl.style.display = 'block';
+  }
 }
 
 async function verwijderRecept(id) {
@@ -2854,7 +2954,7 @@ async function inspZoekRecepten() {
   }
 }
 
-function inspToonResultaten(recepten) {
+function inspToonResultaten(receptenLijst) {
   var si = document.getElementById('insp-stap-inhoud');
   var el = document.getElementById('insp-resultaten');
   if (!el) return;
@@ -2866,22 +2966,29 @@ function inspToonResultaten(recepten) {
   var nKl = { Makkelijk:'#2e7d32', Gemiddeld:'#e65100', Uitdagend:'#c62828' };
 
   var header = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-    + '<div style="font-size:0.82rem;color:var(--muted)">' + recepten.length + ' recepten gevonden'
+    + '<div style="font-size:0.82rem;color:var(--muted)">' + receptenLijst.length + ' recepten'
     + ((_inspData.keuken && _inspData.keuken !== 'verrassing') ? ' · <strong>' + _inspData.keuken + '</strong>' : '')
     + ' · <strong>' + _inspData.personen + ' pers.</strong></div>'
     + '<button onclick="inspInit()" style="font-size:0.75rem;background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:DM Sans,sans-serif;color:var(--muted)">↺ Opnieuw</button>'
     + '</div>';
 
-  var html = header;
-  recepten.forEach(function(r, idx) {
-    var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent(r.naam + ' recept'));
-    var heeftIng = r.ingredienten && r.ingredienten.length > 0;
+  var dagNamen = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+  var dagOpties = '<option value="">— Dag —</option>';
+  for (var di = 0; di < dagNamen.length; di++) {
+    dagOpties += '<option value="' + di + '">' + dagNamen[di] + '</option>';
+  }
 
+  var html = header;
+  for (var idx = 0; idx < receptenLijst.length; idx++) {
+    var r = receptenLijst[idx];
+    var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
     html += '<div class="recept-card-insp" id="rci-' + idx + '">';
-    html += '<div onclick="inspToggleRecept(' + idx + ')" style="display:flex;align-items:flex-start;gap:12px">';
+
+    // Header (altijd zichtbaar)
+    html += '<div onclick="inspToggleRecept(' + idx + ')" style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">';
     html += '<div style="flex:1">';
-    html += '<div style="font-family:\'Playfair Display\',serif;font-size:0.98rem;margin-bottom:5px">' + esc(r.naam) + '</div>';
-    html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">';
+    html += '<div style="font-family:\'Playfair Display\',serif;font-size:0.98rem;margin-bottom:5px">' + esc(r.naam||'') + '</div>';
+    html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px">';
     if (r.tijd)   html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(--green-pale);color:var(--green)">⏱ ' + esc(r.tijd) + '</span>';
     if (r.niveau) html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:' + (nBg[r.niveau]||'#f5f5f5') + ';color:' + (nKl[r.niveau]||'#666') + '">' + esc(r.niveau) + '</span>';
     html += '</div>';
@@ -2890,50 +2997,39 @@ function inspToonResultaten(recepten) {
     html += '<div style="font-size:1.1rem;color:var(--muted);flex-shrink:0" id="rci-arrow-' + idx + '">▸</div>';
     html += '</div>';
 
-    // Uitklapbaar deel
+    // Detail (ingeklapt)
     html += '<div id="rci-detail-' + idx + '" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">';
 
     // Ingrediënten
-    if (heeftIng) {
+    if (r.ingredienten && r.ingredienten.length) {
       html += '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
       html += '<div style="margin-bottom:12px">';
-      r.ingredienten.forEach(function(ing) {
-        html += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span><span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
-      });
+      for (var ii = 0; ii < r.ingredienten.length; ii++) {
+        var ing = r.ingredienten[ii];
+        html += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span>'
+          + '<span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
+      }
       html += '</div>';
-
-      // Toevoegen aan mandje knop
-      html += '<button onclick="inspVoegAllesToe(' + idx + ',this)" data-naam="' + esc(r.naam) + '" data-idx="' + idx + '" '
-        + 'style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-bottom:10px">'
-        + '🛒 Voeg alle ingrediënten toe aan boodschappenlijst</button>';
+      html += '<button onclick="inspVoegAllesToe(' + idx + ',this)" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">🛒 Voeg ingrediënten toe aan boodschappenlijst</button>';
     } else {
-      // Ingrediënten nog ophalen
-      html += '<button onclick="inspHaalIngredienten(' + idx + ',\'' + esc(r.naam).replace(/'/g,"\\'") + '\')" '
-        + 'style="width:100%;padding:11px;border:1.5px dashed var(--green);border-radius:10px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-bottom:10px">'
-        + '📋 Laad ingrediënten (' + _inspData.personen + ' pers.)</button>';
-    }
-    html += '<div id="rci-ing-status-' + idx + '"></div>';
-
-    // Bereidingsstappen
-    if (r.stappen && r.stappen.length) {
-      html += '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px;margin-top:4px">👨‍🍳 Bereidingsstappen</div>';
-      r.stappen.forEach(function(stap, si) {
-        html += '<div style="display:flex;gap:10px;margin-bottom:8px;font-size:0.83rem">'
-          + '<div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:white;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (si+1) + '</div>'
-          + '<div style="color:var(--ink);line-height:1.5">' + esc(stap) + '</div></div>';
-      });
+      html += '<button onclick="inspHaalIngredienten(' + idx + ',\'' + esc(r.naam||'').replace(/'/g, "\\'") + '\')" style="width:100%;padding:10px;border:1.5px dashed var(--green);border-radius:10px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">📋 Laad ingrediënten (' + _inspData.personen + ' pers.)</button>';
     }
 
-    // YouTube knop
-    html += '<a href="' + esc(yt) + '" target="_blank" style="display:block;text-align:center;text-decoration:none;padding:9px;border-radius:10px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;margin-top:4px">▶ Bekijk op YouTube</a>';
+    // Dag koppelen + opslaan in rij
+    html += '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
+    html += '<select id="rci-dag-' + idx + '" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:DM Sans,sans-serif;font-size:0.82rem;background:white">' + dagOpties + '</select>';
+    html += '<button onclick="inspKoppelAanDag(' + idx + ')" style="padding:8px 14px;border:none;border-radius:8px;background:#5bb76e;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📅 Plan</button>';
+    html += '<button onclick="inspSlaReceptOp(' + idx + ',this)" style="padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">💾 Bewaar</button>';
+    html += '</div>';
+    html += '<div id="rci-status-' + idx + '" style="font-size:0.78rem;color:var(--green);margin-bottom:6px"></div>';
 
-    html += '</div>'; // rci-detail
-    html += '</div>'; // recept-card-insp
-  });
+    // YouTube
+    html += '<a href="' + esc(yt) + '" target="_blank" style="display:block;text-align:center;text-decoration:none;padding:9px;border-radius:10px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600">▶ Bekijk op YouTube</a>';
 
-  // Sla recepten op als globale var voor gebruik door inspVoegAllesToe / inspHaalIngredienten
-  window._inspRecepten = recepten;
+    html += '</div></div>';
+  }
 
+  window._inspRecepten = receptenLijst;
   el.innerHTML = html;
 }
 
@@ -3026,6 +3122,55 @@ function inspVoegAllesToe(idx, btn) {
   }).catch(function(e) {
     if (btn) { btn.textContent = '❌ Fout bij opslaan'; btn.disabled = false; }
   });
+}
+
+async function inspKoppelAanDag(idx) {
+  var r = window._inspRecepten && window._inspRecepten[idx];
+  if (!r) return;
+  var sel = document.getElementById('rci-dag-' + idx);
+  if (!sel || sel.value === '') {
+    var status = document.getElementById('rci-status-' + idx);
+    if (status) status.innerHTML = '<span style="color:var(--red)">Kies eerst een dag</span>';
+    return;
+  }
+  var dagIdx = parseInt(sel.value);
+  var key = getDagKey(dagIdx);
+  menu[key] = r.naam;
+  var status = document.getElementById('rci-status-' + idx);
+  if (status) status.innerHTML = '📅 Gepland voor ' + ['ma','di','wo','do','vr','za','zo'][dagIdx] + '!';
+  try { await fbSaveMenu(menu); } catch(e) {}
+}
+
+async function inspSlaReceptOp(idx, btn) {
+  var r = window._inspRecepten && window._inspRecepten[idx];
+  if (!r) return;
+  var id = 'recept-' + Date.now();
+  var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
+  var ingLijst = [];
+  if (r.ingredienten) {
+    for (var ii = 0; ii < r.ingredienten.length; ii++) {
+      var ing = r.ingredienten[ii];
+      var ingStr = (ing.hoeveelheid ? ing.hoeveelheid + ' ' : '') + (ing.eenheid ? ing.eenheid + ' ' : '') + (ing.naam || '');
+      ingLijst.push(ingStr.trim());
+    }
+  }
+  var receptObj = {
+    id: id, naam: r.naam, youtube: yt,
+    categorie: _inspData.maaltijd || 'diner',
+    beschrijving: r.omschr || '',
+    personen: String(_inspData.personen || 4),
+    tijd: r.tijd || null,
+    ingredienten: ingLijst,
+    aangemaakt: Date.now()
+  };
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
+    if (btn) { btn.textContent = '✅ Bewaard!'; btn.disabled = true; btn.style.background = '#e8f5e9'; }
+    var status = document.getElementById('rci-status-' + idx);
+    if (status) status.innerHTML = '✅ Opgeslagen in kookboek!';
+  } catch(e) {
+    if (btn) btn.textContent = '❌ Mislukt';
+  }
 }
 </script>
 
