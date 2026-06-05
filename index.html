@@ -1274,9 +1274,12 @@ function detectWinkel(naam) {
 }
 
 async function slaGeleerdeCategorie(naam, cat) {
+  if (!naam || !cat) return;
   var key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
   geleerdeCategorieen[key] = cat;
-  await window._set(getRef('geleerde_cats/' + key), cat);
+  try {
+    await window._set(getRef('geleerde_cats/' + key), cat);
+  } catch(e) { console.log('slaGeleerdeCategorie fout:', e.message); }
 }
 
 async function wisselWinkel(id) {
@@ -1293,12 +1296,21 @@ async function wisselWinkel(id) {
 }
 
 async function changeCat(id, cat) {
+  var itemNaam = '';
   for (var ci = 0; ci < items.length; ci++) {
-    if (items[ci].id === id) { items[ci].cat = cat; break; }
+    if (items[ci].id === id) {
+      itemNaam = items[ci].name;
+      items[ci].cat = cat;
+      break;
+    }
   }
   render();
   setSyncStatus(true);
   try { await fbSave(items); } catch(e) {}
+  // Sla geleerde categorie op zodat volgende keer automatisch correct
+  if (itemNaam) {
+    try { await slaGeleerdeCategorie(itemNaam, cat); } catch(e) {}
+  }
   setSyncStatus(false);
 }
 
@@ -1312,20 +1324,25 @@ function fbListenGeleerd() {
 }
 
 function fbListenRecepten() {
-  if (unsubRecepten) unsubRecepten();
-  unsubRecepten = window._onValue(window._ref(window._db,
-    'gezinnen/' + gezinsCode + '/recepten'), function(snap) {
-    var data = snap.val();
-    if (!data || typeof data !== 'object') { recepten = []; renderRecepten(); return; }
-    var vals = [];
-    var ks = Object.keys(data);
-    for (var ki = 0; ki < ks.length; ki++) {
-      var r = data[ks[ki]];
-      if (r && r.naam) vals.push(r);
+  window._onValue(
+    window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'),
+    function(snap) {
+      var data = snap.val();
+      if (!data || typeof data !== 'object') {
+        recepten = [];
+        renderRecepten();
+        return;
+      }
+      var vals = [];
+      var ks = Object.keys(data);
+      for (var ki = 0; ki < ks.length; ki++) {
+        var r = data[ks[ki]];
+        if (r && r.naam) vals.push(r);
+      }
+      recepten = vals.sort(function(a,b){ return (b.aangemaakt||0) - (a.aangemaakt||0); });
+      renderRecepten();
     }
-    recepten = vals.sort(function(a,b){ return (b.aangemaakt||0)-(a.aangemaakt||0); });
-    renderRecepten();
-  });
+  );
 }
 
 function fbListenIdeeen() {
@@ -1753,15 +1770,18 @@ function toggleVerledenDagen() {
   renderMenu();
 }
 
-function toggleReceptPicker(i) {
-  var picker = document.getElementById('recept-picker-' + i);
+function toggleReceptPicker(dagIdx) {
+  var picker = document.getElementById('recept-picker-' + dagIdx);
   if (!picker) return;
-  var isOpen = picker.classList.contains('open');
-  // Sluit alle pickers
-  var _rp = document.querySelectorAll('.recept-picker'); for (var _rpi=0;_rpi<_rp.length;_rpi++) _rp[_rpi].classList.remove('open');;
+  var isOpen = picker.style.display === 'block';
+  // Sluit alle pickers eerst
+  for (var di = 0; di < DAGEN.length; di++) {
+    var p = document.getElementById('recept-picker-' + di);
+    if (p) p.style.display = 'none';
+  }
   if (!isOpen) {
-    picker.classList.add('open');
-    renderReceptPicker(i);
+    picker.style.display = 'block';
+    renderReceptPicker(dagIdx);
   }
 }
 
@@ -1769,7 +1789,7 @@ function renderReceptPicker(dagIdx) {
   var lijst = document.getElementById('recept-picker-lijst-' + dagIdx);
   if (!lijst) return;
   if (!recepten.length) {
-    lijst.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);padding:8px">Nog geen recepten in je kookboek.</div>';
+    lijst.innerHTML = '<div style="padding:10px;font-size:0.82rem;color:var(--muted)">Geen recepten in kookboek. Voeg eerst recepten toe via 📖 Kookboek.</div>';
     return;
   }
   var catLabel = { ontbijt:'🥐', lunch:'🥗', diner:'🍽️', snack:'🍿', dessert:'🍰', overig:'📦' };
@@ -1779,28 +1799,27 @@ function renderReceptPicker(dagIdx) {
     var vidId = getYouTubeId(r.youtube);
     var thumb = vidId ? getYouTubeThumbnail(vidId) : null;
     var thumbHtml = thumb
-      ? '<img class="recept-keuze-thumb" src="' + thumb + '" />'
-      : '<div class="recept-keuze-thumb" style="background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.2rem">' + (catLabel[r.categorie] || '&#127869;') + '</div>';
-    html += '<div class="recept-keuze" onclick="kiesRecept(' + dagIdx + ',\'' + esc(r.naam) + '\',\'' + r.id + '\')">';
-    html += '<span class="recept-keuze-thumb-wrap">' + thumbHtml + '</span>';
-    html += '<div><div class="recept-keuze-naam">' + esc(r.naam) + '</div>';
-    html += '<div class="recept-keuze-cat">' + (catLabel[r.categorie] || '📦') + ' ' + (r.categorie || 'overig') + (r.tijd ? ' · ⏱ ' + esc(r.tijd) : '') + '</div>';
+      ? '<img src="' + thumb + '" style="width:40px;height:40px;object-fit:cover;border-radius:8px;flex-shrink:0" />'
+      : '<div style="width:40px;height:40px;border-radius:8px;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">' + (catLabel[r.categorie] || '🍽️') + '</div>';
+    html += '<div onclick="kiesRecept(' + dagIdx + ',\'' + esc(r.naam).replace(/'/g,"&#39;") + '\',\'' + r.id + '\')" '
+      + 'style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border);cursor:pointer;active:background:#f5f5f5">';
+    html += thumbHtml;
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:0.88rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.naam) + '</div>';
+    html += '<div style="font-size:0.72rem;color:var(--muted)">' + (catLabel[r.categorie]||'📦') + ' ' + (r.categorie||'') + (r.tijd ? ' · ⏱ ' + esc(r.tijd) : '') + '</div>';
     html += '</div></div>';
   }
   lijst.innerHTML = html;
 }
 
 async function kiesRecept(dagIdx, naam, receptId) {
-  // Vul naam in het invoerveld
-  var input = document.getElementById('dag-input-' + dagIdx);
-  if (input) input.value = naam;
-  // Sla direct op inclusief receptId voor link
   var key = getDagKey(dagIdx);
   menu[key] = naam;
-  menu[key + '_receptId'] = receptId;
-  setSyncStatus(true); await fbSaveMenu(menu); setSyncStatus(false);
-  // Sluit picker
-  var _rp=document.querySelectorAll('.recept-picker');for(var _rpi=0;_rpi<_rp.length;_rpi++)_rp[_rpi].classList.remove('open');;
+  if (receptId) menu[key + '_receptId'] = receptId;
+  setSyncStatus(true);
+  try { await fbSaveMenu(menu); } catch(e) { console.log('kiesRecept fout:', e.message); }
+  setSyncStatus(false);
+  renderMenu();
 }
 
 function getYouTubeId(url) {
