@@ -755,26 +755,14 @@ function getRef(pad) {
 }
 
 function fbSave(itemsLijst) {
-  var promises = [];
+  var obj = {};
   for (var si = 0; si < itemsLijst.length; si++) {
-    var item = itemsLijst[si];
-    var key = String(item.id || '');
-    if (!key) continue;
-    // Zorg altijd voor string prefix - NOOIT numerieke key naar Firebase
-    if (/^\d+$/.test(key)) key = 'i-' + key;
-    item.id = key; // update ook het item zelf
-    promises.push(window._set(
-      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key), item
-    ));
+    obj[itemsLijst[si].id] = itemsLijst[si];
   }
-  return Promise.all(promises);
+  return window._set(getRef('boodschappen'), obj);
 }
 function fbDelete(id) {
-  var sid = String(id);
-  if (/^\d+$/.test(sid)) sid = 'i-' + sid;
-  return window._remove(
-    window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid)
-  );
+  return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
 }
 async function fbSaveMenu(m) {
   return window._set(getRef('weekmenu'), m || {});
@@ -784,17 +772,9 @@ function fbListen() {
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     var data = snap.val();
     if (!data) { items = []; render(); return; }
-    var vals = [];
-    var ks = Object.keys(data);
-    for (var ki = 0; ki < ks.length; ki++) {
-      var item = data[ks[ki]];
-      if (item && item.name) vals.push(item);
-    }
-    items = vals.sort(function(a,b) {
-      var ia = String(a.id||'').replace('i-','');
-      var ib = String(b.id||'').replace('i-','');
-      return Number(ib) - Number(ia);
-    });
+    var vals = Object.values(data);
+    vals.sort(function(a,b){ return (b.id||0) - (a.id||0); });
+    items = vals;
     render();
   });
   unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
@@ -804,46 +784,7 @@ function fbListen() {
 }
 
 // ---- Init ----
-function migreerNumeriekeBoodschappen(callback) {
-  var gedaan = false;
-  var unsub = window._onValue(getRef('boodschappen'), function(snap) {
-    if (gedaan) return;
-    gedaan = true;
-    // Unsub na korte delay om sync-problemen te vermijden
-    setTimeout(function(){ try{ unsub(); }catch(e){} }, 0);
 
-    var data = snap.val();
-    if (!data) { callback(); return; }
-
-    var ks = Object.keys(data);
-    var teVerplaatsen = [];
-    for (var ki = 0; ki < ks.length; ki++) {
-      if (/^\d+$/.test(ks[ki])) teVerplaatsen.push(ks[ki]);
-    }
-
-    if (teVerplaatsen.length === 0) { callback(); return; }
-
-    var promises = [];
-    for (var mi = 0; mi < teVerplaatsen.length; mi++) {
-      var oldKey = teVerplaatsen[mi];
-      var item   = data[oldKey];
-      if (!item || !item.name) continue;
-      var newKey = 'i-' + oldKey;
-      var migrItem = {
-        id: newKey, name: item.name, person: item.person || '',
-        done: item.done || false, qty: item.qty || 1,
-        cat: item.cat || 'overig', winkel: item.winkel || 'ah'
-      };
-      promises.push(window._set(
-        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + newKey), migrItem
-      ));
-      promises.push(window._remove(
-        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + oldKey)
-      ));
-    }
-    Promise.all(promises).then(callback).catch(callback);
-  });
-}
 function initApp() {
   document.getElementById('gezin-naam').textContent = gezinsCode;
   document.getElementById('main-app').style.display = 'block';
@@ -853,13 +794,11 @@ function initApp() {
     if (adminBtn) adminBtn.style.display = 'flex';
   }
   laadPersonen();
-  migreerNumeriekeBoodschappen(function() {
-    fbListen();
-    fbListenGeleerd();
-    fbListenRecepten();
-    fbListenIdeeen();
-    if (isBeheerder) fbListenRegistraties();
-  });
+  fbListen();
+  fbListenGeleerd();
+  fbListenRecepten();
+  fbListenIdeeen();
+  if (isBeheerder) fbListenRegistraties();
   setupMic();
   setSyncStatus(false);
 }
@@ -909,96 +848,55 @@ function setFilter(btn, f) {
 async function addItem() {
   var name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  var ts  = String(Date.now());
-  var id  = 'i-' + ts;
+  var id = Date.now();
   var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
   var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
-  var newItem = {
-    id: id, name: name, person: currentPerson,
-    done: false, qty: 1, cat: cat, winkel: winkel
-  };
+  var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
   items.unshift(newItem);
   render();
   document.getElementById('item-input').value = '';
   if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
   setSyncStatus(true);
-  try {
-    await window._set(
-      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id),
-      newItem
-    );
-  } catch(e) {
-    console.log('addItem opslaan mislukt:', e.message);
-  }
+  try { await fbSave(items); } catch(e) { console.log('addItem fout:', e.message); }
   setSyncStatus(false);
 }
 
 async function toggleItem(id) {
-  var item = null;
   for (var ti = 0; ti < items.length; ti++) {
-    if (String(items[ti].id) === String(id)) {
-      items[ti].done = !items[ti].done;
-      item = items[ti];
-      break;
-    }
+    if (items[ti].id === id) { items[ti].done = !items[ti].done; break; }
   }
   render();
-  if (!item) return;
   setSyncStatus(true);
-  try {
-    await window._set(
-      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + String(id)),
-      item
-    );
-  } catch(e) {}
+  try { await fbSave(items); } catch(e) {}
   setSyncStatus(false);
 }
 
 async function deleteItem(id) {
-  var sid = String(id);
-  items = items.filter(function(i){ return String(i.id) !== sid; });
+  items = items.filter(function(i){ return i.id !== id; });
   render();
   setSyncStatus(true);
-  try {
-    await window._remove(
-      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid)
-    );
-  } catch(e) {}
+  try { await fbDelete(id); } catch(e) {}
   setSyncStatus(false);
 }
 
 async function changeQty(id, delta) {
-  var sid = String(id);
   for (var qi = 0; qi < items.length; qi++) {
-    if (String(items[qi].id) === sid) {
+    if (items[qi].id === id) {
       items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
-      render();
-      setSyncStatus(true);
-      try {
-        await window._set(
-          window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid),
-          items[qi]
-        );
-      } catch(e) {}
-      setSyncStatus(false);
-      return;
+      break;
     }
   }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
 }
 
 async function clearDone() {
-  var teDel = items.filter(function(i){ return i.done; });
-  items     = items.filter(function(i){ return !i.done; });
+  items = items.filter(function(i){ return !i.done; });
   render();
   setSyncStatus(true);
-  try {
-    for (var di = 0; di < teDel.length; di++) {
-      var sid = String(teDel[di].id);
-      await window._remove(
-        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid)
-      );
-    }
-  } catch(e) {}
+  try { await fbSave(items); } catch(e) {}
   setSyncStatus(false);
 }
 
@@ -1091,51 +989,81 @@ function renderMenu() {
   if (!grid) return;
   var todayIdx = getTodayIndex();
   var html = '';
+
   for (var i = 0; i < DAGEN.length; i++) {
-    var key = getDagKey(i);
-    var gerecht = menu[key] || '';
-    var isToday = i === todayIdx;
-    html += '<div class="dag-card' + (isToday ? ' dag-vandaag' : '') + '">';
-    html += '<div class="dag-header" onclick="toggleDag(' + i + ')">';
-    html += '<div class="dag-naam">' + DAGEN[i] + (isToday ? ' <span class="vandaag-badge">vandaag</span>' : '') + '</div>';
-    html += '<div class="dag-datum">' + getDatumLabel(i) + '</div>';
-    html += '<span style="color:var(--muted);font-size:0.8rem;flex-shrink:0">▶</span>';
+    var key      = getDagKey(i);
+    var gerecht  = menu[key] || '';
+    var isToday  = (i === todayIdx);
+    var isOpen   = false; // start ingeklapt
+
+    html += '<div class="dag-card' + (isToday ? ' dag-vandaag' : '') + '" style="border-radius:14px;overflow:hidden;margin-bottom:10px;border:1.5px solid ' + (isToday ? 'var(--green)' : 'var(--border)') + ';background:white">';
+
+    // Klikbare header
+    html += '<div onclick="toggleDag(' + i + ')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:' + (isToday ? 'var(--green-pale)' : 'white') + '">';
+    html += '<div>';
+    html += '<div style="font-weight:700;font-size:0.9rem;color:' + (isToday ? 'var(--green)' : 'var(--ink)') + '">' + DAGEN[i] + (isToday ? ' <span style="font-size:0.7rem;background:var(--green);color:white;padding:2px 7px;border-radius:9px;margin-left:4px">vandaag</span>' : '') + '</div>';
+    html += '<div style="font-size:0.75rem;color:var(--muted);margin-top:1px">' + getDatumLabel(i) + '</div>';
     html += '</div>';
-    html += '<div class="dag-preview' + (gerecht ? ' gevuld' : '') + '">' + (gerecht ? esc(gerecht) : 'Nog niet ingevuld…') + '</div>';
-    html += '<div class="dag-body" id="dag-body-' + i + '">';
-    html += '<div class="dag-gerecht">' + (gerecht ? '🍽️ ' + esc(gerecht) : 'Nog niets gepland.') + '</div>';
-    html += '<div class="dag-input-row">';
-    html += '<input class="dag-input" id="dag-input-' + i + '" type="text" placeholder="bijv. Pasta bolognese" value="' + esc(gerecht) + '" />';
-    html += '<button class="dag-save-btn" onclick="saveDag(' + i + ')">Opslaan</button>';
-    if (gerecht) html += '<button class="dag-clear-btn" onclick="clearDag(' + i + ')">✕</button>';
-    html += '</div></div></div>';
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    if (gerecht) {
+      html += '<div style="font-size:0.85rem;font-weight:600;color:var(--ink);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(gerecht) + '</div>';
+    } else {
+      html += '<div style="font-size:0.82rem;color:var(--muted);font-style:italic">Nog niets</div>';
+    }
+    html += '<div id="dag-arrow-' + i + '" style="color:var(--muted);font-size:0.9rem;flex-shrink:0">▸</div>';
+    html += '</div></div>'; // header
+
+    // Uitklapbaar deel
+    html += '<div class="dag-body" id="dag-body-' + i + '" style="display:none;padding:12px 14px;border-top:1px solid var(--border);background:#fafafa">';
+    if (gerecht) {
+      html += '<div style="font-size:0.92rem;font-weight:600;color:var(--ink);margin-bottom:10px">🍽️ ' + esc(gerecht) + '</div>';
+    }
+    html += '<div style="display:flex;gap:8px;align-items:center">';
+    html += '<input id="dag-input-' + i + '" type="text" value="' + esc(gerecht) + '" placeholder="Vul een gerecht in…" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:DM Sans,sans-serif;font-size:0.88rem;background:white" />';
+    html += '<button onclick="saveDag(' + i + ')" style="padding:9px 14px;background:var(--green);color:white;border:none;border-radius:10px;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;white-space:nowrap">Opslaan</button>';
+    if (gerecht) html += '<button onclick="clearDag(' + i + ')" style="padding:9px;background:none;border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--muted);font-size:0.82rem">✕</button>';
+    html += '</div>';
+
+    // Recept-keuze
+    html += '<button onclick="toggleReceptPicker(' + i + ')" style="width:100%;margin-top:8px;padding:8px;background:var(--green-pale);border:1px solid var(--green);border-radius:10px;font-family:DM Sans,sans-serif;font-size:0.82rem;color:var(--green);font-weight:600;cursor:pointer">📖 Kies uit kookboek</button>';
+    html += '<div class="recept-picker" id="recept-picker-' + i + '" style="display:none;margin-top:8px">';
+    html += '<div id="recept-picker-lijst-' + i + '"></div>';
+    html += '</div>';
+
+    html += '</div></div>'; // dag-body + dag-card
   }
   grid.innerHTML = html;
 }
 
 function toggleDag(i) {
-  var body = document.getElementById('dag-body-' + i);
+  var body  = document.getElementById('dag-body-'  + i);
+  var arrow = document.getElementById('dag-arrow-' + i);
   if (!body) return;
-  var isOpen = body.classList.contains('open');
-  var allBodies = document.querySelectorAll('.dag-body');
-  for (var bi = 0; bi < allBodies.length; bi++) allBodies[bi].classList.remove('open');
-  if (!isOpen) {
-    body.classList.add('open');
-    setTimeout(function() {
-      var inp = document.getElementById('dag-input-' + i);
-      if (inp) inp.focus();
-    }, 100);
+  var open = body.style.display !== 'none';
+  // Sluit alle andere dagen
+  for (var di = 0; di < DAGEN.length; di++) {
+    var ob = document.getElementById('dag-body-'  + di);
+    var oa = document.getElementById('dag-arrow-' + di);
+    if (ob) ob.style.display = 'none';
+    if (oa) oa.textContent = '▸';
+  }
+  if (!open) {
+    body.style.display = 'block';
+    if (arrow) arrow.textContent = '▾';
+    var inp = document.getElementById('dag-input-' + i);
+    if (inp) { setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 50); }
   }
 }
 
 async function saveDag(i) {
-  var val = document.getElementById('dag-input-' + i);
-  if (!val) return;
-  var gerecht = val.value.trim();
+  var inp = document.getElementById('dag-input-' + i);
+  if (!inp) return;
+  var gerecht = inp.value.trim();
+  var key = getDagKey(i);
   if (gerecht) {
-    menu[getDagKey(i)] = gerecht;
+    menu[key] = gerecht;
   } else {
-    delete menu[getDagKey(i)];
+    delete menu[key];
   }
   renderMenu();
   setSyncStatus(true);
@@ -1147,7 +1075,7 @@ async function clearDag(i) {
   delete menu[getDagKey(i)];
   renderMenu();
   setSyncStatus(true);
-  try { await fbSaveMenu(menu); } catch(e) { console.log('clearDag fout:', e.message); }
+  try { await fbSaveMenu(menu); } catch(e) {}
   setSyncStatus(false);
 }
 
@@ -1352,41 +1280,26 @@ async function slaGeleerdeCategorie(naam, cat) {
 }
 
 async function wisselWinkel(id) {
-  var sid = String(id);
   for (var wi = 0; wi < items.length; wi++) {
-    if (String(items[wi].id) === sid) {
+    if (items[wi].id === id) {
       items[wi].winkel = (items[wi].winkel === 'kruidvat') ? 'ah' : 'kruidvat';
-      setSyncStatus(true);
-      try {
-        await window._set(
-          window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid),
-          items[wi]
-        );
-      } catch(e) {}
-      setSyncStatus(false);
       break;
     }
   }
   render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
 }
 
 async function changeCat(id, cat) {
-  var sid = String(id);
   for (var ci = 0; ci < items.length; ci++) {
-    if (String(items[ci].id) === sid) {
-      items[ci].cat = cat;
-      setSyncStatus(true);
-      try {
-        await window._set(
-          window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid),
-          items[ci]
-        );
-      } catch(e) {}
-      setSyncStatus(false);
-      break;
-    }
+    if (items[ci].id === id) { items[ci].cat = cat; break; }
   }
   render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
 }
 
 function fbListenGeleerd() {
@@ -1642,21 +1555,12 @@ function toonSlimmeVoorstellenStil() {
 }
 
 async function voegSuggestie(naam) {
-  var id = 'i-' + Date.now();
-  var newItem = {
-    id: id, name: naam, person: currentPerson,
-    done: false, qty: 1, cat: detectCat(naam), winkel: detectWinkel(naam)
-  };
+  var newItem = { id: Date.now(), name: naam, person: currentPerson, done: false, qty: 1, cat: detectCat(naam), winkel: detectWinkel(naam) };
   items.unshift(newItem);
   render();
   logAankoopHistorie(naam);
   setSyncStatus(true);
-  try {
-    await window._set(
-      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id),
-      newItem
-    );
-  } catch(e) { console.log('voegSuggestie fout:', e.message); }
+  try { await fbSave(items); } catch(e) {}
   setSyncStatus(false);
   toonSlimmeVoorstellenStil();
 }
