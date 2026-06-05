@@ -755,17 +755,26 @@ function getRef(pad) {
 }
 
 function fbSave(itemsLijst) {
-  // Sla elk item individueel op met string-sleutel
   var promises = [];
   for (var si = 0; si < itemsLijst.length; si++) {
     var item = itemsLijst[si];
-    var key = String(item.id);
-    promises.push(window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key), item));
+    var key = String(item.id || '');
+    if (!key) continue;
+    // Zorg altijd voor string prefix - NOOIT numerieke key naar Firebase
+    if (/^\d+$/.test(key)) key = 'i-' + key;
+    item.id = key; // update ook het item zelf
+    promises.push(window._set(
+      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key), item
+    ));
   }
   return Promise.all(promises);
 }
 function fbDelete(id) {
-  return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
+  var sid = String(id);
+  if (/^\d+$/.test(sid)) sid = 'i-' + sid;
+  return window._remove(
+    window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid)
+  );
 }
 async function fbSaveMenu(m) {
   return window._set(getRef('weekmenu'), m || {});
@@ -959,21 +968,22 @@ async function deleteItem(id) {
 }
 
 async function changeQty(id, delta) {
-  var item = null;
+  var sid = String(id);
   for (var qi = 0; qi < items.length; qi++) {
-    if (items[qi].id === id) {
+    if (String(items[qi].id) === sid) {
       items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
-      item = items[qi];
-      break;
+      render();
+      setSyncStatus(true);
+      try {
+        await window._set(
+          window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid),
+          items[qi]
+        );
+      } catch(e) {}
+      setSyncStatus(false);
+      return;
     }
   }
-  render();
-  if (!item) return;
-  setSyncStatus(true);
-  try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item);
-  } catch(e) {}
-  setSyncStatus(false);
 }
 
 async function clearDone() {
@@ -1342,37 +1352,41 @@ async function slaGeleerdeCategorie(naam, cat) {
 }
 
 async function wisselWinkel(id) {
-  var item = null;
-  for (var i=0; i<items.length; i++) {
-    if (items[i].id === id) { item = items[i]; break; }
+  var sid = String(id);
+  for (var wi = 0; wi < items.length; wi++) {
+    if (String(items[wi].id) === sid) {
+      items[wi].winkel = (items[wi].winkel === 'kruidvat') ? 'ah' : 'kruidvat';
+      setSyncStatus(true);
+      try {
+        await window._set(
+          window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid),
+          items[wi]
+        );
+      } catch(e) {}
+      setSyncStatus(false);
+      break;
+    }
   }
-  if (!item) return;
-  var nieuweWinkel = (item.winkel === 'kruidvat') ? 'ah' : 'kruidvat';
-  // Update lokaal
-  for (var j=0; j<items.length; j++) {
-    if (items[j].id === id) { items[j].winkel = nieuweWinkel; break; }
-  }
-  // Leer op
-  await slaGeleerdeWinkelOp(item.name, nieuweWinkel);
   render();
-  setSyncStatus(true);
-  try { var _witem=null; for(var _wi=0;_wi<items.length;_wi++){if(items[_wi].id===id){_witem=items[_wi];break;}} if(_witem) await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+id),_witem); } finally { setSyncStatus(false); }
 }
 
 async function changeCat(id, cat) {
-  var gewijzigd = null;
-  items = items.map(function(i) {
-    if (i.id===id) {
-      var n={}; for(var k in i){n[k]=i[k];} n.cat=cat;
-      gewijzigd = n; return n;
+  var sid = String(id);
+  for (var ci = 0; ci < items.length; ci++) {
+    if (String(items[ci].id) === sid) {
+      items[ci].cat = cat;
+      setSyncStatus(true);
+      try {
+        await window._set(
+          window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + sid),
+          items[ci]
+        );
+      } catch(e) {}
+      setSyncStatus(false);
+      break;
     }
-    return i;
-  });
-  render();
-  if (gewijzigd) {
-    setSyncStatus(true); try { await fbSaveItem(gewijzigd); } finally { setSyncStatus(false); }
-    slaGeleerdeCategorie(gewijzigd.name, cat);
   }
+  render();
 }
 
 function fbListenGeleerd() {
@@ -1628,12 +1642,21 @@ function toonSlimmeVoorstellenStil() {
 }
 
 async function voegSuggestie(naam) {
-  var newItem = {id:Date.now(), name:naam, person:currentPerson, done:false, qty:1, cat:detectCat(naam)};
+  var id = 'i-' + Date.now();
+  var newItem = {
+    id: id, name: naam, person: currentPerson,
+    done: false, qty: 1, cat: detectCat(naam), winkel: detectWinkel(naam)
+  };
   items.unshift(newItem);
   render();
   logAankoopHistorie(naam);
   setSyncStatus(true);
-  await fbSave(items);
+  try {
+    await window._set(
+      window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id),
+      newItem
+    );
+  } catch(e) { console.log('voegSuggestie fout:', e.message); }
   setSyncStatus(false);
   toonSlimmeVoorstellenStil();
 }
@@ -2160,7 +2183,7 @@ async function voegAlleIngredientenToe(receptId) {
     var _ing = r.ingredienten[_ii];
     if (!_ing || !_ing.trim()) continue;
     nieuweItems.push({
-      id: Date.now() + Math.floor(Math.random() * 1000) + _ii,
+      id: 'i-' + (Date.now() + Math.floor(Math.random() * 1000) + _ii),
       name: _ing.trim(),
       person: currentPerson,
       done: false,
@@ -2175,7 +2198,14 @@ async function voegAlleIngredientenToe(receptId) {
   }
   render();
   setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
+  try {
+    for (var _fsi = 0; _fsi < nieuweItems.length; _fsi++) {
+      await window._set(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + nieuweItems[_fsi].id),
+        nieuweItems[_fsi]
+      );
+    }
+  } catch(e) { console.log('voegAlleIng fout:', e.message); }
   setSyncStatus(false);
   var btn = document.getElementById('ing-' + receptId);
   if (btn) {
