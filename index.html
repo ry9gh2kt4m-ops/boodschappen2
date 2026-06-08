@@ -660,7 +660,11 @@
 <div class="modal-overlay" id="personen-modal" style="display:none" onclick="sluitPersonenModal(event)">
   <div class="modal-card">
     <div class="modal-title">👥 Personen instellen</div>
-    <div class="modal-sub">Voeg tot 4 personen toe. Namen zijn zichtbaar op all
+    <div class="modal-sub">Voeg tot 4 personen toe. Namen zijn zichtbaar op alle apparaten.</div>
+    </div>
+  </div>
+
+<script>
 var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
 var _inspData = {stap:0, keuken:'alle', dieet:'alle', maaltijd:'diner', personen:4};
@@ -3311,18 +3315,7 @@ async function diagnoseData() {
   } catch(e) {
     el.innerHTML = '❌ Fout: ' + e.message;
   }
-}
-);
-    el.innerHTML = '✅ Firebase schrijven werkt!';
-    el.style.color = 'var(--green)';
-  } catch(e) {
-    el.innerHTML = '❌ Firebase GEBLOKKEERD: ' + e.message;
-    el.style.color = 'var(--red)';
-    el.style.fontWeight = '700';
-    el.style.fontSize = '0.8rem';
-  }
-}
-</script>
+}</script>
 
 
 <!-- Vind Winkel Modal -->
