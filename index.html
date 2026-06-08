@@ -546,13 +546,19 @@
       <div class="stat"><div class="stat-num" id="admin-totaal">-</div><div class="stat-label">Totaal aanmeldingen</div></div>
       <div class="stat"><div class="stat-num" id="admin-ideeen-count">-</div><div class="stat-label">Ingediende ideeën</div></div>
     </div>
-    <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:0.82rem;font-weight:600;color:var(--green);margin-bottom:8px">🔗 App delen</div>
+    <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:10px">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--green);margin-bottom:3px">🏠 Eigen gezin uitnodigen</div>
+      <div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Partner of gezinslid — worden direct ingelogd</div>
       <div style="display:flex;gap:8px">
         <button onclick="kopieerAppLink()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📋 Kopieer link</button>
-        <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via WhatsApp</button>
+        <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via app</button>
       </div>
-      <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Link gekopieerd!</div>
+      <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Gekopieerd!</div>
+    </div>
+    <div style="background:#fff8e1;border:1.5px solid #f0c040;border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:0.82rem;font-weight:700;color:#856404;margin-bottom:3px">👥 Nieuw gezin uitnodigen</div>
+      <div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Vrienden of familie die zelf een account aanmaken</div>
+      <button onclick="deelAppNieuwGezin()" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #f0c040;background:white;color:#856404;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel app (zonder code)</button>
     </div>
     <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">👨‍👩‍👧 Gezinnenbeheer</div>
     <div id="admin-registraties-lijst"></div>
@@ -779,39 +785,55 @@ async function clearDone() {
 }
 
 function deelAppLink() {
+  // Dit deelt de EIGEN GEZIN link — alleen voor bestaande gezinsleden
   var baseUrl = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var link = gezinsCode ? baseUrl + '?code=' + encodeURIComponent(gezinsCode) : baseUrl;
-  var tekst = '👋 Hé! Ik deel mijn boodschappen-app met je.\n\n'
-    + '📲 Klik op deze link om direct in te loggen:\n'
+  var link = baseUrl + '?code=' + encodeURIComponent(gezinsCode);
+  var tekst = '👋 Hoi! Klik op de link om onze gedeelde boodschappenlijst te openen:\n\n'
     + link + '\n\n'
-    + 'Je ziet dan direct onze gedeelde boodschappenlijst! 🛒';
+    + 'Je bent dan direct ingelogd! 🛒';
   if (navigator.share) {
     navigator.share({ title: 'Boodschappen App', text: tekst, url: link })
-    .catch(function() {
-      navigator.clipboard.writeText(tekst);
-    });
+    .catch(function() { _kopieerTekst(tekst); });
   } else {
-    navigator.clipboard.writeText(tekst).then(function() {
-      var el = document.getElementById('kopier-bevestiging');
-      if (el) {
-        el.textContent = '✅ Link gekopieerd!';
-        el.style.display = 'block';
-        setTimeout(function(){ el.style.display = 'none'; }, 2500);
-      }
-    }).catch(function() {
+    _kopieerTekst(tekst);
+  }
+}
+
+function deelAppNieuwGezin() {
+  // Dit deelt de app ZONDER code — voor nieuwe gezinnen die zichzelf moeten aanmelden
+  var baseUrl = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  var tekst = '👋 Hé! Gebruik jij ook onze boodschappen-app?\n\n'
+    + '📲 Download hem via deze link:\n'
+    + baseUrl + '\n\n'
+    + 'Maak een eigen gezinsnaam aan en je bent meteen klaar! 🛒';
+  if (navigator.share) {
+    navigator.share({ title: 'Boodschappen App', text: tekst, url: baseUrl })
+    .catch(function() { _kopieerTekst(tekst); });
+  } else {
+    _kopieerTekst(tekst);
+  }
+}
+
+function _kopieerTekst(tekst) {
+  navigator.clipboard.writeText(tekst)
+    .then(function() { _toonKopieerBevestiging(); })
+    .catch(function() {
       var ta = document.createElement('textarea');
       ta.value = tekst;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      var el = document.getElementById('kopier-bevestiging');
-      if (el) {
-        el.textContent = '✅ Link gekopieerd!';
-        el.style.display = 'block';
-        setTimeout(function(){ el.style.display = 'none'; }, 2500);
-      }
+      _toonKopieerBevestiging();
     });
+}
+
+function _toonKopieerBevestiging() {
+  var el = document.getElementById('kopier-bevestiging');
+  if (el) {
+    el.textContent = '✅ Gekopieerd!';
+    el.style.display = 'block';
+    setTimeout(function(){ el.style.display = 'none'; }, 2500);
   }
 }
 
@@ -1439,31 +1461,18 @@ async function kiesRecept(dagIdx, naam, receptId) {
 
 function kopieerAppLink() {
   var baseUrl = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var link = gezinsCode ? baseUrl + '?code=' + encodeURIComponent(gezinsCode) : baseUrl;
-  var copyFn = function() {
-    var ta = document.createElement('textarea');
-    ta.value = link;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    var el = document.getElementById('kopier-bevestiging');
-    if (el) {
-      el.textContent = '✅ Link gekopieerd!';
-      el.style.display = 'block';
-      setTimeout(function(){ el.style.display = 'none'; }, 2500);
-    }
-  };
+  var link = baseUrl + '?code=' + encodeURIComponent(gezinsCode);
   navigator.clipboard.writeText(link)
-    .then(function() {
-      var el = document.getElementById('kopier-bevestiging');
-      if (el) {
-        el.textContent = '✅ Link gekopieerd!';
-        el.style.display = 'block';
-        setTimeout(function(){ el.style.display = 'none'; }, 2500);
-      }
-    })
-    .catch(copyFn);
+    .then(function() { _toonKopieerBevestiging(); })
+    .catch(function() {
+      var ta = document.createElement('textarea');
+      ta.value = link;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      _toonKopieerBevestiging();
+    });
 }
 
 function laadPersonen() {
@@ -3141,8 +3150,13 @@ document.addEventListener('fb-ready', function() {
 });
 
 document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'visible' && gezinsCode && window._goOnline && window._db) {
-    try { window._goOnline(window._db); } catch(e) {}
+  if (document.visibilityState === 'visible' && gezinsCode) {
+    if (window._goOnline && window._db) {
+      try { window._goOnline(window._db); } catch(e) {}
+    }
+    setTimeout(function() {
+      if (gezinsCode) { fbListen(); }
+    }, 500);
   }
 });
 
