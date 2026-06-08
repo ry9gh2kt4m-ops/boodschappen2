@@ -10,7 +10,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, onValue, set, remove, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB-ObpSQXhInjHOturK2VuFxY47AYzzY1k",
@@ -23,14 +23,15 @@
   };
 
   const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+  const db  = getDatabase(app);
 
-  window._db = db;
-  window._ref = ref;
-  window._onValue = onValue;
-  window._set = set;
-  window._remove = remove;
-  window._fbReady = true;
+  window._db       = db;
+  window._ref      = ref;
+  window._onValue  = onValue;
+  window._set      = set;
+  window._remove   = remove;
+  window._goOnline = goOnline;
+  window._fbReady  = true;
   document.dispatchEvent(new Event("fb-ready"));
 </script>
 
@@ -337,22 +338,6 @@
 .vw-loading{text-align:center;padding:24px;color:var(--muted);font-size:0.85rem}
 .vw-fout{text-align:center;padding:20px;color:var(--red);font-size:0.85rem}
 .vw-sluiten{width:100%;padding:10px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-top:6px}
-.insp-chip{padding:8px 14px;border-radius:22px;border:1.5px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;color:var(--ink);transition:all 0.15s;text-align:left}
-.insp-chip:hover{border-color:var(--green);background:var(--green-pale)}
-.insp-chip.selected{border-color:var(--green);background:var(--green);color:white;font-weight:600}
-.insp-stap-dot{width:26px;height:26px;border-radius:50%;background:var(--border);color:var(--muted);font-size:0.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'DM Sans',sans-serif;transition:all 0.2s}
-.insp-stap-dot.active{background:var(--green);color:white}
-.insp-stap-dot.done{background:var(--green-pale);color:var(--green)}
-.recept-card-insp{background:white;border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all 0.15s}
-.recept-card-insp:hover{border-color:var(--green);box-shadow:0 2px 12px rgba(61,107,79,0.12)}
-.recept-card-insp.open{border-color:var(--green);box-shadow:0 2px 12px rgba(61,107,79,0.12)}
-.ing-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.84rem}
-.ing-item:last-child{border-bottom:none}
-.cat-sectie{margin-bottom:10px}
-.cat-header{display:flex;align-items:center;gap:6px;padding:6px 10px 4px;position:sticky;top:0;z-index:10;background:var(--cream);border-bottom:1px solid var(--border);margin-bottom:2px}
-.cat-icon{font-size:1rem}
-.cat-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);flex:1}
-.cat-count{font-size:0.7rem;background:var(--green-pale);color:var(--green);border-radius:10px;padding:1px 7px;font-weight:600}
 </style>
 </head>
 <body>
@@ -668,122 +653,380 @@
     <button class="btn-persoon-add" onclick="voegPersoonToe()">＋ Persoon toevoegen</button>
     <button class="btn-persoon-save" onclick="slaPersonenOp()">Opslaan ✓</button>
   </div>
-
-    <!-- Inspiratie sectie -->
-    <div id="insp-wrapper" style="margin-top:20px;border-top:2px solid var(--border);padding-top:18px">
-      <div style="font-family:'Playfair Display',serif;font-size:1.15rem;margin-bottom:3px">🎲 Wat eten we vanavond?</div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:16px">Beantwoord een paar vragen en ontdek jouw perfecte recept</div>
-
-      <!-- Stap indicator -->
-      <div id="insp-stap-indicator" style="display:flex;gap:6px;margin-bottom:18px;align-items:center">
-        <div class="insp-stap-dot active" id="dot-1">1</div>
-        <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div id="prog-1" style="height:100%;width:0%;background:var(--green);border-radius:1px;transition:width 0.3s"></div></div>
-        <div class="insp-stap-dot" id="dot-2">2</div>
-        <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div id="prog-2" style="height:100%;width:0%;background:var(--green);border-radius:1px;transition:width 0.3s"></div></div>
-        <div class="insp-stap-dot" id="dot-3">3</div>
-        <div style="flex:1;height:2px;background:var(--border);border-radius:1px"><div id="prog-3" style="height:100%;width:0%;background:var(--green);border-radius:1px;transition:width 0.3s"></div></div>
-        <div class="insp-stap-dot" id="dot-4">4</div>
-      </div>
-
-      <!-- Stap inhoud -->
-      <div id="insp-stap-inhoud">
-        <!-- Wordt dynamisch gevuld -->
-      </div>
-
-      <!-- Resultaten -->
-      <div id="insp-resultaten"></div>
-    </div>
 </div>
 
 <script>
-
-var actieveCats={super:true,drogist:true,slijterij:true,speciaal:false};
-var WINKELS_DEF={ah:{naam:'Albert Heijn',logo:'🔵',kleur:'#003087',f:1.00,super:true},jumbo:{naam:'Jumbo',logo:'🟡',kleur:'#C67800',f:0.95,super:true},lidl:{naam:'Lidl',logo:'🔴',kleur:'#0050AA',f:0.82,super:true},aldi:{naam:'Aldi',logo:'🟢',kleur:'#005A1E',f:0.78,super:true},plus:{naam:'Plus',logo:'🟩',kleur:'#006400',f:0.97,super:true},dirk:{naam:'Dirk',logo:'🟠',kleur:'#CC0000',f:0.88,super:true},etos:{naam:'Etos',logo:'🩷',kleur:'#CC0055',f:1.05,drogist:true},kruidvat:{naam:'Kruidvat',logo:'🟣',kleur:'#6A00C4',f:0.95,drogist:true},gall:{naam:'Gall & Gall',logo:'🍷',kleur:'#8B0000',f:0.92,slijterij:true},mitra:{naam:'Mitra',logo:'🥃',kleur:'#7B4000',f:0.90,slijterij:true},speciaal:{naam:'Speciaal Bier',logo:'🍺',kleur:'#8B6914',f:1.10,speciaal:true}};
-var PRIJZEN_DB=[{n:'Melk halfvolle 1L',c:'koel',p:1.09},{n:'Melk volle 1L',c:'koel',p:1.19},{n:'Karnemelk 1L',c:'koel',p:0.99},{n:'Yoghurt naturel 500g',c:'koel',p:1.09},{n:'Boter 250g',c:'koel',p:2.49},{n:'Eieren 6st',c:'koel',p:1.99},{n:'Eieren 10st',c:'koel',p:2.99},{n:'Kaas jong 500g',c:'koel',p:3.49},{n:'Kaas belegen 500g',c:'koel',p:3.79},{n:'Mozzarella 125g',c:'koel',p:1.29},{n:'Feta 200g',c:'koel',p:1.79},{n:'Vla 1L',c:'koel',p:1.19},{n:'Kipfilet 600g',c:'vlees',p:5.99},{n:'Rundergehakt 500g',c:'vlees',p:4.49},{n:'Half-om-half 500g',c:'vlees',p:3.99},{n:'Bacon 150g',c:'vlees',p:2.49},{n:'Ham 150g',c:'vlees',p:2.29},{n:'Zalm filet',c:'vlees',p:5.99},{n:'Rookworst 300g',c:'vlees',p:2.99},{n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},{n:'Blauwe bessen 125g',c:'agf',p:2.49},{n:'Aardbeien 400g',c:'agf',p:2.99},{n:'Avocado 2st',c:'agf',p:1.99},{n:'Tomaten 500g',c:'agf',p:1.99},{n:'Komkommer 1st',c:'agf',p:0.89},{n:'Paprika rood 3st',c:'agf',p:1.49},{n:'Uien 1kg',c:'agf',p:0.99},{n:'Knoflook bol',c:'agf',p:0.49},{n:'Wortelen 1kg',c:'agf',p:0.99},{n:'Broccoli 1st',c:'agf',p:1.49},{n:'Sla ijsberg',c:'agf',p:0.99},{n:'Spinazie 300g',c:'agf',p:1.99},{n:'Champignons 250g',c:'agf',p:1.79},{n:'Aardappelen 1.5kg',c:'agf',p:1.99},{n:'Spaghetti 500g',c:'kruid',p:0.99},{n:'Penne 500g',c:'kruid',p:0.99},{n:'Rijst basmati 1kg',c:'kruid',p:2.49},{n:'Havermout 500g',c:'kruid',p:1.49},{n:'Cruesli 500g',c:'kruid',p:2.99},{n:'Brood volkoren 800g',c:'kruid',p:2.09},{n:'Pindakaas 350g',c:'kruid',p:1.99},{n:'Tomatenpuree 200g',c:'kruid',p:0.99},{n:'Olijfolie 500ml',c:'kruid',p:4.99},{n:'Ketchup 600g',c:'kruid',p:2.99},{n:'Mayonaise 500ml',c:'kruid',p:1.99},{n:'Friet 1kg',c:'diep',p:2.49},{n:'Kroketten 8st',c:'diep',p:2.99},{n:'Ijs vanille 900ml',c:'diep',p:2.99},{n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},{n:'Koffie 250g',c:'drank',p:3.99},{n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},{n:'Wijn rood 75cl',c:'drank',p:5.99},{n:'Wijn wit 75cl',c:'drank',p:5.99},{n:'Toiletpapier 16st',c:'nonfood',p:4.99},{n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},{n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},{n:'Shampoo 250ml',c:'nonfood',p:3.99},{n:'Paracetamol 30st',c:'nonfood',p:2.99}];
-function detectPlatformInfo(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);if(m)return{type:'youtube',id:m[1],embedbaar:true,label:'YouTube',kleur:'#ff0000'};var u=url.toLowerCase();if(u.indexOf('tiktok')>-1)return{type:'tiktok',id:null,embedbaar:false,label:'TikTok',kleur:'#010101'};if(u.indexOf('instagram')>-1)return{type:'instagram',id:null,embedbaar:false,label:'Instagram',kleur:'#c13584'};if(u.indexOf('facebook')>-1)return{type:'facebook',id:null,embedbaar:false,label:'Facebook',kleur:'#1877f2'};if(u.indexOf('pinterest')>-1)return{type:'pinterest',id:null,embedbaar:false,label:'Pinterest',kleur:'#e60023'};return{type:'link',id:null,embedbaar:false,label:'Link',kleur:'#3d6b4f'};}
-function getYouTubeThumbnail(id){return id?'https://img.youtube.com/vi/'+id+'/mqdefault.jpg':null;}
-function filterRecepten(){renderRecepten();}
-function detectPlatform(url){return detectPlatformInfo(url);}
-function setPersoon(naam){currentPerson=naam;renderPersonenKnoppen();}
-function isAanbiedingArtikel(){return false;}
-function folderUrl(w){return({ah:'https://www.ah.nl/bonus',jumbo:'https://www.jumbo.com/aanbiedingen',lidl:'https://www.lidl.nl/aanbiedingen',aldi:'https://www.aldi.nl/aanbiedingen.html',plus:'https://www.plus.nl/aanbiedingen',dirk:'https://www.dirk.nl/aanbiedingen',etos:'https://www.etos.nl/aanbiedingen',kruidvat:'https://www.kruidvat.nl/aanbiedingen'})[w]||null;}
-function slaGeleerdeWinkelOp(naam,winkel){try{var k=naam.toLowerCase().replace(/[^a-z0-9]/g,'_');window._set(getRef('geleerde_winkels/'+k),winkel);}catch(e){}}
-function berekenGemInterval(l){if(!l||l.length<2)return 604800000;var s=0;for(var i=1;i<l.length;i++)s+=l[i]-l[i-1];return s/(l.length-1);}
-async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
-function zoekPrijs(naam){if(!naam)return null;var n=naam.toLowerCase().trim();for(var i=0;i<PRIJZEN_DB.length;i++){var pn=PRIJZEN_DB[i].n.toLowerCase();if(n===pn||pn.indexOf(n)>-1||n.indexOf(pn.split(' ')[0])>-1){var res={},wks=Object.keys(WINKELS_DEF);for(var w=0;w<wks.length;w++)res[wks[w]]=Math.round(PRIJZEN_DB[i].p*(WINKELS_DEF[wks[w]].f||1)*100)/100;return res;}}return null;}
+var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
+var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
+var _inspData = {stap:0, keuken:'alle', dieet:'alle', maaltijd:'diner', personen:4};
 
 var items = [], menu = {}, gezinsCode = '', currentPerson = 'Jij', currentFilter = 'alle', doneVisible = false, recognition = null, isListening = false;
 var personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
 var geleerdeCategorieen = {}, geleerdeWinkels = {}, recepten = [], weekOffset = 0, isBeheerder = false, toonVerleden = false, receptCatFilter = 'alle', acSelectedIdx = -1, tempIngredienten = [];
 var KLEUR_BG = {'#3d6b4f':'#e8f0ea','#c4678a':'#fce8f0','#1a56a0':'#e8f0fa','#c47a2a':'#fdf0e0','#7a4db5':'#f0e8fa','#c4473a':'#faeae9'};
 var autoAddTimer = null, countdownTimer = null, autoAddSeconds = 3;
-var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
-var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
-var unsubItems = null, unsubMenu = null;
-var unsubGeleerd = null, unsubRegistraties = null, unsubIdeeen = null, unsubRecepten = null;
+var BOODSCHAP_CATS = [
+  {key:'agf',             label:'AGF',              icon:'🥦', items:['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','courgette','prei','peterselie','basilicum','bloemkool','citroen','limoen','kiwi','meloen','ananas','gember','radijs','venkel','selderij','sjalot','bieslook','koriander','dille','munt','tijm','rozemarijn','oregano','rucola']},
+  {key:'vlees',           label:'Vlees & Vis',       icon:'🥩', items:['gehakt','kip','kipfilet','spek','bacon','ham','salami','worst','rookworst','biefstuk','zalm','tonijn','garnalen','vis','schnitzel','lam','tartaar','ossenhaas','kipschnitzel','forel','makreel','mosselen']},
+  {key:'koeling',         label:'Koeling',           icon:'🧊', items:['melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk','sap','mozzarella','brie','camembert','feta','roomkaas','creme fraiche','tofu','tempeh','verse pasta']},
+  {key:'kruidenierswaren',label:'Kruidenierswaren',  icon:'🛒', items:['pasta','spaghetti','rijst','couscous','quinoa','havermout','cruesli','muesli','cornflakes','granola','brood','bloem','suiker','zout','peper','olie','olijfolie','ketchup','mayonaise','pesto','sambal','jam','pindakaas','nutella','honing','bonen','soep','bouillon','chips','koekjes','chocolade','crackers','beschuit','roggebrood','toast','ontbijtkoek','noten','rozijnen','tomatenpuree','tomatensaus','kokosmelk','sojasaus','mosterd']},
+  {key:'diepvries',       label:'Diepvries',         icon:'❄️', items:['friet','pizza','kroketten','ijs','diepvries','doperwten','haricots','edamame','vissticks','bami','nasi','loempia','falafel']},
+  {key:'drank',           label:'Drank',             icon:'🥤', items:['bier','wijn','water','cola','fanta','sprite','limonade','koffie','thee','heineken','hertog jan','grolsch','amstel','prosecco','vodka','gin','rum','whisky','tequila','aperol','energie','sportdrank','vruchtensap','smoothie']},
+  {key:'nonfood',         label:'Non Food',          icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasverzachter','keukenrol','aluminiumfolie','afvalzak','sponsje']},
+  {key:'overig',          label:'Overig',            icon:'📦', items:[]}
+];
+
+var unsubItems = null, unsubMenu = null, unsubGeleerd = null, unsubRegistraties = null, unsubIdeeen = null, unsubRecepten = null;
 var DAGEN = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
+var _inspData = {stap:0, keuken:'', dieet:'', maaltijd:'', personen:4};
 
-// ---- Gezinscode ----
-function sanitizeCode(code) { return code.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
 
-function startMetCode() {
-  var raw = document.getElementById('setup-code').value.trim();
-  var code = sanitizeCode(raw);
-  if (code.length < 3) { toonFout('Kies een code van minimaal 3 tekens.'); return; }
-  localStorage.setItem('gezinscode', code);
-  gezinsCode = code;
-  document.getElementById('setup-screen').style.display = 'none';
-  initApp();
+var actieveCats={super:true,drogist:true,slijterij:true,speciaal:false};
+var WINKELS_DEF={ah:{naam:'Albert Heijn',logo:'🔵',kleur:'#003087',f:1.00,super:true},jumbo:{naam:'Jumbo',logo:'🟡',kleur:'#C67800',f:0.95,super:true},lidl:{naam:'Lidl',logo:'🔴',kleur:'#0050AA',f:0.82,super:true},aldi:{naam:'Aldi',logo:'🟢',kleur:'#005A1E',f:0.78,super:true},plus:{naam:'Plus',logo:'🟩',kleur:'#006400',f:0.97,super:true},dirk:{naam:'Dirk',logo:'🟠',kleur:'#CC0000',f:0.88,super:true},etos:{naam:'Etos',logo:'🩷',kleur:'#CC0055',f:1.05,drogist:true},kruidvat:{naam:'Kruidvat',logo:'🟣',kleur:'#6A00C4',f:0.95,drogist:true},gall:{naam:'Gall & Gall',logo:'🍷',kleur:'#8B0000',f:0.92,slijterij:true},mitra:{naam:'Mitra',logo:'🥃',kleur:'#7B4000',f:0.90,slijterij:true},speciaal:{naam:'Speciaal Bier',logo:'🍺',kleur:'#8B6914',f:1.10,speciaal:true}};
+var PRIJZEN_DB=[{n:'Melk halfvolle 1L',c:'koel',p:1.09},{n:'Melk volle 1L',c:'koel',p:1.19},{n:'Karnemelk 1L',c:'koel',p:0.99},{n:'Yoghurt naturel 500g',c:'koel',p:1.09},{n:'Boter 250g',c:'koel',p:2.49},{n:'Eieren 6st',c:'koel',p:1.99},{n:'Eieren 10st',c:'koel',p:2.99},{n:'Kaas jong 500g',c:'koel',p:3.49},{n:'Kaas belegen 500g',c:'koel',p:3.79},{n:'Mozzarella 125g',c:'koel',p:1.29},{n:'Feta 200g',c:'koel',p:1.79},{n:'Vla 1L',c:'koel',p:1.19},{n:'Kipfilet 600g',c:'vlees',p:5.99},{n:'Rundergehakt 500g',c:'vlees',p:4.49},{n:'Half-om-half 500g',c:'vlees',p:3.99},{n:'Bacon 150g',c:'vlees',p:2.49},{n:'Ham 150g',c:'vlees',p:2.29},{n:'Zalm filet',c:'vlees',p:5.99},{n:'Rookworst 300g',c:'vlees',p:2.99},{n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},{n:'Blauwe bessen 125g',c:'agf',p:2.49},{n:'Aardbeien 400g',c:'agf',p:2.99},{n:'Avocado 2st',c:'agf',p:1.99},{n:'Tomaten 500g',c:'agf',p:1.99},{n:'Komkommer 1st',c:'agf',p:0.89},{n:'Paprika rood 3st',c:'agf',p:1.49},{n:'Uien 1kg',c:'agf',p:0.99},{n:'Knoflook bol',c:'agf',p:0.49},{n:'Wortelen 1kg',c:'agf',p:0.99},{n:'Broccoli 1st',c:'agf',p:1.49},{n:'Sla ijsberg',c:'agf',p:0.99},{n:'Spinazie 300g',c:'agf',p:1.99},{n:'Champignons 250g',c:'agf',p:1.79},{n:'Aardappelen 1.5kg',c:'agf',p:1.99},{n:'Spaghetti 500g',c:'kruid',p:0.99},{n:'Penne 500g',c:'kruid',p:0.99},{n:'Rijst basmati 1kg',c:'kruid',p:2.49},{n:'Havermout 500g',c:'kruid',p:1.49},{n:'Cruesli 500g',c:'kruid',p:2.99},{n:'Brood volkoren 800g',c:'kruid',p:2.09},{n:'Pindakaas 350g',c:'kruid',p:1.99},{n:'Tomatenpuree 200g',c:'kruid',p:0.99},{n:'Olijfolie 500ml',c:'kruid',p:4.99},{n:'Ketchup 600g',c:'kruid',p:2.99},{n:'Mayonaise 500ml',c:'kruid',p:1.99},{n:'Friet 1kg',c:'diep',p:2.49},{n:'Kroketten 8st',c:'diep',p:2.99},{n:'Ijs vanille 900ml',c:'diep',p:2.99},{n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},{n:'Koffie 250g',c:'drank',p:3.99},{n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},{n:'Wijn rood 75cl',c:'drank',p:5.99},{n:'Wijn wit 75cl',c:'drank',p:5.99},{n:'Toiletpapier 16st',c:'nonfood',p:4.99},{n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},{n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},{n:'Shampoo 250ml',c:'nonfood',p:3.99},{n:'Paracetamol 30st',c:'nonfood',p:2.99}];
+
+function activeerBeheerder() {
+  isBeheerder = true;
+  localStorage.setItem('beheerder', '1');
+  // Toon admin tab
+  var btn = document.getElementById('tab-admin');
+  if (btn) btn.style.display = 'flex';
+  fbListenIdeeen();
+  fbListenRegistraties();
+  switchTab('admin');
 }
 
-function wijzigCode() {
-  if (!confirm('Wil je van gezinscode wisselen? Je huidige lijst blijft bewaard onder de oude code.')) return;
-  if (unsubItems) unsubItems(); if (unsubMenu) unsubMenu();
-  localStorage.removeItem('gezinscode');
-  document.getElementById('main-app').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'block';
-  document.getElementById('setup-code').value = '';
+async function addItem() {
+  var name = document.getElementById('item-input').value.trim();
+  if (!name) return;
+  var id = Date.now();
+  var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
+  var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
+  var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
+  items.unshift(newItem);
+  render();
+  document.getElementById('item-input').value = '';
+  if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) { console.log('addItem fout:', e.message); }
+  setSyncStatus(false);
 }
 
-function toonFout(msg) { var el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; }
+function afstandLabel(m) {
+  if (m < 1000) return m + 'm';
+  return (m/1000).toFixed(1).replace('.',',') + 'km';
+}
 
-document.getElementById('setup-code').addEventListener('keydown', function(e) { if (e.key === 'Enter') startMetCode(); });
+function berekenAfstand(lat1, lon1, lat2, lon2) {
+  var R = 6371000;
+  var dLat = (lat2-lat1)*Math.PI/180;
+  var dLon = (lon2-lon1)*Math.PI/180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
 
-// ---- Firebase per gezin ----
-function getRef(pad) {
-  return window._ref(window._db, 'gezinnen/' + gezinsCode + '/' + pad);
+function berekenGemInterval(l){if(!l||l.length<2)return 604800000;var s=0;for(var i=1;i<l.length;i++)s+=l[i]-l[i-1];return s/(l.length-1);}
+
+function bewerkRecept(id) { openReceptForm(id); }
+
+function btn(zoek,ico,bg,lbl){var url=base+encodeURIComponent(zoek)+'/@'+lat+','+lon+',14z';return '<div style="background:white;border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:9px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">'+ico+'</div><div style="flex:1;font-weight:600;font-size:0.88rem">'+lbl+'</div><a href="'+url+'" target="_blank" style="background:var(--green);color:white;padding:7px 11px;border-radius:9px;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap">&#128506; Open</a></div>';}
+
+async function changeCat(id, cat) {
+  var itemNaam = '';
+  for (var ci = 0; ci < items.length; ci++) {
+    if (items[ci].id === id) { itemNaam = items[ci].name; items[ci].cat = cat; break; }
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  if (itemNaam) { try { await slaGeleerdeCategorie(itemNaam, cat); } catch(e) {} }
+  setSyncStatus(false);
+}
+
+async function changeQty(id, delta) {
+  for (var qi = 0; qi < items.length; qi++) {
+    if (items[qi].id === id) {
+      items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
+      break;
+    }
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
+}
+
+function clearAutoAdd() {
+  clearTimeout(autoAddTimer);
+  clearInterval(countdownTimer);
+  autoAddTimer = null; countdownTimer = null;
+}
+
+async function clearDag(i) {
+  delete menu[getDagKey(i)];
+  renderMenu();
+  setSyncStatus(true);
+  try { await fbSaveMenu(menu); } catch(e) {}
+  setSyncStatus(false);
+}
+
+async function clearDone() {
+  items = items.filter(function(i){ return !i.done; });
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
+}
+
+function deelAppLink() {
+  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  var tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
+  if (navigator.share) {
+    navigator.share({ title: 'Boodschappen App', text: tekst });
+  } else {
+    navigator.clipboard.writeText(tekst).then(function() {
+      var el = document.getElementById('kopier-bevestiging');
+      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+    });
+  }
+}
+
+async function deleteItem(id) {
+  items = items.filter(function(i){ return i.id !== id; });
+  render();
+  setSyncStatus(true);
+  try { await fbDelete(id); } catch(e) {}
+  setSyncStatus(false);
+}
+
+function detectCat(naam) {
+  var n = naam.toLowerCase().trim();
+  var key = n.replace(/[^a-z0-9]/g, '_');
+
+  // Check geleerde categorieën
+  if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
+  for (var gk in geleerdeCategorieen) {
+    var woord = gk.replace(/_/g, ' ');
+    if (woord.length > 2 && (n === woord || n.indexOf(woord + ' ') === 0 || n.indexOf(' ' + woord) > -1)) {
+      return geleerdeCategorieen[gk];
+    }
+  }
+
+  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
+    var cat = BOODSCHAP_CATS[ci];
+    for (var wi = 0; wi < cat.items.length; wi++) {
+      var w = cat.items[wi];
+      // Exacte match: altijd
+      if (n === w) return cat.key;
+      // Korte woorden (<=3 chars): alleen exacte match
+      if (w.length <= 3) continue;
+      // Langere woorden: veilige partiële match via woordgrens
+      var re_woord = new RegExp('(^|[\\s\\-])' + w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '([\\s\\-]|$)');
+      if (re_woord.test(n)) return cat.key;
+      // Artikel-naam is deel van item (bijv. 'melk' in 'karnemelk')
+      if (w.indexOf(n) > -1 && n.length > 4) return cat.key;
+    }
+  }
+  return 'overig';
+}
+
+function detectPlatform(url){return detectPlatformInfo(url);}
+
+function detectPlatformInfo(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);if(m)return{type:'youtube',id:m[1],embedbaar:true,label:'YouTube',kleur:'#ff0000'};var u=url.toLowerCase();if(u.indexOf('tiktok')>-1)return{type:'tiktok',id:null,embedbaar:false,label:'TikTok',kleur:'#010101'};if(u.indexOf('instagram')>-1)return{type:'instagram',id:null,embedbaar:false,label:'Instagram',kleur:'#c13584'};if(u.indexOf('facebook')>-1)return{type:'facebook',id:null,embedbaar:false,label:'Facebook',kleur:'#1877f2'};if(u.indexOf('pinterest')>-1)return{type:'pinterest',id:null,embedbaar:false,label:'Pinterest',kleur:'#e60023'};return{type:'link',id:null,embedbaar:false,label:'Link',kleur:'#3d6b4f'};}
+
+function detectWinkel(naam) {
+  var n = naam.toLowerCase().trim();
+  // Check geleerde winkel eerst
+  var geleerdeKey = n.replace(/[^a-z0-9]/g, '_');
+  if (geleerdeWinkels[geleerdeKey]) return geleerdeWinkels[geleerdeKey];
+  // Check op gedeeltelijke match
+  for (var gk in geleerdeWinkels) {
+    var woord = gk.replace(/_/g, ' ');
+    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
+      return geleerdeWinkels[gk];
+    }
+  }
+  // Check Kruidvat eerst (specifieker)
+  for (var ki=0; ki<KRUIDVAT_ITEMS.length; ki++) {
+    if (n.indexOf(KRUIDVAT_ITEMS[ki]) > -1 || KRUIDVAT_ITEMS[ki].indexOf(n) > -1 && n.length > 3) {
+      return 'kruidvat';
+    }
+  }
+  // Check AH
+  for (var ai=0; ai<AH_ITEMS.length; ai++) {
+    if (n.indexOf(AH_ITEMS[ai]) > -1 || AH_ITEMS[ai].indexOf(n) > -1 && n.length > 3) {
+      return 'ah';
+    }
+  }
+  return 'ah'; // standaard AH
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function fbDelete(id) {
+  return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
+}
+
+function fbListen() {
+  // 1. Laad direct uit localStorage voor instant weergave
+  try {
+    var cached = JSON.parse(localStorage.getItem('cache_items_' + gezinsCode) || 'null');
+    if (cached && cached.length) { items = cached; render(); }
+  } catch(e) {}
+  try {
+    var cachedMenu = JSON.parse(localStorage.getItem('cache_menu_' + gezinsCode) || 'null');
+    if (cachedMenu) { menu = cachedMenu; renderMenu(); }
+  } catch(e) {}
+
+  // 2. Firebase listener — update als live data binnenkomt
+  unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
+    var data = snap.val();
+    if (data) {
+      var vals = Object.values(data);
+      vals.sort(function(a,b){ return (b.id||0)-(a.id||0); });
+      items = vals;
+      try { localStorage.setItem('cache_items_' + gezinsCode, JSON.stringify(vals)); } catch(e) {}
+    } else {
+      // Geen data van Firebase — vertrouw op cache, maak niet leeg
+      var hasCached = localStorage.getItem('cache_items_' + gezinsCode);
+      if (!hasCached) { items = []; }
+    }
+    render();
+  });
+
+  unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
+    var data = snap.val();
+    if (data) {
+      menu = data;
+      try { localStorage.setItem('cache_menu_' + gezinsCode, JSON.stringify(data)); } catch(e) {}
+    } else {
+      var hasCachedMenu = localStorage.getItem('cache_menu_' + gezinsCode);
+      if (!hasCachedMenu) { menu = {}; }
+    }
+    renderMenu();
+  });
+}
+
+function fbListenGeleerd() {
+  window._onValue(getRef('geleerde_cats'), function(snap) {
+    geleerdeCategorieen = snap.val() || {};
+  });
+  window._onValue(getRef('geleerde_winkels'), function(snap) {
+    geleerdeWinkels = snap.val() || {};
+  });
+}
+
+function fbListenIdeeen() {
+  if (unsubIdeeen) unsubIdeeen();
+  unsubIdeeen = window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
+    var data = snap.val() || {};
+    var ideeen = Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;});
+    renderIdeeen(ideeen);
+  });
+}
+
+function fbListenRecepten() {
+  try {
+    var cached = JSON.parse(localStorage.getItem('cache_recepten_' + gezinsCode) || 'null');
+    if (cached && cached.length) { recepten = cached; renderRecepten(); }
+  } catch(e) {}
+  window._onValue(
+    window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'),
+    function(snap) {
+      var data = snap.val();
+      if (data && typeof data === 'object') {
+        var vals = Object.values(data).filter(function(r){ return r && r.naam; });
+        vals.sort(function(a,b){ return (b.aangemaakt||0)-(a.aangemaakt||0); });
+        recepten = vals;
+        try { localStorage.setItem('cache_recepten_' + gezinsCode, JSON.stringify(vals)); } catch(e) {}
+      } else {
+        var hasCached = localStorage.getItem('cache_recepten_' + gezinsCode);
+        if (!hasCached) { recepten = []; }
+      }
+      renderRecepten();
+    }
+  );
+}
+
+function fbListenRegistraties() {
+  if (unsubRegistraties) unsubRegistraties();
+  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), function(snap) {
+    var data = snap.val() || {};
+    var regs = Object.values(data).sort(function(a,b) { return b.aangemeld - a.aangemeld; });
+    // Update stats
+    var actief = regs.filter(function(r){return r.status==='goedgekeurd';}).length;
+    var wachtend = regs.filter(function(r){return r.status==='wachtend';}).length;
+    var ae = document.getElementById('admin-actief'); if(ae) ae.textContent = actief;
+    var aw = document.getElementById('admin-wachtend'); if(aw) aw.textContent = wachtend;
+    var at = document.getElementById('admin-totaal'); if(at) at.textContent = regs.length;
+    // Render lijst
+    renderAdminRegistraties(regs);
+  });
 }
 
 function fbSave(itemsLijst) {
+  try { localStorage.setItem('cache_items_' + gezinsCode, JSON.stringify(itemsLijst)); } catch(e) {}
   var obj = {};
   for (var si = 0; si < itemsLijst.length; si++) {
     obj[itemsLijst[si].id] = itemsLijst[si];
   }
   return window._set(getRef('boodschappen'), obj);
 }
-function fbDelete(id) {
-  return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
-}
+
+async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
+
 async function fbSaveMenu(m) {
+  try { localStorage.setItem('cache_menu_' + gezinsCode, JSON.stringify(m || {})); } catch(e) {}
   return window._set(getRef('weekmenu'), m || {});
 }
 
-function fbListen() {
-  unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
-    var data = snap.val();
-    if (!data) { items = []; render(); return; }
-    var vals = Object.values(data);
-    vals.sort(function(a,b){ return (b.id||0) - (a.id||0); });
-    items = vals;
-    render();
-  });
-  unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
-    menu = snap.val() || {};
-    renderMenu();
-  });
+function filterOpKetens(winkels, ketens) {
+  var bekend = winkels.filter(function(w) { var n=w.naam.toLowerCase(); return ketens.some(function(k){return n.indexOf(k)>-1;}); });
+  var onbekend = winkels.filter(function(w) { var n=w.naam.toLowerCase(); return !ketens.some(function(k){return n.indexOf(k)>-1;}); });
+  return bekend.concat(onbekend);
 }
 
-// ---- Init ----
+function filterRecepten(){renderRecepten();}
+
+function folderUrl(w){return({ah:'https://www.ah.nl/bonus',jumbo:'https://www.jumbo.com/aanbiedingen',lidl:'https://www.lidl.nl/aanbiedingen',aldi:'https://www.aldi.nl/aanbiedingen.html',plus:'https://www.plus.nl/aanbiedingen',dirk:'https://www.dirk.nl/aanbiedingen',etos:'https://www.etos.nl/aanbiedingen',kruidvat:'https://www.kruidvat.nl/aanbiedingen'})[w]||null;}
+
+function getCat(naam) {
+    var n = naam.toLowerCase();
+    for (var i=0;i<SPECIAAL_NAMEN.length;i++) if(n.indexOf(SPECIAAL_NAMEN[i])>-1) return 'speciaal';
+    for (var i=0;i<SLIJTERIJ_NAMEN.length;i++) if(n.indexOf(SLIJTERIJ_NAMEN[i])>-1) return 'slijterij';
+    for (var i=0;i<DROGIST_NAMEN.length;i++) if(n.indexOf(DROGIST_NAMEN[i])>-1) return 'drogist';
+    return 'super';
+  }
+
+function getDagKey(i) {
+  var now = new Date(), day = now.getDay(), monday = new Date(now);
+  monday.setDate(now.getDate() - (day===0 ? 6 : day-1));
+  var d = new Date(monday); d.setDate(monday.getDate()+i);
+  return d.toISOString().split('T')[0];
+}
+
+function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
+
+function getISOWeek(d) {
+    var date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    var week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  }
+
+function getRef(pad) {
+  return window._ref(window._db, 'gezinnen/' + gezinsCode + '/' + pad);
+}
+
+function getTodayIndex() { var d = new Date().getDay(); return d===0?6:d-1; }
+
+function getYouTubeId(url) {
+  var info = detectPlatformInfo(url);
+  return (info && info.type === 'youtube' && info.embedbaar) ? info.id : null;
+}
+
+function getYouTubeThumbnail(id){return id?'https://img.youtube.com/vi/'+id+'/mqdefault.jpg':null;}
 
 function initApp() {
   document.getElementById('gezin-naam').textContent = gezinsCode;
@@ -803,107 +1046,600 @@ function initApp() {
   setSyncStatus(false);
 }
 
-document.addEventListener('fb-ready', function() {
-  document.getElementById('loading-screen').style.display = 'none';
-  var opgeslagen = localStorage.getItem('gezinscode');
-  if (opgeslagen) { gezinsCode = opgeslagen; initApp(); }
-  else { document.getElementById('setup-screen').style.display = 'block'; }
-});
+async function inspHaalIngredienten(idx, naam) {
+  var btn = document.querySelector('[data-idx="' + idx + '"]');
+  if (btn) { btn.textContent = '⏳ Laden...'; btn.disabled = true; }
+  try {
+    var resp = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type:'inspiratie', stap:'ingredienten', gerecht:naam, personen:_inspData.personen })
+    });
+    if (!resp.ok) throw new Error('Server ' + resp.status);
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    var r = data.recept;
+    if (!r || !r.ingredienten) throw new Error('Geen ingrediënten ontvangen');
 
-// ---- Sync ----
-function setSyncStatus(saving) {
-  document.getElementById('sync-dot').className = 'dot' + (saving ? ' saving' : '');
-  document.getElementById('sync-label').textContent = saving ? 'Opslaan…' : 'Live verbonden 🔗';
-}
+    // Update globaal recept
+    if (window._inspRecepten && window._inspRecepten[idx]) {
+      window._inspRecepten[idx].ingredienten = r.ingredienten;
+      if (r.stappen) window._inspRecepten[idx].stappen = r.stappen;
+    }
 
-// ---- Tabs ----
-function switchTab(tab) {
-  var tabs = ['boodschappen','menu','kookboek','prijzen','ideeen','admin'];
-  for (var ti = 0; ti < tabs.length; ti++) {
-    var t = tabs[ti];
-    var view = document.getElementById('view-' + t);
-    var btn  = document.getElementById('tab-'  + t);
-    if (view) view.style.display = (t === tab) ? 'block' : 'none';
-    if (t === tab && t === 'kookboek') { setTimeout(function(){ renderRecepten(); if(typeof inspInit==='function' && !window._inspStarted){ window._inspStarted=true; inspInit(); }},50); }
-    if (t === tab && t === 'menu') { setTimeout(function(){ renderMenu(); }, 50); }
-    if (btn)  btn.className = 'tab' + (t === tab ? ' active' : '');
+    // Herrender het detail gedeelte
+    var detail = document.getElementById('rci-detail-' + idx);
+    if (!detail) return;
+
+    var ingHtml = '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
+    ingHtml += '<div style="margin-bottom:12px">';
+    r.ingredienten.forEach(function(ing) {
+      ingHtml += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span><span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
+    });
+    ingHtml += '</div>';
+    ingHtml += '<button onclick="inspVoegAllesToe(' + idx + ',this)" data-naam="' + esc(naam) + '" data-idx="' + idx + '" '
+      + 'style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-bottom:10px">'
+      + '🛒 Voeg alle ingrediënten toe aan boodschappenlijst</button>';
+
+    // Vervang de laden-knop door de ingrediëntenlijst
+    if (btn) btn.parentNode.replaceChild(document.createRange().createContextualFragment(ingHtml), btn);
+
+    // Voeg stappen toe indien ze er nog niet zijn
+    if (r.stappen && r.stappen.length) {
+      var stapHtml = '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px;margin-top:4px">👨‍🍳 Bereidingsstappen</div>';
+      r.stappen.forEach(function(stap, si) {
+        stapHtml += '<div style="display:flex;gap:10px;margin-bottom:8px;font-size:0.83rem">'
+          + '<div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:white;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (si+1) + '</div>'
+          + '<div style="color:var(--ink);line-height:1.5">' + esc(stap) + '</div></div>';
+      });
+      var yt = detail.querySelector('a[href*="youtube"]');
+      if (yt) yt.insertAdjacentHTML('beforebegin', stapHtml);
+    }
+  } catch(e) {
+    if (btn) { btn.textContent = '❌ Mislukt — tik opnieuw'; btn.disabled = false; }
   }
 }
 
-// ---- Boodschappen ----
-function setPerson(p) {
-  currentPerson = p;
-  document.getElementById('btn-jij').className = 'person-btn' + (p==='jij' ? ' active-jij' : '');
-  document.getElementById('btn-vrouw').className = 'person-btn' + (p==='vrouw' ? ' active-vrouw' : '');
+function inspInit() {
+  _inspData = { keuken:'', dieet:'', maaltijd:'diner', personen:4, stap:1 };
+  inspToonStap(1);
+  inspUpdateProgress(1);
 }
 
-function setFilter(btn, f) {
-  currentFilter = f;
-  var chips = document.querySelectorAll('.filter-chip');
-  for (var fi = 0; fi < chips.length; fi++) chips[fi].classList.remove('active');
-  if (btn) btn.classList.add('active');
-  render();
-}
+function inspKeuze(stap, waarde) {
+  if (stap === 1) _inspData.keuken   = waarde;
+  if (stap === 2) _inspData.dieet    = waarde;
+  if (stap === 3) _inspData.maaltijd = waarde;
+  if (stap === 4) _inspData.personen = parseInt(waarde) || 4;
 
-async function addItem() {
-  var name = document.getElementById('item-input').value.trim();
-  if (!name) return;
-  var id = Date.now();
-  var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
-  var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
-  var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
-  items.unshift(newItem);
-  render();
-  document.getElementById('item-input').value = '';
-  if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) { console.log('addItem fout:', e.message); }
-  setSyncStatus(false);
-}
-
-async function toggleItem(id) {
-  for (var ti = 0; ti < items.length; ti++) {
-    if (items[ti].id === id) { items[ti].done = !items[ti].done; break; }
+  if (stap < 4) {
+    inspToonStap(stap + 1);
+  } else {
+    // Alle stappen klaar — zoek recepten
+    inspZoekRecepten();
   }
-  render();
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
-  setSyncStatus(false);
 }
 
-async function deleteItem(id) {
-  items = items.filter(function(i){ return i.id !== id; });
-  render();
-  setSyncStatus(true);
-  try { await fbDelete(id); } catch(e) {}
-  setSyncStatus(false);
+async function inspKoppelAanDag(idx) {
+  var r = window._inspRecepten && window._inspRecepten[idx];
+  if (!r) return;
+  var sel = document.getElementById('rci-dag-' + idx);
+  if (!sel || sel.value === '') {
+    var status = document.getElementById('rci-status-' + idx);
+    if (status) status.innerHTML = '<span style="color:var(--red)">Kies eerst een dag</span>';
+    return;
+  }
+  var dagIdx = parseInt(sel.value);
+  var key = getDagKey(dagIdx);
+  menu[key] = r.naam;
+  var status = document.getElementById('rci-status-' + idx);
+  if (status) status.innerHTML = '📅 Gepland voor ' + ['ma','di','wo','do','vr','za','zo'][dagIdx] + '!';
+  try { await fbSaveMenu(menu); } catch(e) {}
 }
 
-async function changeQty(id, delta) {
-  for (var qi = 0; qi < items.length; qi++) {
-    if (items[qi].id === id) {
-      items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
+async function inspSlaReceptOp(idx, btn) {
+  var r = window._inspRecepten && window._inspRecepten[idx];
+  if (!r) return;
+  var id = 'recept-' + Date.now();
+  var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
+  var ingLijst = [];
+  if (r.ingredienten) {
+    for (var ii = 0; ii < r.ingredienten.length; ii++) {
+      var ing = r.ingredienten[ii];
+      var ingStr = (ing.hoeveelheid ? ing.hoeveelheid + ' ' : '') + (ing.eenheid ? ing.eenheid + ' ' : '') + (ing.naam || '');
+      ingLijst.push(ingStr.trim());
+    }
+  }
+  var receptObj = {
+    id: id, naam: r.naam, youtube: yt,
+    categorie: _inspData.maaltijd || 'diner',
+    beschrijving: r.omschr || '',
+    personen: String(_inspData.personen || 4),
+    tijd: r.tijd || null,
+    ingredienten: ingLijst,
+    aangemaakt: Date.now()
+  };
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
+    if (btn) { btn.textContent = '✅ Bewaard!'; btn.disabled = true; btn.style.background = '#e8f5e9'; }
+    var status = document.getElementById('rci-status-' + idx);
+    if (status) status.innerHTML = '✅ Opgeslagen in kookboek!';
+  } catch(e) {
+    if (btn) btn.textContent = '❌ Mislukt';
+  }
+}
+
+function inspToggleRecept(idx) {
+  var detail = document.getElementById('rci-detail-' + idx);
+  var arrow  = document.getElementById('rci-arrow-'  + idx);
+  var card   = document.getElementById('rci-' + idx);
+  if (!detail) return;
+  var open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▸' : '▾';
+  if (card)  card.className = open ? 'recept-card-insp' : 'recept-card-insp open';
+}
+
+function inspToonResultaten(receptenLijst) {
+  var si = document.getElementById('insp-stap-inhoud');
+  var el = document.getElementById('insp-resultaten');
+  if (!el) return;
+  if (si) si.innerHTML = '';
+  var dot4 = document.getElementById('dot-4');
+  if (dot4) dot4.className = 'insp-stap-dot done';
+
+  var nBg = { Makkelijk:'#e8f5e9', Gemiddeld:'#fff3e0', Uitdagend:'#fce4ec' };
+  var nKl = { Makkelijk:'#2e7d32', Gemiddeld:'#e65100', Uitdagend:'#c62828' };
+
+  var header = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<div style="font-size:0.82rem;color:var(--muted)">' + receptenLijst.length + ' recepten'
+    + ((_inspData.keuken && _inspData.keuken !== 'verrassing') ? ' · <strong>' + _inspData.keuken + '</strong>' : '')
+    + ' · <strong>' + _inspData.personen + ' pers.</strong></div>'
+    + '<button onclick="inspInit()" style="font-size:0.75rem;background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:DM Sans,sans-serif;color:var(--muted)">↺ Opnieuw</button>'
+    + '</div>';
+
+  var dagNamen = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+  var dagOpties = '<option value="">— Dag —</option>';
+  for (var di = 0; di < dagNamen.length; di++) {
+    dagOpties += '<option value="' + di + '">' + dagNamen[di] + '</option>';
+  }
+
+  var html = header;
+  for (var idx = 0; idx < receptenLijst.length; idx++) {
+    var r = receptenLijst[idx];
+    var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
+    html += '<div class="recept-card-insp" id="rci-' + idx + '">';
+
+    // Header (altijd zichtbaar)
+    html += '<div onclick="inspToggleRecept(' + idx + ')" style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">';
+    html += '<div style="flex:1">';
+    html += '<div style="font-family:\'Playfair Display\',serif;font-size:0.98rem;margin-bottom:5px">' + esc(r.naam||'') + '</div>';
+    html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px">';
+    if (r.tijd)   html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(--green-pale);color:var(--green)">⏱ ' + esc(r.tijd) + '</span>';
+    if (r.niveau) html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:' + (nBg[r.niveau]||'#f5f5f5') + ';color:' + (nKl[r.niveau]||'#666') + '">' + esc(r.niveau) + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:0.81rem;color:var(--muted);line-height:1.5">' + esc(r.omschr||'') + '</div>';
+    html += '</div>';
+    html += '<div style="font-size:1.1rem;color:var(--muted);flex-shrink:0" id="rci-arrow-' + idx + '">▸</div>';
+    html += '</div>';
+
+    // Detail (ingeklapt)
+    html += '<div id="rci-detail-' + idx + '" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">';
+
+    // Ingrediënten
+    if (r.ingredienten && r.ingredienten.length) {
+      html += '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
+      html += '<div style="margin-bottom:12px">';
+      for (var ii = 0; ii < r.ingredienten.length; ii++) {
+        var ing = r.ingredienten[ii];
+        html += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span>'
+          + '<span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
+      }
+      html += '</div>';
+      html += '<button onclick="inspVoegAllesToe(' + idx + ',this)" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">🛒 Voeg ingrediënten toe aan boodschappenlijst</button>';
+    } else {
+      html += '<button onclick="inspHaalIngredienten(' + idx + ',\'' + esc(r.naam||'').replace(/'/g, "\\'") + '\')" style="width:100%;padding:10px;border:1.5px dashed var(--green);border-radius:10px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">📋 Laad ingrediënten (' + _inspData.personen + ' pers.)</button>';
+    }
+
+    // Dag koppelen + opslaan in rij
+    html += '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
+    html += '<select id="rci-dag-' + idx + '" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:DM Sans,sans-serif;font-size:0.82rem;background:white">' + dagOpties + '</select>';
+    html += '<button onclick="inspKoppelAanDag(' + idx + ')" style="padding:8px 14px;border:none;border-radius:8px;background:#5bb76e;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📅 Plan</button>';
+    html += '<button onclick="inspSlaReceptOp(' + idx + ',this)" style="padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">💾 Bewaar</button>';
+    html += '</div>';
+    html += '<div id="rci-status-' + idx + '" style="font-size:0.78rem;color:var(--green);margin-bottom:6px"></div>';
+
+    // YouTube
+    html += '<a href="' + esc(yt) + '" target="_blank" style="display:block;text-align:center;text-decoration:none;padding:9px;border-radius:10px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600">▶ Bekijk op YouTube</a>';
+
+    html += '</div></div>';
+  }
+
+  window._inspRecepten = receptenLijst;
+  el.innerHTML = html;
+}
+
+function inspToonStap(stap) {
+  var el = document.getElementById('insp-stap-inhoud');
+  if (!el) return;
+  _inspData.stap = stap;
+  inspUpdateProgress(stap);
+
+  var vragen = [
+    { stap:1, titel:'Welke keuken heb je zin in?', opties:[
+      {v:'indonesisch',l:'🍛 Indonesisch'},{v:'aziatisch',l:'🍜 Aziatisch'},{v:'mexicaans',l:'🌮 Mexicaans'},
+      {v:'italiaans',l:'🍝 Italiaans'},{v:'mediterraan',l:'🫙 Mediterraan'},{v:'indiaas',l:'🍲 Indiaas'},
+      {v:'thais',l:'🌶️ Thais'},{v:'japans',l:'🍱 Japans'},{v:'grieks',l:'🫒 Grieks'},
+      {v:'spaans',l:'🥘 Spaans'},{v:'zuidamerikaans',l:'🥩 Zuid-Amerikaans'},{v:'turks',l:'🥙 Turks'},
+      {v:'marokkaans',l:'🫕 Marokkaans'},{v:'nederlands',l:'🧀 Nederlands'},{v:'vegetarisch',l:'🥦 Vegetarisch'},
+      {v:'verrassing',l:'🎲 Verras me!'}
+    ]},
+    { stap:2, titel:'Vlees, vis of vegetarisch?', opties:[
+      {v:'met vlees',l:'🥩 Met vlees'},{v:'vis of zeevruchten',l:'🐟 Vis / Zeevruchten'},
+      {v:'vegetarisch',l:'🥦 Vegetarisch'},{v:'veganistisch',l:'🌱 Veganistisch'},{v:'geen voorkeur',l:'✨ Geen voorkeur'}
+    ]},
+    { stap:3, titel:'Welk soort maaltijd?', opties:[
+      {v:'diner',l:'🍽️ Diner'},{v:'lunch',l:'🥗 Lunch'},{v:'ontbijt',l:'🥐 Ontbijt'},
+      {v:'snack',l:'🍿 Snack'},{v:'dessert',l:'🍰 Dessert'}
+    ]},
+    { stap:4, titel:'Voor hoeveel personen?', opties:[
+      {v:'1',l:'👤 1 persoon'},{v:'2',l:'👥 2 personen'},{v:'4',l:'👨‍👩‍👧‍👦 4 personen'},
+      {v:'6',l:'🎉 6 personen'},{v:'8',l:'🥳 8+ personen'}
+    ]}
+  ];
+
+  var q = vragen[stap - 1];
+  if (!q) return;
+
+  var huidige = ['',_inspData.keuken,_inspData.dieet,_inspData.maaltijd,String(_inspData.personen)][stap] || '';
+  var html = '<div style="font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:12px">' + q.titel + '</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
+  q.opties.forEach(function(o) {
+    var sel = o.v === huidige;
+    html += '<button class="insp-chip' + (sel ? ' selected' : '') + '" onclick="inspKeuze(' + stap + ',\'' + o.v.replace(/'/g, "\\'") + '\')">' + o.l + '</button>';
+  });
+  html += '</div>';
+
+  if (stap > 1) {
+    html += '<button onclick="inspToonStap(' + (stap-1) + ')" style="background:none;border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;color:var(--muted);cursor:pointer;margin-right:8px">← Terug</button>';
+  }
+
+  el.innerHTML = html;
+}
+
+function inspUpdateProgress(stap) {
+  for (var i = 1; i <= 4; i++) {
+    var dot = document.getElementById('dot-' + i);
+    if (!dot) continue;
+    dot.className = 'insp-stap-dot' + (i < stap ? ' done' : i === stap ? ' active' : '');
+    if (i < 4) {
+      var prog = document.getElementById('prog-' + i);
+      if (prog) prog.style.width = i < stap ? '100%' : '0%';
+    }
+  }
+}
+
+function inspVoegAllesToe(idx, btn) {
+  var r = window._inspRecepten && window._inspRecepten[idx];
+  if (!r || !r.ingredienten || !r.ingredienten.length) return;
+  var toegevoegd = 0;
+  var promises = [];
+  r.ingredienten.forEach(function(ing) {
+    var naam = ing.naam;
+    if (!naam || naam.trim() === '') return;
+    var vollNaam = ing.hoeveelheid ? ing.hoeveelheid + ' ' + (ing.eenheid||'') + ' ' + naam : naam;
+    vollNaam = vollNaam.trim();
+    var id = 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2,5);
+    var item = { id:id, name:vollNaam, done:false, qty:1, person:currentPerson || '', winkel:'', timestamp:Date.now() };
+    items.push(item);
+    toegevoegd++;
+    promises.push(window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item));
+  });
+  Promise.all(promises).then(function() {
+    render();
+    var status = document.getElementById('rci-ing-status-' + idx);
+    if (status) status.innerHTML = '<div style="background:var(--green-pale);border-radius:8px;padding:8px 12px;font-size:0.82rem;color:var(--green);font-weight:600;text-align:center;margin-top:6px">✅ ' + toegevoegd + ' ingrediënten toegevoegd aan boodschappenlijst!</div>';
+    if (btn) { btn.textContent = '✅ Toegevoegd!'; btn.style.background = '#4caf50'; btn.disabled = true; }
+  }).catch(function(e) {
+    if (btn) { btn.textContent = '❌ Fout bij opslaan'; btn.disabled = false; }
+  });
+}
+
+async function inspZoekRecepten() {
+  var el = document.getElementById('insp-resultaten');
+  var si = document.getElementById('insp-stap-inhoud');
+  if (el) el.innerHTML = '';
+  if (si) si.innerHTML = '<div style="text-align:center;padding:24px 0;color:var(--muted)">'
+    + '<div style="font-size:2rem;margin-bottom:10px">🔍</div>'
+    + '<div style="font-weight:600;margin-bottom:4px">Recepten zoeken...</div>'
+    + '<div style="font-size:0.78rem">Even geduld, we doorzoeken duizenden recepten</div></div>';
+  inspUpdateProgress(4);
+  var dot4 = document.getElementById('dot-4');
+  if (dot4) dot4.className = 'insp-stap-dot active';
+
+  try {
+    var resp = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'inspiratie',
+        stap: 'resultaat',
+        keuken:   _inspData.keuken,
+        dieet:    _inspData.dieet,
+        maaltijd: _inspData.maaltijd,
+        personen: _inspData.personen
+      })
+    });
+    if (!resp.ok) throw new Error('Server ' + resp.status);
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    if (!data.recepten || !data.recepten.length) throw new Error('Geen recepten gevonden');
+    inspToonResultaten(data.recepten);
+  } catch(e) {
+    if (si) si.innerHTML = '';
+    if (el) el.innerHTML = '<div style="background:#faeae9;border-radius:12px;padding:14px;color:var(--red);font-size:0.85rem">'
+      + '❌ ' + e.message + '<br><br>'
+      + '<button onclick="inspZoekRecepten()" style="background:var(--green);color:white;border:none;border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Opnieuw proberen</button>'
+      + ' <button onclick="inspInit()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Begin opnieuw</button>'
+      + '</div>';
+  }
+}
+
+function isAanbiedingArtikel(){return false;}
+
+function isGoedkoopstArtikel(naam, winkel) {
+    var rij = null;
+    for (var i=0;i<gevonden.length;i++) if(gevonden[i].naam===naam){rij=gevonden[i];break;}
+    if(!rij) return false;
+    var min = Infinity;
+    for (var i=0;i<actieveWinkelLijst.length;i++){var v=rij[actieveWinkelLijst[i]]||0;if(v<min)min=v;}
+    return (rij[winkel]||0) === min;
+  }
+
+function kiesProduct(naam, cat) {
+  var inp = document.getElementById('item-input');
+  if (inp) inp.value = naam;
+  sluitAutocomplete();
+  if (cat) slaGeleerdeCategorie(naam, cat);
+}
+
+async function kiesRecept(dagIdx, naam, receptId) {
+  var key = getDagKey(dagIdx);
+  menu[key] = naam;
+  if (receptId) menu[key + '_receptId'] = receptId;
+  setSyncStatus(true);
+  try { await fbSaveMenu(menu); } catch(e) { console.log('kiesRecept fout:', e.message); }
+  setSyncStatus(false);
+  renderMenu();
+}
+
+function kopieerAppLink() {
+  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  navigator.clipboard.writeText(link).then(function() {
+    var el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    var el = document.getElementById('kopier-bevestiging');
+    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+  });
+}
+
+function laadPersonen() {
+  var opgeslagen = localStorage.getItem('personen_' + gezinsCode);
+  if (opgeslagen) {
+    try { personen = JSON.parse(opgeslagen); } catch(e) { personen = []; }
+  }
+  // Zet currentPerson op eerste persoon als het nog niet gezet is
+  if (personen.length > 0 && (!currentPerson || currentPerson === 'Jij' || currentPerson === 'jij')) {
+    currentPerson = personen[0].naam;
+  }
+  renderPersonenKnoppen();
+}
+
+function logAankoopHistorie(naam) {
+  try {
+    var hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}');
+    var n = naam.toLowerCase().trim();
+    var nu = Date.now();
+    if (!hist[n]) hist[n] = {count:0, laats:[]};
+    hist[n].count++;
+    hist[n].laats.push(nu);
+    if (hist[n].laats.length > 10) hist[n].laats = hist[n].laats.slice(-10);
+    hist[n].gem_interval = berekenGemInterval(hist[n].laats);
+    localStorage.setItem('aankoop_hist_' + gezinsCode, JSON.stringify(hist));
+  } catch(e) {}
+}
+
+function navigeerAutocomplete(e) {
+  var dropdown = document.getElementById('autocomplete-dropdown');
+  if (!dropdown || dropdown.style.display === 'none') return;
+  var items = dropdown.querySelectorAll('.ac-item');
+  if (!items.length) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acSelectedIdx = Math.min(acSelectedIdx + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acSelectedIdx = Math.max(acSelectedIdx - 1, -1);
+  } else if (e.key === 'Escape') {
+    sluitAutocomplete(); return;
+  } else if (e.key === 'Enter' && acSelectedIdx >= 0) {
+    e.preventDefault();
+    items[acSelectedIdx].click(); return;
+  } else { return; }
+
+  for(var _ai=0;_ai<items.length;_ai++){items[_ai].classList.toggle('selected',_ai===acSelectedIdx);};
+  if (acSelectedIdx >= 0) items[acSelectedIdx].scrollIntoView({block:'nearest'});
+}
+
+async function openAdminTab() {
+  if (isBeheerder) { switchTab('admin'); return; }
+  if (!window.PublicKeyCredential) {
+    var pin = prompt('Voer de beheerderspincode in:');
+    if (pin === 'jorg103') { activeerBeheerder(); }
+    return;
+  }
+
+  try {
+    // Check of er al een credential is opgeslagen
+    var credId = localStorage.getItem('admin_cred_id');
+    if (credId) {
+      // Verifieer met bestaande credential
+      await verifieerFaceId(credId);
+    } else {
+      // Eerste keer: registreer Face ID
+      await registreerFaceId();
+    }
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      alert('Face ID geannuleerd of geweigerd.');
+    } else {
+      console.error('Face ID fout:', e);
+      // Fallback
+      if (confirm('Face ID mislukt. Toegang toch verlenen?')) activeerBeheerder();
+    }
+  }
+}
+
+function openPersonenInstellingen() {
+  var el = document.getElementById('personen-invoer');
+  if (!el) return;
+  var html = '';
+  for (var i = 0; i < personen.length; i++) {
+    var p = personen[i];
+    html += '<div class="persoon-rij" id="persoon-rij-' + i + '">';
+    html += '<label class="foto-upload-label" title="Foto uploaden" id="foto-label-' + i + '">';
+    html += '<span id="foto-preview-' + i + '">' + (p.foto ? '<img src="' + p.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />' : '📷') + '</span>';
+    html += '<input type="file" accept="image/*" onchange="verwerkFoto(event,' + i + ')" />';
+    html += '</label>';
+    html += '<input class="persoon-input" value="' + esc(p.naam) + '" placeholder="Naam" oninput="updatePersoonNaam(' + i + ',this.value)" />';
+    html += '<input type="color" value="' + p.kleur + '" onchange="updatePersoonKleur(' + i + ',this.value)" style="width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0" />';
+    html += '<button onclick="verwijderPersoon(' + i + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+  var modal = document.getElementById('personen-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function openReceptForm(id) {
+  document.getElementById('recept-modal-titel').textContent = id ? '✏️ Recept bewerken' : '📖 Nieuw recept';
+  document.getElementById('recept-edit-id').value = id || '';
+  document.getElementById('recept-naam').value = '';
+  document.getElementById('recept-youtube').value = '';
+  var pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
+  document.getElementById('recept-beschrijving').value = '';
+  document.getElementById('recept-personen').value = '';
+  document.getElementById('recept-tijd').value = '';
+  document.getElementById('recept-cat').value = 'diner';
+  tempIngredienten = [];
+  document.getElementById('recept-error').style.display = 'none';
+
+  if (id) {
+    var r = recepten.find(function(x){ return x.id === id; });
+    if (r) {
+      document.getElementById('recept-naam').value = r.naam || '';
+      document.getElementById('recept-youtube').value = r.youtube || '';
+      document.getElementById('recept-beschrijving').value = r.beschrijving || '';
+      document.getElementById('recept-personen').value = r.personen || '';
+      document.getElementById('recept-tijd').value = r.tijd || '';
+      document.getElementById('recept-cat').value = r.categorie || 'diner';
+      tempIngredienten = r.ingredienten ? r.ingredienten.slice() : [];
+    }
+  }
+  document.getElementById('recept-modal').style.display = 'flex';
+}
+
+async function registreerFaceId() {
+  var challenge = new Uint8Array(32);
+  crypto.getRandomValues(challenge);
+
+  var credential = await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: 'Boodschappen App', id: location.hostname },
+      user: {
+        id: new TextEncoder().encode('admin-jorg'),
+        name: 'admin',
+        displayName: 'Beheerder'
+      },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required'
+      },
+      timeout: 60000
+    }
+  });
+
+  // Sla credential ID op
+  var credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+  localStorage.setItem('admin_cred_id', credId);
+  activeerBeheerder();
+}
+
+async function registreerGezin() {
+  var naam = document.getElementById('reg-naam').value.trim();
+  var email = document.getElementById('reg-email').value.trim();
+  var errEl = document.getElementById('reg-error');
+  errEl.style.display = 'none';
+
+  if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
+  if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
+
+  // Auto-genereer code vanuit naam
+  var code = sanitizeCode(naam);
+
+  // Tel bestaande registraties
+  var allSnap = await new Promise(function(res) { window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}); });
+  var bestaande = allSnap.val() || {};
+  var volgnummer = Object.keys(bestaande).length + 1;
+
+  // Check of code OF naam al bestaat (case-insensitive)
+  var naamLower = naam.toLowerCase().trim();
+  var codeAlGebruikt = !!bestaande[code];
+  var naamAlGebruikt = false;
+  var bestaandeStatus = 'wachtend';
+  for (var bk in bestaande) {
+    if ((bestaande[bk].naam || '').toLowerCase().trim() === naamLower) {
+      naamAlGebruikt = true;
+      bestaandeStatus = bestaande[bk].status || 'wachtend';
       break;
     }
   }
-  render();
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
-  setSyncStatus(false);
-}
+  if (codeAlGebruikt || naamAlGebruikt) {
+    var statusTekst = bestaandeStatus === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
+    errEl.textContent = 'De naam "' + naam + '" is ' + statusTekst + '. Kies een andere naam, bijv. "' + naam + ' Thuis" of "' + naam + ' 2".';
+    errEl.style.display = 'block';
+    return;
+  }
 
-async function clearDone() {
-  items = items.filter(function(i){ return !i.done; });
-  render();
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
-  setSyncStatus(false);
-}
+  // Wis eventuele eerdere gezinscode op dit apparaat zodat opnieuw registreren werkt
+  try { localStorage.removeItem('gezinscode'); } catch(e) {}
+  try { sessionStorage.removeItem('gezinscode'); } catch(e) {}
+  try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
 
-function toggleDone() {
-  doneVisible = !doneVisible;
-  document.getElementById('done-section').style.display = doneVisible ? 'block' : 'none';
-  document.getElementById('done-arrow').textContent = doneVisible ? '▼' : '▶';
+  // Sla registratie op
+  await window._set(window._ref(window._db, 'registraties/' + code), {
+    code: code, naam: naam, email: email,
+    volgnummer: volgnummer,
+    status: 'wachtend',
+    aangemeld: Date.now(),
+    goedgekeurd: false
+  });
+
+  // Update globale teller
+  await window._set(window._ref(window._db, 'meta/totaal_aanmeldingen'), volgnummer);
+
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'block';
 }
 
 function render() {
@@ -918,6 +1654,153 @@ function render() {
   renderList('done-list', done, true);
 }
 
+function renderAdminIdeeen(ideeen) {
+  var el = document.getElementById('admin-ideeen-lijst');
+  if (!el) return;
+  if (!ideeen.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen ideeen.</div>'; return; }
+  var html = '';
+  for (var ii=0; ii<ideeen.length; ii++) {
+    var id2 = ideeen[ii];
+    var s2 = id2.status || 'nieuw';
+    var dt2 = new Date(id2.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    html += '<div class="idee-card">';
+    html += '<div class="idee-header"><span class="idee-naam">&#128100; ' + esc(id2.naam||'?') + '</span>';
+    html += '<span class="idee-datum">' + dt2 + '</span></div>';
+    html += '<div class="idee-tekst">' + esc(id2.tekst) + '</div>';
+    html += '<div class="idee-acties">';
+    if (s2 !== 'goedgekeurd') html += '<button class="idee-btn goedkeuren" data-i="' + esc(id2.id) + '" data-s="goedgekeurd">&#10003;</button>';
+    html += '<button class="idee-btn behandeling" data-i="' + esc(id2.id) + '" data-s="behandeling">&#8635;</button>';
+    html += '<button class="idee-btn afwijzen" data-i="' + esc(id2.id) + '" data-s="afgewezen">&#10007;</button>';
+    html += '<button class="idee-btn verwijder" data-i="' + esc(id2.id) + '" data-del2="1">&#128465;</button>';
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+  var btns2 = el.querySelectorAll('[data-s],[data-del2]');
+  for (var bj=0; bj<btns2.length; bj++) {
+    (function(b2) {
+      b2.onclick = function() {
+        var id = b2.getAttribute('data-i'), st = b2.getAttribute('data-s'), dl = b2.getAttribute('data-del2');
+        if (dl) verwijderIdee(id); else updateIdeeStatus(id, st);
+      };
+    })(btns2[bj]);
+  }
+}
+
+function renderAdminRegistraties(regs) {
+  var el = document.getElementById('admin-registraties-lijst');
+  if (!el) return;
+  var gs = regs.slice().sort(function(a,b){return b.aangemeld-a.aangemeld;});
+  if (!gs.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen aanmeldingen.</div>'; return; }
+  var html = '';
+  for (var ri=0; ri<gs.length; ri++) {
+    var reg = gs[ri];
+    var s = reg.status || 'wachtend';
+    var kl = {wachtend:'#c47a2a',goedgekeurd:'#3d6b4f',afgewezen:'#c4473a',geblokkeerd:'#7a4db5'}[s]||'#ccc';
+    var lb = {wachtend:'Wachtend',goedgekeurd:'Actief',afgewezen:'Afgewezen',geblokkeerd:'Geblokkeerd'}[s]||s;
+    var sc = (s==='goedgekeurd'?'goedgekeurd':(s==='wachtend'?'nieuw':'afgewezen'));
+    var dt = new Date(reg.aangemeld).toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    html += '<div class="idee-card status-' + sc + '" style="margin-bottom:8px">';
+    html += '<div class="idee-header"><div>';
+    html += '<div style="font-weight:600;font-size:0.9rem">' + esc(reg.naam||'?') + ' <span style="font-size:0.7rem;color:var(--muted)">#' + (reg.volgnummer||'?') + '</span></div>';
+    html += '<div style="font-size:0.75rem;color:var(--muted)">' + esc(reg.email||'') + '</div>';
+    html += '<div style="font-size:0.72rem;font-family:monospace;color:var(--muted)">code: ' + esc(reg.code) + '</div></div>';
+    html += '<div style="text-align:right"><span style="font-size:0.68rem;padding:2px 7px;border-radius:8px;font-weight:600;background:' + kl + '20;color:' + kl + '">' + lb + '</span>';
+    html += '<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">' + dt + '</div></div></div>';
+    html += '<div class="idee-acties">';
+    if (s !== 'goedgekeurd') html += '<button class="idee-btn goedkeuren" data-c="' + esc(reg.code) + '" data-a="goedgekeurd">&#10003; Goedkeuren</button>';
+    if (s === 'goedgekeurd') html += '<button class="idee-btn behandeling" data-c="' + esc(reg.code) + '" data-a="geblokkeerd">Blokkeren</button>';
+    if (s === 'geblokkeerd') html += '<button class="idee-btn goedkeuren" data-c="' + esc(reg.code) + '" data-a="goedgekeurd">Deblokkeren</button>';
+    if (s !== 'afgewezen' && s !== 'goedgekeurd') html += '<button class="idee-btn afwijzen" data-c="' + esc(reg.code) + '" data-a="afgewezen">Afwijzen</button>';
+    html += '<button class="idee-btn verwijder" data-c="' + esc(reg.code) + '" data-del="1">&#128465;</button>';
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+  var btns = el.querySelectorAll('[data-a],[data-del]');
+  for (var bi=0; bi<btns.length; bi++) {
+    (function(b) {
+      b.onclick = function() {
+        var c = b.getAttribute('data-c'), a = b.getAttribute('data-a'), d = b.getAttribute('data-del');
+        if (d) verwijderRegistratie(c); else updateRegistratieStatus(c, a);
+      };
+    })(btns[bi]);
+  }
+}
+
+function renderIdeeen(ideeen) {
+  document.getElementById('beheer-sectie').style.display = 'none';
+  document.getElementById('publiek-sectie').style.display = 'block';
+  var goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
+  var el = document.getElementById('ideeen-publiek');
+  if (!el) return;
+  if (!goedgekeurd.length) {
+    el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>';
+    return;
+  }
+  el.innerHTML = goedgekeurd.map(function(idee) {
+    return '<div class="idee-card status-goedgekeurd">' +
+      '<div class="idee-header">' +
+        '<span class="idee-naam">👤 ' + esc(idee.naam||'Anoniem') + '</span>' +
+        '<span class="idee-datum">' + new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + '</span>' +
+      '</div>' +
+      '<div class="idee-tekst">' + esc(idee.tekst) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderIngredientenInvoer() {
+  var el = document.getElementById('ingredienten-invoer');
+  if (!el) return;
+  var html = '';
+  for (var ii = 0; ii < tempIngredienten.length; ii++) {
+    var ing = tempIngredienten[ii];
+    html += '<div class="ingredient-input-rij">';
+    html += '<input class="ingredient-input" value="' + esc(ing) + '" placeholder="bijv. 200g spaghetti"';
+    html += ' oninput="tempIngredienten[' + ii + ']=this.value"';
+    html += ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();voegIngredientToe()}" />';
+    html += '<button onclick="verwijderIngredient(' + ii + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderItem(item) {
+  var p = null;
+  for (var pi = 0; pi < personen.length; pi++) {
+    if (personen[pi].naam === item.person) { p = personen[pi]; break; }
+  }
+  if (!p) p = { naam: item.person || '', kleur: '#3d6b4f', foto: null };
+  var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
+  var borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
+  var winkel = item.winkel || detectWinkel(item.name);
+  var winkelBadge = winkel === 'kruidvat'
+    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
+    : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
+  var fotoHtml = p.foto
+    ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:2px;vertical-align:middle" />'
+    : '&#128100;';
+  var catOptions = '';
+  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
+    var cc = BOODSCHAP_CATS[ci];
+    catOptions += '<option value="' + cc.key + '"' + ((item.cat||'kruidenierswaren')===cc.key?' selected':'') + '>' + cc.icon + ' ' + cc.label + '</option>';
+  }
+  var html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
+  html += '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
+  html += '<div class="item-main">';
+  html += '<div class="item-name">' + esc(item.name) + '</div>';
+  html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
+  html += winkelBadge;
+  html += '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + '">' + fotoHtml + ' ' + esc(p.naam) + '</span>';
+  html += '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
+  html += '</div></div>';
+  html += '<div class="qty-controls">';
+  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">&#8722;</button>';
+  html += '<span class="qty-num">' + (item.qty || 1) + '</span>';
+  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>';
+  html += '</div>';
+  html += '<button class="delete-btn" onclick="deleteItem(' + item.id + ')">&#10005;</button>';
+  html += '</div>';
+  return html;
+}
 
 function renderList(id, list, isDone) {
   var el = document.getElementById(id);
@@ -974,16 +1857,6 @@ function renderList(id, list, isDone) {
   el.innerHTML = html;
 }
 
-// ---- Weekmenu ----
-function getDagKey(i) {
-  var now = new Date(), day = now.getDay(), monday = new Date(now);
-  monday.setDate(now.getDate() - (day===0 ? 6 : day-1));
-  var d = new Date(monday); d.setDate(monday.getDate()+i);
-  return d.toISOString().split('T')[0];
-}
-function getDatumLabel(i) { return new Date(getDagKey(i)).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }
-function getTodayIndex() { var d = new Date().getDay(); return d===0?6:d-1; }
-
 function renderMenu() {
   var grid = document.getElementById('week-grid');
   if (!grid) return;
@@ -1035,583 +1908,6 @@ function renderMenu() {
   grid.innerHTML = html;
 }
 
-function toggleDag(i) {
-  var body  = document.getElementById('dag-body-'  + i);
-  var arrow = document.getElementById('dag-arrow-' + i);
-  if (!body) return;
-  var open = body.style.display !== 'none';
-  // Sluit alle andere dagen
-  for (var di = 0; di < DAGEN.length; di++) {
-    var ob = document.getElementById('dag-body-'  + di);
-    var oa = document.getElementById('dag-arrow-' + di);
-    if (ob) ob.style.display = 'none';
-    if (oa) oa.textContent = '▸';
-  }
-  if (!open) {
-    body.style.display = 'block';
-    if (arrow) arrow.textContent = '▾';
-    var inp = document.getElementById('dag-input-' + i);
-    if (inp) { setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 50); }
-  }
-}
-
-async function saveDag(i) {
-  var inp = document.getElementById('dag-input-' + i);
-  if (!inp) return;
-  var gerecht = inp.value.trim();
-  var key = getDagKey(i);
-  if (gerecht) {
-    menu[key] = gerecht;
-  } else {
-    delete menu[key];
-  }
-  renderMenu();
-  setSyncStatus(true);
-  try { await fbSaveMenu(menu); } catch(e) { console.log('saveDag fout:', e.message); }
-  setSyncStatus(false);
-}
-
-async function clearDag(i) {
-  delete menu[getDagKey(i)];
-  renderMenu();
-  setSyncStatus(true);
-  try { await fbSaveMenu(menu); } catch(e) {}
-  setSyncStatus(false);
-}
-
-// ---- Voice ----
-function setupMic() {
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
-  recognition = new SR(); recognition.lang='nl-NL'; recognition.continuous=false; recognition.interimResults=true;
-
-  recognition.onstart = function() {
-    isListening=true;
-    document.getElementById('mic-btn').classList.add('listening');
-    document.getElementById('mic-btn').textContent='🔴';
-    setMicStatus('Luisteren… spreek nu','active');
-  };
-
-  recognition.onresult = function(e) {
-    var interim='', final='';
-    for(var i=e.resultIndex;i<e.results.length;i++){
-      var t=e.results[i][0].transcript;
-      e.results[i].isFinal?(final+=t):(interim+=t);
-    }
-    document.getElementById('item-input').value = final||interim;
-
-    // Als eindresultaat: start afteller voor automatisch toevoegen
-    if (final) {
-      clearAutoAdd();
-      startCountdown(final.trim());
-    } else {
-      setMicStatus('Horen: "'+interim+'"','active');
-    }
-  };
-
-  recognition.onerror=function(e){
-    clearAutoAdd();
-    var m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
-    setMicStatus(m[e.error]||'Fout.','active');
-    stopMic(false);
-  };
-  recognition.onend=function(){ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
-}
-
-function startCountdown(text) {
-  var secs = autoAddSeconds;
-  setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
-  countdownTimer = setInterval(function() {
-    secs--;
-    if (secs > 0) {
-      setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
-    }
-  }, 1000);
-  autoAddTimer = setTimeout(function() {
-    clearInterval(countdownTimer);
-    addItem();
-    setMicStatus('✅ Toegevoegd!', 'success');
-    setTimeout(function(){ setMicStatus(''); }, 2000);
-  }, autoAddSeconds * 1000);
-}
-
-function clearAutoAdd() {
-  clearTimeout(autoAddTimer);
-  clearInterval(countdownTimer);
-  autoAddTimer = null; countdownTimer = null;
-}
-
-function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(function(){setMicStatus('');},3000); }
-function setMicStatus(m,c){if(c===undefined)c='';var el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
-
-document.getElementById('mic-btn').onclick=async function(){
-  if(!recognition)return;
-  // Als afteller bezig: annuleer
-  if(autoAddTimer){ clearAutoAdd(); setMicStatus('Geannuleerd','active'); setTimeout(function(){setMicStatus('');},1500); return; }
-  if(isListening){recognition.stop();return;}
-  try{await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){setMicStatus('🚫 Microfoon geweigerd.','active');return;}
-  document.getElementById('item-input').value='';
-  try{recognition.start();}catch(e){setMicStatus('Start mislukt.','active');}
-};
-document.getElementById('add-btn').onclick=addItem;
-document.getElementById('item-input').addEventListener('keydown',function(e){if(e.key==='Enter')addItem();});
-
-function bewerkRecept(id) { openReceptForm(id); }
-function setCatFilter(el, cat) { setReceptCat(el, cat); }
-
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-function renderItem(item) {
-  var p = null;
-  for (var pi = 0; pi < personen.length; pi++) {
-    if (personen[pi].naam === item.person) { p = personen[pi]; break; }
-  }
-  if (!p) p = { naam: item.person || '', kleur: '#3d6b4f', foto: null };
-  var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
-  var borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
-  var winkel = item.winkel || detectWinkel(item.name);
-  var winkelBadge = winkel === 'kruidvat'
-    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
-    : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
-  var fotoHtml = p.foto
-    ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:2px;vertical-align:middle" />'
-    : '&#128100;';
-  var catOptions = '';
-  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
-    var cc = BOODSCHAP_CATS[ci];
-    catOptions += '<option value="' + cc.key + '"' + ((item.cat||'kruidenierswaren')===cc.key?' selected':'') + '>' + cc.icon + ' ' + cc.label + '</option>';
-  }
-  var html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
-  html += '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
-  html += '<div class="item-main">';
-  html += '<div class="item-name">' + esc(item.name) + '</div>';
-  html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
-  html += winkelBadge;
-  html += '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + '">' + fotoHtml + ' ' + esc(p.naam) + '</span>';
-  html += '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
-  html += '</div></div>';
-  html += '<div class="qty-controls">';
-  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">&#8722;</button>';
-  html += '<span class="qty-num">' + (item.qty || 1) + '</span>';
-  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>';
-  html += '</div>';
-  html += '<button class="delete-btn" onclick="deleteItem(' + item.id + ')">&#10005;</button>';
-  html += '</div>';
-  return html;
-}
-
-// ---- Nieuwe features ----
-
-var BOODSCHAP_CATS = [
-  {key:'agf',             label:'AGF',              icon:'🥦', items:['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','bosbes','framboos','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','courgette','prei','peterselie','basilicum','bloemkool','citroen','limoen','kiwi','meloen','ananas','gember','radijs','venkel','selderij','sjalot','bieslook','koriander','dille','munt','tijm','rozemarijn','oregano']},
-  {key:'vlees',           label:'Vlees & Vis',       icon:'🥩', items:['gehakt','kip','kipfilet','spek','bacon','ham','salami','worst','rookworst','biefstuk','zalm','tonijn','garnalen','vis','schnitzel','lam','varken','rund','tartaar','ossenhaas','kipschnitzel','forel','makreel','mosselen','inktvis','surimi']},
-  {key:'koeling',         label:'Koeling',           icon:'🧊', items:['melk','yoghurt','kwark','kaas','boter','eieren','vla','slagroom','karnemelk','sap','mozzarella','brie','camembert','feta','roomkaas','crème fraîche','zure room','tofu','tempeh','verse pasta','verse soep']},
-  {key:'kruidenierswaren',label:'Kruidenierswaren',  icon:'🛒', items:['pasta','spaghetti','rijst','couscous','quinoa','havermout','cruesli','muesli','cornflakes','granola','brood','bloem','suiker','zout','peper','olie','olijfolie','ketchup','mayonaise','pesto','sambal','jam','pindakaas','nutella','honing','bonen','soep','bouillon','chips','koekjes','chocolade','crackers','beschuit','roggebrood','toast','ontbijtkoek','noten','rozijnen','dadels','tomatenpuree','tomatensaus','kokosmelk','sojasaus','worcester','balsamico','azijn','mosterd']},
-  {key:'diepvries',       label:'Diepvries',         icon:'❄️', items:['friet','pizza','kroketten','ijs','diepvries','doperwten','spinazie blokjes','haricots','edamame','garnalen diepvries','vissticks','bami','nasi','loempia','falafel']},
-  {key:'drank',           label:'Drank',             icon:'🥤', items:['bier','wijn','water','cola','fanta','sprite','limonade','koffie','thee','heineken','hertog jan','grolsch','amstel','prosecco','vodka','gin','rum','whisky','tequila','aperol','baileys','energie','sportdrank','vruchtensap','smoothie']},
-  {key:'nonfood',         label:'Non Food',          icon:'🧴', items:['wasmiddel','afwasmiddel','vaatwas','toiletpapier','schoonmaakmiddel','shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasverzachter','keukenrol','aluminiumfolie','ziplock','afvalzak','sponsje']},
-  {key:'overig',          label:'Overig',            icon:'📦', items:[]}
-];
-var KV_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','bodylotion','zonnebrand','maandverband','tampons','luiers','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
-
-
-function detectCat(naam) {
-  var n = naam.toLowerCase().trim();
-  var key = n.replace(/[^a-z0-9]/g, '_');
-
-  // Check geleerde categorieën
-  if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
-  for (var gk in geleerdeCategorieen) {
-    var woord = gk.replace(/_/g, ' ');
-    if (woord.length > 2 && (n === woord || n.indexOf(woord + ' ') === 0 || n.indexOf(' ' + woord) > -1)) {
-      return geleerdeCategorieen[gk];
-    }
-  }
-
-  for (var ci = 0; ci < BOODSCHAP_CATS.length; ci++) {
-    var cat = BOODSCHAP_CATS[ci];
-    for (var wi = 0; wi < cat.items.length; wi++) {
-      var w = cat.items[wi];
-      // Exacte match: altijd
-      if (n === w) return cat.key;
-      // Korte woorden (<=3 chars): alleen exacte match
-      if (w.length <= 3) continue;
-      // Langere woorden: veilige partiële match via woordgrens
-      var re_woord = new RegExp('(^|[\\s\\-])' + w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '([\\s\\-]|$)');
-      if (re_woord.test(n)) return cat.key;
-      // Artikel-naam is deel van item (bijv. 'melk' in 'karnemelk')
-      if (w.indexOf(n) > -1 && n.length > 4) return cat.key;
-    }
-  }
-  return 'overig';
-}
-
-function detectWinkel(naam) {
-  var n = naam.toLowerCase().trim();
-  // Check geleerde winkel eerst
-  var geleerdeKey = n.replace(/[^a-z0-9]/g, '_');
-  if (geleerdeWinkels[geleerdeKey]) return geleerdeWinkels[geleerdeKey];
-  // Check op gedeeltelijke match
-  for (var gk in geleerdeWinkels) {
-    var woord = gk.replace(/_/g, ' ');
-    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
-      return geleerdeWinkels[gk];
-    }
-  }
-  // Check Kruidvat eerst (specifieker)
-  for (var ki=0; ki<KRUIDVAT_ITEMS.length; ki++) {
-    if (n.indexOf(KRUIDVAT_ITEMS[ki]) > -1 || KRUIDVAT_ITEMS[ki].indexOf(n) > -1 && n.length > 3) {
-      return 'kruidvat';
-    }
-  }
-  // Check AH
-  for (var ai=0; ai<AH_ITEMS.length; ai++) {
-    if (n.indexOf(AH_ITEMS[ai]) > -1 || AH_ITEMS[ai].indexOf(n) > -1 && n.length > 3) {
-      return 'ah';
-    }
-  }
-  return 'ah'; // standaard AH
-}
-
-async function slaGeleerdeCategorie(naam, cat) {
-  if (!naam || !cat) return;
-  var key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  geleerdeCategorieen[key] = cat;
-  try {
-    await window._set(getRef('geleerde_cats/' + key), cat);
-  } catch(e) { console.log('slaGeleerdeCategorie fout:', e.message); }
-}
-
-async function wisselWinkel(id) {
-  for (var wi = 0; wi < items.length; wi++) {
-    if (items[wi].id === id) {
-      items[wi].winkel = (items[wi].winkel === 'kruidvat') ? 'ah' : 'kruidvat';
-      break;
-    }
-  }
-  render();
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
-  setSyncStatus(false);
-}
-
-async function changeCat(id, cat) {
-  var itemNaam = '';
-  for (var ci = 0; ci < items.length; ci++) {
-    if (items[ci].id === id) {
-      itemNaam = items[ci].name;
-      items[ci].cat = cat;
-      break;
-    }
-  }
-  render();
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
-  // Sla geleerde categorie op zodat volgende keer automatisch correct
-  if (itemNaam) {
-    try { await slaGeleerdeCategorie(itemNaam, cat); } catch(e) {}
-  }
-  setSyncStatus(false);
-}
-
-function fbListenGeleerd() {
-  window._onValue(getRef('geleerde_cats'), function(snap) {
-    geleerdeCategorieen = snap.val() || {};
-  });
-  window._onValue(getRef('geleerde_winkels'), function(snap) {
-    geleerdeWinkels = snap.val() || {};
-  });
-}
-
-function fbListenRecepten() {
-  window._onValue(
-    window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'),
-    function(snap) {
-      var data = snap.val();
-      if (!data || typeof data !== 'object') {
-        recepten = [];
-        renderRecepten();
-        return;
-      }
-      var vals = [];
-      var ks = Object.keys(data);
-      for (var ki = 0; ki < ks.length; ki++) {
-        var r = data[ks[ki]];
-        if (r && r.naam) vals.push(r);
-      }
-      recepten = vals.sort(function(a,b){ return (b.aangemaakt||0) - (a.aangemaakt||0); });
-      renderRecepten();
-    }
-  );
-}
-
-function fbListenIdeeen() {
-  if (unsubIdeeen) unsubIdeeen();
-  unsubIdeeen = window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
-    var data = snap.val() || {};
-    var ideeen = Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;});
-    renderIdeeen(ideeen);
-  });
-}
-
-function fbListenRegistraties() {
-  if (unsubRegistraties) unsubRegistraties();
-  unsubRegistraties = window._onValue(window._ref(window._db, 'registraties'), function(snap) {
-    var data = snap.val() || {};
-    var regs = Object.values(data).sort(function(a,b) { return b.aangemeld - a.aangemeld; });
-    // Update stats
-    var actief = regs.filter(function(r){return r.status==='goedgekeurd';}).length;
-    var wachtend = regs.filter(function(r){return r.status==='wachtend';}).length;
-    var ae = document.getElementById('admin-actief'); if(ae) ae.textContent = actief;
-    var aw = document.getElementById('admin-wachtend'); if(aw) aw.textContent = wachtend;
-    var at = document.getElementById('admin-totaal'); if(at) at.textContent = regs.length;
-    // Render lijst
-    renderAdminRegistraties(regs);
-  });
-}
-
-
-// ---- PRODUCTEN DATABASE ----
-var PRODUCTEN_DB = [
-  {n:'Melk halfvolle 1L',c:'koeling',p:1.09},{n:'Melk volle 1L',c:'koeling',p:1.19},
-  {n:'Yoghurt naturel 500g',c:'koeling',p:1.09},{n:'Kwark mager 500g',c:'koeling',p:1.49},
-  {n:'Boter 250g',c:'koeling',p:2.49},{n:'Eieren 6st',c:'koeling',p:1.99},
-  {n:'Eieren 10st',c:'koeling',p:2.99},{n:'Kaas jong 500g',c:'koeling',p:3.49},
-  {n:'Kaas belegen 500g',c:'koeling',p:3.79},{n:'Mozzarella 125g',c:'koeling',p:1.29},
-  {n:'Feta 200g',c:'koeling',p:1.79},{n:'Slagroom 250ml',c:'koeling',p:1.39},
-  {n:'Vla vanille 1L',c:'koeling',p:1.19},{n:'Karnemelk 1L',c:'koeling',p:0.99},
-  {n:'Sinaasappelsap 1L',c:'koeling',p:1.99},
-  {n:'Kipfilet 600g',c:'vlees',p:5.99},{n:'Rundergehakt 500g',c:'vlees',p:4.49},
-  {n:'Half-om-half gehakt 500g',c:'vlees',p:3.99},{n:'Speklapjes 400g',c:'vlees',p:3.99},
-  {n:'Bacon 150g',c:'vlees',p:2.49},{n:'Ham gekookt 150g',c:'vlees',p:2.29},
-  {n:'Zalm filet 2st',c:'vlees',p:5.99},{n:'Garnalen gepeld 150g',c:'vlees',p:4.99},
-  {n:'Rookworst 300g',c:'vlees',p:2.99},{n:'Worst 4st',c:'vlees',p:3.49},
-  {n:'Appels 6st',c:'agf',p:1.99},{n:'Bananen 1kg',c:'agf',p:1.49},
-  {n:'Sinaasappels 6st',c:'agf',p:2.49},{n:'Blauwe bessen 125g',c:'agf',p:2.49},
-  {n:'Frambozen 125g',c:'agf',p:2.99},{n:'Aardbeien 400g',c:'agf',p:2.99},
-  {n:'Mango 1st',c:'agf',p:1.49},{n:'Avocado 2st',c:'agf',p:1.99},
-  {n:'Tomaten 500g',c:'agf',p:1.99},{n:'Komkommer 1st',c:'agf',p:0.89},
-  {n:'Paprika rood 3st',c:'agf',p:1.49},{n:'Uien 1kg',c:'agf',p:0.99},
-  {n:'Knoflook bol',c:'agf',p:0.49},{n:'Wortelen 1kg',c:'agf',p:0.99},
-  {n:'Broccoli 1st',c:'agf',p:1.49},{n:'Sla 1st',c:'agf',p:0.99},
-  {n:'Spinazie 300g',c:'agf',p:1.99},{n:'Champignons 250g',c:'agf',p:1.79},
-  {n:'Aardappelen 1.5kg',c:'agf',p:1.99},{n:'Courgette 2st',c:'agf',p:1.29},
-  {n:'Prei 2st',c:'agf',p:1.29},{n:'Bosui 1 bos',c:'agf',p:0.79},
-  {n:'Spaghetti 500g',c:'kruidenierswaren',p:0.99},{n:'Penne 500g',c:'kruidenierswaren',p:0.99},
-  {n:'Fusilli 500g',c:'kruidenierswaren',p:0.99},{n:'Rijst basmati 1kg',c:'kruidenierswaren',p:2.49},
-  {n:'Rijst witte 1kg',c:'kruidenierswaren',p:1.99},{n:'Couscous 500g',c:'kruidenierswaren',p:1.79},
-  {n:'Havermout 500g',c:'kruidenierswaren',p:1.49},{n:'Cruesli 500g',c:'kruidenierswaren',p:2.99},
-  {n:'Granola 400g',c:'kruidenierswaren',p:3.49},{n:'Muesli 500g',c:'kruidenierswaren',p:2.49},
-  {n:'Cornflakes 375g',c:'kruidenierswaren',p:1.99},{n:'Brood volkoren 800g',c:'kruidenierswaren',p:2.09},
-  {n:'Brood wit 800g',c:'kruidenierswaren',p:1.49},{n:'Pindakaas 350g',c:'kruidenierswaren',p:1.99},
-  {n:'Nutella 400g',c:'kruidenierswaren',p:3.49},{n:'Jam aardbei 450g',c:'kruidenierswaren',p:1.99},
-  {n:'Honing 350g',c:'kruidenierswaren',p:3.49},{n:'Hagelslag 400g',c:'kruidenierswaren',p:1.99},
-  {n:'Tomatenpuree 200g',c:'kruidenierswaren',p:0.99},{n:'Passata 690g',c:'kruidenierswaren',p:1.09},
-  {n:'Olijfolie 500ml',c:'kruidenierswaren',p:4.99},{n:'Zonnebloemolie 1L',c:'kruidenierswaren',p:2.49},
-  {n:'Ketchup 600g',c:'kruidenierswaren',p:2.99},{n:'Mayonaise 500ml',c:'kruidenierswaren',p:1.99},
-  {n:'Pesto 190g',c:'kruidenierswaren',p:2.49},{n:'Sambal 200g',c:'kruidenierswaren',p:1.99},
-  {n:'Kikkererwten blik 400g',c:'kruidenierswaren',p:0.99},
-  {n:'Friet 1kg',c:'diepvries',p:2.49},{n:'Doperwten 450g',c:'diepvries',p:1.29},
-  {n:'Kroketten 8st',c:'diepvries',p:2.99},{n:'Ijs 900ml',c:'diepvries',p:2.99},
-  {n:'Water Spa 6x1.5L',c:'drank',p:3.99},{n:'Cola 1.5L',c:'drank',p:2.29},
-  {n:'Koffie 250g',c:'drank',p:3.99},{n:'Thee 40st',c:'drank',p:2.49},
-  {n:'Heineken 6-pack',c:'drank',p:5.99},{n:'Hertog Jan 6-pack',c:'drank',p:6.99},
-  {n:'Wijn rood 75cl',c:'drank',p:5.99},{n:'Wijn wit 75cl',c:'drank',p:5.99},
-  {n:'Toiletpapier 16st',c:'nonfood',p:4.99},{n:'Wasmiddel 1.5L',c:'nonfood',p:6.99},
-  {n:'Vaatwastabletten 40st',c:'nonfood',p:6.99},{n:'Afwasmiddel 750ml',c:'nonfood',p:2.49},
-  {n:'Shampoo 250ml',c:'nonfood',p:3.99},{n:'Douchegel 300ml',c:'nonfood',p:1.49},
-  {n:'Deodorant 150ml',c:'nonfood',p:3.49},{n:'Tandpasta 75ml',c:'nonfood',p:2.49},
-  {n:'Paracetamol 30st',c:'nonfood',p:2.99},{n:'Waterontharder 1kg',c:'nonfood',p:4.99},
-  {n:'Schoonmaakmiddel 1L',c:'nonfood',p:3.49},{n:'Zeep vloeibaar 250ml',c:'nonfood',p:1.99}
-];
-
-function kiesProduct(naam, cat) {
-  var inp = document.getElementById('item-input');
-  if (inp) inp.value = naam;
-  sluitAutocomplete();
-  if (cat) slaGeleerdeCategorie(naam, cat);
-}
-
-function zoekAutocomplete(val) {
-  var dropdown = document.getElementById('autocomplete-dropdown');
-  if (!dropdown) return;
-  if (!val || val.length < 2) { sluitAutocomplete(); return; }
-  var n = val.toLowerCase().trim();
-  var resultaten = [];
-  for (var pi = 0; pi < PRODUCTEN_DB.length; pi++) {
-    var p = PRODUCTEN_DB[pi];
-    if (p.n.toLowerCase().indexOf(n) > -1) resultaten.push(p);
-    if (resultaten.length >= 8) break;
-  }
-  if (!resultaten.length) { sluitAutocomplete(); return; }
-  acSelectedIdx = -1;
-  var html = '';
-  for (var ri = 0; ri < resultaten.length; ri++) {
-    var r = resultaten[ri];
-    var vn = r.n.replace(/\\/g,'').replace(/'/g,'\u0027');
-    html += '<div class="ac-item" onclick="kiesProduct(\'' + vn + '\',\'' + r.c + '\')">';
-    html += '<span class="ac-naam">' + esc(r.n) + '</span>';
-    html += '<span class="ac-prijs">v.a. \u20ac' + r.p.toFixed(2) + '</span>';
-    html += '</div>';
-  }
-  dropdown.innerHTML = html;
-  dropdown.style.display = 'block';
-}
-
-
-function sluitAutocomplete() {
-  var dropdown = document.getElementById('autocomplete-dropdown');
-  if (dropdown) dropdown.style.display = 'none';
-  acSelectedIdx = -1;
-}
-
-function navigeerAutocomplete(e) {
-  var dropdown = document.getElementById('autocomplete-dropdown');
-  if (!dropdown || dropdown.style.display === 'none') return;
-  var items = dropdown.querySelectorAll('.ac-item');
-  if (!items.length) return;
-
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    acSelectedIdx = Math.min(acSelectedIdx + 1, items.length - 1);
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    acSelectedIdx = Math.max(acSelectedIdx - 1, -1);
-  } else if (e.key === 'Escape') {
-    sluitAutocomplete(); return;
-  } else if (e.key === 'Enter' && acSelectedIdx >= 0) {
-    e.preventDefault();
-    items[acSelectedIdx].click(); return;
-  } else { return; }
-
-  for(var _ai=0;_ai<items.length;_ai++){items[_ai].classList.toggle('selected',_ai===acSelectedIdx);};
-  if (acSelectedIdx >= 0) items[acSelectedIdx].scrollIntoView({block:'nearest'});
-}
-
-async function zoekLivePrijs() {
-  var naam = document.getElementById('item-input').value.trim();
-  if (!naam || naam.length < 2) { alert('Typ eerst een artikel in het invoerveld.'); return; }
-  var btn = document.getElementById('live-prijs-btn');
-  var resultaat = document.getElementById('live-prijs-resultaat');
-  var inhoud = document.getElementById('live-prijs-inhoud');
-  btn.textContent = '...'; btn.disabled = true;
-  resultaat.style.display = 'block';
-  inhoud.innerHTML = 'Zoeken naar beste prijs voor <strong>' + esc(naam) + '</strong>...';
-  try {
-    var response = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artikel: naam })
-    });
-    var data = await response.json();
-    if (!response.ok) throw new Error('Worker fout');
-    var tekst = data.resultaat || '';
-    var regels = tekst.split('\n').filter(function(r) { return r.trim(); });
-    inhoud.innerHTML = regels.join('<br>') || 'Geen resultaten gevonden.';
-  } catch(e) {
-    inhoud.innerHTML = 'Zoeken mislukt. Controleer je verbinding.';
-  }
-  btn.textContent = 'prijs'; btn.disabled = false;
-}
-
-function sluitLivePrijs() {
-  document.getElementById('live-prijs-resultaat').style.display = 'none';
-}
-
-function toonSlimmeVoorstellenStil() {
-  if (!gezinsCode) return;
-  var hist = {};
-  try { hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}'); } catch(e) { return; }
-  var nu = Date.now();
-  var dag = new Date().getDay();
-  var MINI_PRIJZEN = {'melk':1.09,'brood':2.09,'eieren':1.99,'boter':2.49,'kaas':3.49,'yoghurt':1.09,'pasta':0.99,'rijst':1.99,'tomaten':1.99,'bananen':1.49,'appels':1.99,'kipfilet':5.99,'gehakt':4.49};
-  var voorstellen = [];
-  for (var naam in hist) {
-    var data = hist[naam];
-    if (!data.laats || !data.laats.length) continue;
-    var laats = data.laats[data.laats.length-1];
-    var verstreken = nu - laats;
-    var interval = data.gem_interval || (7*24*60*60*1000);
-    if (verstreken > interval * 0.8) {
-      var alOp = false;
-      for (var ii=0; ii<items.length; ii++) { if (items[ii].name.toLowerCase() === naam && !items[ii].done) { alOp=true; break; } }
-      if (!alOp) voorstellen.push({naam:naam, prijs:MINI_PRIJZEN[naam]||null, score:verstreken/interval});
-    }
-  }
-  var dagelijks = ['melk','brood','eieren'];
-  if (dag >= 1 && dag <= 5) {
-    for (var di=0; di<dagelijks.length; di++) {
-      var dn = dagelijks[di];
-      var alOp2 = false; var alVoor = false;
-      for (var ii2=0; ii2<items.length; ii2++) { if (items[ii2].name.toLowerCase().indexOf(dn)>-1 && !items[ii2].done) { alOp2=true; break; } }
-      for (var vi=0; vi<voorstellen.length; vi++) { if (voorstellen[vi].naam.indexOf(dn)>-1) { alVoor=true; break; } }
-      if (!alOp2 && !alVoor) voorstellen.push({naam:dn, prijs:MINI_PRIJZEN[dn]||null, score:0.5});
-    }
-  }
-  voorstellen.sort(function(a,b){return b.score-a.score;});
-  voorstellen = voorstellen.slice(0,5);
-  var box = document.getElementById('wow-box');
-  var chips = document.getElementById('wow-chips');
-  var sub = document.getElementById('wow-sub');
-  if (!box || !chips) return;
-  if (!voorstellen.length) { box.style.display='none'; return; }
-  box.style.display = 'block';
-  var html = '';
-  for (var vi2=0; vi2<voorstellen.length; vi2++) {
-    var v = voorstellen[vi2];
-    var prijsHtml = v.prijs ? ' <span style="font-size:0.68rem;opacity:0.8">v.a. €'+v.prijs.toFixed(2)+'</span>' : '';
-    var _vn = v.naam.split("'").join("&#39;");
-    html += '<button class="wow-chip" onclick="voegSuggestie(&quot;' + _vn + '&quot;")>＋ ' + esc(v.naam) + prijsHtml + '</button>';
-  }
-  chips.innerHTML = html;
-  if (sub) {
-    var heeftPatroon = false;
-    for (var pi=0; pi<voorstellen.length; pi++) { if (voorstellen[pi].score > 0.5) { heeftPatroon=true; break; } }
-    sub.textContent = heeftPatroon ? 'Tijd om dit weer in te slaan:' : 'Vergeet je dit niet?';
-  }
-}
-
-async function voegSuggestie(naam) {
-  var newItem = { id: Date.now(), name: naam, person: currentPerson, done: false, qty: 1, cat: detectCat(naam), winkel: detectWinkel(naam) };
-  items.unshift(newItem);
-  render();
-  logAankoopHistorie(naam);
-  setSyncStatus(true);
-  try { await fbSave(items); } catch(e) {}
-  setSyncStatus(false);
-  toonSlimmeVoorstellenStil();
-}
-
-function logAankoopHistorie(naam) {
-  try {
-    var hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}');
-    var n = naam.toLowerCase().trim();
-    var nu = Date.now();
-    if (!hist[n]) hist[n] = {count:0, laats:[]};
-    hist[n].count++;
-    hist[n].laats.push(nu);
-    if (hist[n].laats.length > 10) hist[n].laats = hist[n].laats.slice(-10);
-    hist[n].gem_interval = berekenGemInterval(hist[n].laats);
-    localStorage.setItem('aankoop_hist_' + gezinsCode, JSON.stringify(hist));
-  } catch(e) {}
-}
-
-function laadPersonen() {
-  var opgeslagen = localStorage.getItem('personen_' + gezinsCode);
-  if (opgeslagen) {
-    try { personen = JSON.parse(opgeslagen); } catch(e) { personen = []; }
-  }
-  // Zet currentPerson op eerste persoon als het nog niet gezet is
-  if (personen.length > 0 && (!currentPerson || currentPerson === 'Jij' || currentPerson === 'jij')) {
-    currentPerson = personen[0].naam;
-  }
-  renderPersonenKnoppen();
-}
-
-function slaPersonenLocalOp() {
-  localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
-}
-
 function renderPersonenKnoppen() {
   var row = document.getElementById('person-row');
   var filterRow = document.getElementById('filter-row');
@@ -1654,137 +1950,6 @@ function renderPersonenKnoppen() {
   }
 }
 
-function setPerson(p) {
-  currentPerson = p;
-  renderPersonenKnoppen();
-}
-
-function setFilter(el, f) {
-  currentFilter = f;
-  var _fc=document.querySelectorAll('.filter-chip');for(var _fci=0;_fci<_fc.length;_fci++)_fc[_fci].classList.remove('active');;
-  el.classList.add('active'); render();
-}
-
-function openPersonenInstellingen() {
-  var el = document.getElementById('personen-invoer');
-  if (!el) return;
-  var html = '';
-  for (var i = 0; i < personen.length; i++) {
-    var p = personen[i];
-    html += '<div class="persoon-rij" id="persoon-rij-' + i + '">';
-    html += '<label class="foto-upload-label" title="Foto uploaden" id="foto-label-' + i + '">';
-    html += '<span id="foto-preview-' + i + '">' + (p.foto ? '<img src="' + p.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />' : '📷') + '</span>';
-    html += '<input type="file" accept="image/*" onchange="verwerkFoto(event,' + i + ')" />';
-    html += '</label>';
-    html += '<input class="persoon-input" value="' + esc(p.naam) + '" placeholder="Naam" oninput="updatePersoonNaam(' + i + ',this.value)" />';
-    html += '<input type="color" value="' + p.kleur + '" onchange="updatePersoonKleur(' + i + ',this.value)" style="width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0" />';
-    html += '<button onclick="verwijderPersoon(' + i + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>';
-    html += '</div>';
-  }
-  el.innerHTML = html;
-  var modal = document.getElementById('personen-modal');
-  if (modal) modal.style.display = 'flex';
-}
-
-function sluitPersonenModal(e) {
-  if (e.target.id === 'personen-modal') document.getElementById('personen-modal').style.display = 'none';
-}
-
-function verwerkFoto(event, i) {
-  var file = event.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    // Verklein foto naar max 100x100px
-    var img = new Image();
-    img.onload = function() {
-      var canvas = document.createElement('canvas');
-      var size = 100;
-      canvas.width = size; canvas.height = size;
-      var ctx = canvas.getContext('2d');
-      var min = Math.min(img.width, img.height);
-      var sx = (img.width - min) / 2, sy = (img.height - min) / 2;
-      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
-      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-      // Sla tijdelijk op
-      if (!personen[i]) return;
-      personen[i].foto = dataUrl;
-      // Update preview
-      var preview = document.getElementById('foto-preview-' + i);
-      if (preview) {
-        var imgEl = document.createElement('img');
-        imgEl.src = dataUrl;
-        preview.replaceWith(imgEl);
-        imgEl.id = 'foto-preview-' + i;
-      }
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function voegPersoonToe() {
-  if (personen.length >= 4) { alert('Maximum 4 personen.'); return; }
-  personen.push({naam: 'Persoon ' + (personen.length+1), kleur: KLEUREN[personen.length] || '#3d6b4f'});
-  openPersonenInstellingen();
-}
-
-function verwijderPersoon(i) {
-  if (personen.length <= 1) return;
-  personen.splice(i, 1);
-  openPersonenInstellingen();
-}
-
-function slaPersonenOp() {
-  var nieuwePersonen = [];
-  for (var i = 0; i < personen.length; i++) {
-    var p = personen[i];
-    var naamEl  = document.getElementById('persoon-input-' + i);
-    var kleurEl = document.getElementById('persoon-kleur-' + i);
-    var naam  = naamEl  ? naamEl.value.trim()  : p.naam;
-    var kleur = kleurEl ? kleurEl.value        : p.kleur;
-    if (naam) nieuwePersonen.push({ naam: naam, kleur: kleur, foto: p.foto || null });
-  }
-  personen = nieuwePersonen;
-  slaPersonenLocalOp();
-  renderPersonenKnoppen();
-  var modal = document.getElementById('personen-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-function getISOWeek(d) {
-    var date = new Date(d.getTime());
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-    var week1 = new Date(date.getFullYear(), 0, 4);
-    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
-  }
-
-function wisselWeek(offset) {
-  weekOffset = offset;
-  renderMenu();
-}
-
-function toggleVerledenDagen() {
-  toonVerledenDagen = !toonVerledenDagen;
-  renderMenu();
-}
-
-function toggleReceptPicker(dagIdx) {
-  var picker = document.getElementById('recept-picker-' + dagIdx);
-  if (!picker) return;
-  var isOpen = picker.style.display === 'block';
-  // Sluit alle pickers eerst
-  for (var di = 0; di < DAGEN.length; di++) {
-    var p = document.getElementById('recept-picker-' + di);
-    if (p) p.style.display = 'none';
-  }
-  if (!isOpen) {
-    picker.style.display = 'block';
-    renderReceptPicker(dagIdx);
-  }
-}
-
 function renderReceptPicker(dagIdx) {
   var lijst = document.getElementById('recept-picker-lijst-' + dagIdx);
   if (!lijst) return;
@@ -1810,87 +1975,6 @@ function renderReceptPicker(dagIdx) {
     html += '</div></div>';
   }
   lijst.innerHTML = html;
-}
-
-async function kiesRecept(dagIdx, naam, receptId) {
-  var key = getDagKey(dagIdx);
-  menu[key] = naam;
-  if (receptId) menu[key + '_receptId'] = receptId;
-  setSyncStatus(true);
-  try { await fbSaveMenu(menu); } catch(e) { console.log('kiesRecept fout:', e.message); }
-  setSyncStatus(false);
-  renderMenu();
-}
-
-function getYouTubeId(url) {
-  var info = detectPlatformInfo(url);
-  return (info && info.type === 'youtube' && info.embedbaar) ? info.id : null;
-}
-
-function openReceptForm(id) {
-  document.getElementById('recept-modal-titel').textContent = id ? '✏️ Recept bewerken' : '📖 Nieuw recept';
-  document.getElementById('recept-edit-id').value = id || '';
-  document.getElementById('recept-naam').value = '';
-  document.getElementById('recept-youtube').value = '';
-  var pd = document.getElementById('platform-detect'); if(pd) pd.innerHTML = '';
-  document.getElementById('recept-beschrijving').value = '';
-  document.getElementById('recept-personen').value = '';
-  document.getElementById('recept-tijd').value = '';
-  document.getElementById('recept-cat').value = 'diner';
-  tempIngredienten = [];
-  document.getElementById('recept-error').style.display = 'none';
-
-  if (id) {
-    var r = recepten.find(function(x){ return x.id === id; });
-    if (r) {
-      document.getElementById('recept-naam').value = r.naam || '';
-      document.getElementById('recept-youtube').value = r.youtube || '';
-      document.getElementById('recept-beschrijving').value = r.beschrijving || '';
-      document.getElementById('recept-personen').value = r.personen || '';
-      document.getElementById('recept-tijd').value = r.tijd || '';
-      document.getElementById('recept-cat').value = r.categorie || 'diner';
-      tempIngredienten = r.ingredienten ? r.ingredienten.slice() : [];
-    }
-  }
-  document.getElementById('recept-modal').style.display = 'flex';
-}
-
-function sluitReceptFormulier() {
-  document.getElementById('recept-modal').style.display = 'none';
-}
-
-function sluitReceptModal(e) {
-  if (e.target.id === 'recept-modal') document.getElementById('recept-modal').style.display = 'none';
-}
-
-function voegIngredientToe(waarde) {
-  tempIngredienten.push(waarde || '');
-  renderIngredientenInvoer();
-  setTimeout(function() {
-    var inputs = document.querySelectorAll('.ingredient-input');
-    if (inputs.length) inputs[inputs.length-1].focus();
-  }, 50);
-}
-
-function verwijderIngredient(i) {
-  tempIngredienten.splice(i, 1);
-  renderIngredientenInvoer();
-}
-
-function renderIngredientenInvoer() {
-  var el = document.getElementById('ingredienten-invoer');
-  if (!el) return;
-  var html = '';
-  for (var ii = 0; ii < tempIngredienten.length; ii++) {
-    var ing = tempIngredienten[ii];
-    html += '<div class="ingredient-input-rij">';
-    html += '<input class="ingredient-input" value="' + esc(ing) + '" placeholder="bijv. 200g spaghetti"';
-    html += ' oninput="tempIngredienten[' + ii + ']=this.value"';
-    html += ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();voegIngredientToe()}" />';
-    html += '<button onclick="verwijderIngredient(' + ii + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:4px">✕</button>';
-    html += '</div>';
-  }
-  el.innerHTML = html;
 }
 
 function renderRecepten() {
@@ -2007,15 +2091,206 @@ function renderRecepten() {
   el.innerHTML = html;
 }
 
-function toggleReceptDetail(id) {
-  var detail = document.getElementById('rr-detail-' + id);
-  var arrow  = document.getElementById('rr-arrow-' + id);
-  var card   = document.getElementById('recept-' + id);
-  if (!detail) return;
-  var open = detail.style.display !== 'none';
-  detail.style.display = open ? 'none' : 'block';
-  if (arrow) arrow.textContent = open ? '▸' : '▾';
-  if (card)  card.style.borderColor = open ? 'var(--border)' : 'var(--green)';
+function renderWinkelCard(winkel, icon, bg, kleur) {
+  var adresTekst = winkel.straat || 'Adres onbekend';
+  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + winkel.lat + ',' + winkel.lon;
+  return '<div class="vw-winkel-card">'
+    + '<div class="vw-winkel-logo" style="background:' + bg + ';color:' + kleur + '">' + icon + '</div>'
+    + '<div class="vw-winkel-info">'
+    + '<div class="vw-winkel-naam">' + esc(winkel.naam) + '</div>'
+    + '<div class="vw-winkel-adres">' + esc(adresTekst) + '</div>'
+    + '<div class="vw-winkel-afstand">&#128205; ' + afstandLabel(winkel.afstand) + ' verderop</div>'
+    + '</div>'
+    + '<button class="vw-nav-btn" onclick="window.open(' + "'" + mapsUrl + "'" + ',' + "'" + '_blank' + "'" + ')">&#128204; Navigeer</button>'
+    + '</div>';
+}
+
+function sanitizeCode(code) { return code.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''); }
+
+async function saveDag(i) {
+  var inp = document.getElementById('dag-input-' + i);
+  if (!inp) return;
+  var gerecht = inp.value.trim();
+  var key = getDagKey(i);
+  if (gerecht) {
+    menu[key] = gerecht;
+  } else {
+    delete menu[key];
+  }
+  renderMenu();
+  setSyncStatus(true);
+  try { await fbSaveMenu(menu); } catch(e) { console.log('saveDag fout:', e.message); }
+  setSyncStatus(false);
+}
+
+function sec(lst,ico,bg){if(!lst.length)return'';lst.sort(function(a,b){return a.afstand-b.afstand;});var h='';lst.slice(0,3).forEach(function(w){var af=w.afstand<1000?w.afstand+'m':(w.afstand/1000).toFixed(1).replace('.',',')+'km',nav='https://www.google.com/maps/dir/?api=1&destination='+w.lat+','+w.lon;h+='<div style="background:white;border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px"><div style="width:38px;height:38px;border-radius:9px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">'+ico+'</div><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:0.88rem">'+esc(w.naam)+'</div><div style="font-size:0.73rem;color:var(--muted)">'+esc(w.adres||'')+'</div><div style="font-size:0.72rem;color:var(--green);font-weight:600">&#128205; '+af+'</div></div><a href="'+nav+'" target="_blank" style="background:var(--green);color:white;padding:7px 11px;border-radius:9px;font-family:DM Sans,sans-serif;font-size:0.78rem;font-weight:600;text-decoration:none">&#128506;</a></div>';});return h;}
+
+function setCatFilter(el, cat) { setReceptCat(el, cat); }
+
+function setFilter(el, f) {
+  currentFilter = f;
+  var _fc=document.querySelectorAll('.filter-chip');for(var _fci=0;_fci<_fc.length;_fci++)_fc[_fci].classList.remove('active');;
+  el.classList.add('active'); render();
+}
+
+function setMicStatus(m,c){if(c===undefined)c='';var el=document.getElementById('mic-status');el.textContent=m;el.className='mic-status'+(c?' '+c:'');}
+
+function setPerson(p) {
+  currentPerson = p;
+  renderPersonenKnoppen();
+}
+
+function setPersoon(naam){currentPerson=naam;renderPersonenKnoppen();}
+
+function setSyncStatus(saving) {
+  document.getElementById('sync-dot').className = 'dot' + (saving ? ' saving' : '');
+  document.getElementById('sync-label').textContent = saving ? 'Opslaan…' : 'Live verbonden 🔗';
+}
+
+function setupMic() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { document.getElementById('no-mic').style.display='block'; document.getElementById('mic-btn').disabled=true; document.getElementById('mic-btn').style.opacity='0.4'; return; }
+  recognition = new SR(); recognition.lang='nl-NL'; recognition.continuous=false; recognition.interimResults=true;
+
+  recognition.onstart = function() {
+    isListening=true;
+    document.getElementById('mic-btn').classList.add('listening');
+    document.getElementById('mic-btn').textContent='🔴';
+    setMicStatus('Luisteren… spreek nu','active');
+  };
+
+  recognition.onresult = function(e) {
+    var interim='', final='';
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      var t=e.results[i][0].transcript;
+      e.results[i].isFinal?(final+=t):(interim+=t);
+    }
+    document.getElementById('item-input').value = final||interim;
+
+    // Als eindresultaat: start afteller voor automatisch toevoegen
+    if (final) {
+      clearAutoAdd();
+      startCountdown(final.trim());
+    } else {
+      setMicStatus('Horen: "'+interim+'"','active');
+    }
+  };
+
+  recognition.onerror=function(e){
+    clearAutoAdd();
+    var m={'not-allowed':'🚫 Microfoon geweigerd.','no-speech':'Geen spraak.','network':'Netwerkfout.','audio-capture':'Geen microfoon.'};
+    setMicStatus(m[e.error]||'Fout.','active');
+    stopMic(false);
+  };
+  recognition.onend=function(){ isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; };
+}
+
+async function slaGeleerdeCategorie(naam, cat) {
+  if (!naam || !cat) return;
+  var key = naam.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  geleerdeCategorieen[key] = cat;
+  try {
+    await window._set(getRef('geleerde_cats/' + key), cat);
+  } catch(e) { console.log('slaGeleerdeCategorie fout:', e.message); }
+}
+
+function slaGeleerdeWinkelOp(naam,winkel){try{var k=naam.toLowerCase().replace(/[^a-z0-9]/g,'_');window._set(getRef('geleerde_winkels/'+k),winkel);}catch(e){}}
+
+function slaPersonenLocalOp() {
+  localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
+}
+
+function slaPersonenOp() {
+  var nieuwePersonen = [];
+  for (var i = 0; i < personen.length; i++) {
+    var p = personen[i];
+    var naamEl  = document.getElementById('persoon-input-' + i);
+    var kleurEl = document.getElementById('persoon-kleur-' + i);
+    var naam  = naamEl  ? naamEl.value.trim()  : p.naam;
+    var kleur = kleurEl ? kleurEl.value        : p.kleur;
+    if (naam) nieuwePersonen.push({ naam: naam, kleur: kleur, foto: p.foto || null });
+  }
+  personen = nieuwePersonen;
+  slaPersonenLocalOp();
+  renderPersonenKnoppen();
+  var modal = document.getElementById('personen-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function slaReceptOp() {
+  var naam    = document.getElementById('recept-naam').value.trim();
+  var youtube = document.getElementById('recept-youtube') ? document.getElementById('recept-youtube').value.trim() : '';
+  var errEl   = document.getElementById('recept-error');
+  if (errEl) errEl.style.display = 'none';
+  if (!naam) {
+    if (errEl) { errEl.textContent = 'Vul een naam in.'; errEl.style.display = 'block'; }
+    return;
+  }
+  var editId = document.getElementById('recept-edit-id') ? document.getElementById('recept-edit-id').value : '';
+  var id     = editId || ('recept-' + Date.now());
+  var oudAangemaakt = Date.now();
+  if (editId) {
+    for (var ri = 0; ri < recepten.length; ri++) {
+      if (recepten[ri].id === editId) { oudAangemaakt = recepten[ri].aangemaakt || Date.now(); break; }
+    }
+  }
+  var ingLijst = [];
+  for (var ii = 0; ii < tempIngredienten.length; ii++) {
+    if (tempIngredienten[ii].trim()) ingLijst.push(tempIngredienten[ii].trim());
+  }
+  var receptObj = {
+    id:           id,
+    naam:         naam,
+    youtube:      youtube,
+    categorie:    document.getElementById('recept-cat') ? document.getElementById('recept-cat').value : 'diner',
+    beschrijving: document.getElementById('recept-beschrijving') ? document.getElementById('recept-beschrijving').value.trim() : '',
+    personen:     document.getElementById('recept-personen') ? document.getElementById('recept-personen').value || null : null,
+    tijd:         document.getElementById('recept-tijd') ? document.getElementById('recept-tijd').value.trim() || null : null,
+    ingredienten: ingLijst,
+    aangemaakt:   oudAangemaakt
+  };
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
+    // Update lokale cache
+    recepten = recepten.filter(function(r){ return r.id !== id; });
+    recepten.unshift(receptObj);
+    try { localStorage.setItem('cache_recepten_' + gezinsCode, JSON.stringify(recepten)); } catch(e) {}
+    var modal = document.getElementById('recept-modal');
+    if (modal) modal.style.display = 'none';
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Opslaan mislukt: ' + e.message; errEl.style.display = 'block'; }
+  }
+}
+
+function sluitAutocomplete() {
+  var dropdown = document.getElementById('autocomplete-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  acSelectedIdx = -1;
+}
+
+function sluitLivePrijs() {
+  document.getElementById('live-prijs-resultaat').style.display = 'none';
+}
+
+function sluitPersonenModal(e) {
+  if (e.target.id === 'personen-modal') document.getElementById('personen-modal').style.display = 'none';
+}
+
+function sluitReceptFormulier() {
+  document.getElementById('recept-modal').style.display = 'none';
+}
+
+function sluitReceptModal(e) {
+  if (e.target.id === 'recept-modal') document.getElementById('recept-modal').style.display = 'none';
+}
+
+function sluitVindWinkel() {
+  var modal = document.getElementById('vw-modal');
+  if (modal) modal.className = 'vw-modal';
+}
+
+function sluitVindWinkelBuiten(e) {
+  if (e.target.id === 'vw-modal') sluitVindWinkel();
 }
 
 function speelAf(receptId, videoId) {
@@ -2027,370 +2302,6 @@ function speelAf(receptId, videoId) {
     + '<iframe src="https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0"'
     + ' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"'
     + ' allowfullscreen></iframe></div>';
-}
-
-async function slaReceptOp() {
-  var naam    = document.getElementById('recept-naam').value.trim();
-  var youtube = document.getElementById('recept-youtube').value.trim();
-  var errEl   = document.getElementById('recept-error');
-  errEl.style.display = 'none';
-
-  if (!naam) {
-    errEl.textContent = 'Vul een naam in.';
-    errEl.style.display = 'block';
-    return;
-  }
-  if (youtube && !youtube.startsWith('http')) {
-    errEl.textContent = 'Plak een volledige link (beginnend met https://).';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  var editId = document.getElementById('recept-edit-id').value;
-  var id     = editId || ('recept-' + Date.now());
-
-  // Bewaar aangemaakt-tijdstip van bestaand recept
-  var oudeAangemaakt = Date.now();
-  if (editId) {
-    for (var ri = 0; ri < recepten.length; ri++) {
-      if (recepten[ri].id === editId) { oudeAangemaakt = recepten[ri].aangemaakt; break; }
-    }
-  }
-
-  var ingLijst = [];
-  for (var ii = 0; ii < tempIngredienten.length; ii++) {
-    if (tempIngredienten[ii].trim()) ingLijst.push(tempIngredienten[ii].trim());
-  }
-
-  var receptObj = {
-    id:           id,
-    naam:         naam,
-    youtube:      youtube,
-    categorie:    document.getElementById('recept-cat').value,
-    beschrijving: document.getElementById('recept-beschrijving').value.trim(),
-    personen:     document.getElementById('recept-personen').value || null,
-    tijd:         document.getElementById('recept-tijd').value.trim() || null,
-    ingredienten: ingLijst,
-    aangemaakt:   oudeAangemaakt
-  };
-
-  try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
-    document.getElementById('recept-modal').style.display = 'none';
-  } catch(e) {
-    errEl.textContent = 'Opslaan mislukt: ' + e.message;
-    errEl.style.display = 'block';
-  }
-}
-
-async function verwijderRecept(id) {
-  if (!confirm('Recept verwijderen?')) return;
-  await window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id));
-}
-
-function toggleIngCheck(receptId, idx) {
-  var el = document.getElementById('ingcheck-' + receptId + '-' + idx);
-  if (el) el.classList.toggle('checked');
-  var checked = el ? el.classList.contains('checked') : false;
-  if (el) el.textContent = checked ? '✓' : '';
-}
-
-async function voegAlleIngredientenToe(receptId) {
-  var r = null;
-  for (var _ri = 0; _ri < recepten.length; _ri++) {
-    if (recepten[_ri].id === receptId) { r = recepten[_ri]; break; }
-  }
-  if (!r || !r.ingredienten || !r.ingredienten.length) return;
-  var nieuweItems = [];
-  for (var _ii = 0; _ii < r.ingredienten.length; _ii++) {
-    var _ing = r.ingredienten[_ii];
-    if (!_ing || !_ing.trim()) continue;
-    nieuweItems.push({
-      id: 'i-' + (Date.now() + Math.floor(Math.random() * 1000) + _ii),
-      name: _ing.trim(),
-      person: currentPerson,
-      done: false,
-      qty: 1,
-      cat: detectCat(_ing),
-      winkel: detectWinkel(_ing)
-    });
-  }
-  if (!nieuweItems.length) return;
-  for (var _ni = 0; _ni < nieuweItems.length; _ni++) {
-    items.unshift(nieuweItems[_ni]);
-  }
-  render();
-  setSyncStatus(true);
-  try {
-    for (var _fsi = 0; _fsi < nieuweItems.length; _fsi++) {
-      await window._set(
-        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + nieuweItems[_fsi].id),
-        nieuweItems[_fsi]
-      );
-    }
-  } catch(e) { console.log('voegAlleIng fout:', e.message); }
-  setSyncStatus(false);
-  var btn = document.getElementById('ing-' + receptId);
-  if (btn) {
-    btn.innerHTML = '✅ ' + nieuweItems.length + ' ingrediënten toegevoegd!';
-    btn.style.background = '#5a8f6d';
-    setTimeout(function() {
-      btn.innerHTML = '🛒 Alle ingrediënten op boodschappenlijst';
-      btn.style.background = '';
-    }, 3000);
-  }
-  setTimeout(function(){ switchTab('boodschappen'); }, 1500);
-}
-
-async function stuurIdee() {
-  var tekst = document.getElementById('idee-tekst').value.trim();
-  if (!tekst) return;
-  var naam = gezinsCode;
-  try {
-    var regSnap = await new Promise(function(resolve) {
-      window._onValue(window._ref(window._db, 'registraties/' + gezinsCode + '/naam'), function(snap) {
-        resolve(snap);
-      }, {onlyOnce: true});
-    });
-    naam = regSnap.val() || gezinsCode;
-  } catch(e) { naam = gezinsCode; }
-  var id = 'idee-' + Date.now();
-  await window._set(window._ref(window._db, 'ideeen/' + id), {
-    id: id, naam: naam, tekst: tekst, status: 'nieuw', timestamp: Date.now(), gezin: gezinsCode
-  });
-  document.getElementById('idee-tekst').value = '';
-  document.getElementById('idee-bevestiging').style.display = 'block';
-  setTimeout(function(){ document.getElementById('idee-bevestiging').style.display = 'none'; }, 3000);
-}
-
-function renderIdeeen(ideeen) {
-  document.getElementById('beheer-sectie').style.display = 'none';
-  document.getElementById('publiek-sectie').style.display = 'block';
-  var goedgekeurd = ideeen.filter(function(i) { return i.status === 'goedgekeurd'; });
-  var el = document.getElementById('ideeen-publiek');
-  if (!el) return;
-  if (!goedgekeurd.length) {
-    el.innerHTML = '<div class="leeg-ideeen">Nog geen goedgekeurde ideeën.</div>';
-    return;
-  }
-  el.innerHTML = goedgekeurd.map(function(idee) {
-    return '<div class="idee-card status-goedgekeurd">' +
-      '<div class="idee-header">' +
-        '<span class="idee-naam">👤 ' + esc(idee.naam||'Anoniem') + '</span>' +
-        '<span class="idee-datum">' + new Date(idee.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + '</span>' +
-      '</div>' +
-      '<div class="idee-tekst">' + esc(idee.tekst) + '</div>' +
-    '</div>';
-  }).join('');
-}
-
-async function openAdminTab() {
-  if (isBeheerder) { switchTab('admin'); return; }
-  if (!window.PublicKeyCredential) {
-    var pin = prompt('Voer de beheerderspincode in:');
-    if (pin === 'jorg103') { activeerBeheerder(); }
-    return;
-  }
-
-  try {
-    // Check of er al een credential is opgeslagen
-    var credId = localStorage.getItem('admin_cred_id');
-    if (credId) {
-      // Verifieer met bestaande credential
-      await verifieerFaceId(credId);
-    } else {
-      // Eerste keer: registreer Face ID
-      await registreerFaceId();
-    }
-  } catch(e) {
-    if (e.name === 'NotAllowedError') {
-      alert('Face ID geannuleerd of geweigerd.');
-    } else {
-      console.error('Face ID fout:', e);
-      // Fallback
-      if (confirm('Face ID mislukt. Toegang toch verlenen?')) activeerBeheerder();
-    }
-  }
-}
-
-async function registreerFaceId() {
-  var challenge = new Uint8Array(32);
-  crypto.getRandomValues(challenge);
-
-  var credential = await navigator.credentials.create({
-    publicKey: {
-      challenge,
-      rp: { name: 'Boodschappen App', id: location.hostname },
-      user: {
-        id: new TextEncoder().encode('admin-jorg'),
-        name: 'admin',
-        displayName: 'Beheerder'
-      },
-      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
-      authenticatorSelection: {
-        authenticatorAttachment: 'platform',
-        userVerification: 'required'
-      },
-      timeout: 60000
-    }
-  });
-
-  // Sla credential ID op
-  var credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-  localStorage.setItem('admin_cred_id', credId);
-  activeerBeheerder();
-}
-
-async function verifieerFaceId(credIdB64) {
-  var challenge = new Uint8Array(32);
-  crypto.getRandomValues(challenge);
-
-  var credIdBytes = Uint8Array.from(atob(credIdB64), function(c){ return c.charCodeAt(0); });
-
-  await navigator.credentials.get({
-    publicKey: {
-      challenge,
-      allowCredentials: [{ type: 'public-key', id: credIdBytes }],
-      userVerification: 'required',
-      timeout: 60000
-    }
-  });
-
-  activeerBeheerder();
-}
-
-function activeerBeheerder() {
-  isBeheerder = true;
-  localStorage.setItem('beheerder', '1');
-  // Toon admin tab
-  var btn = document.getElementById('tab-admin');
-  if (btn) btn.style.display = 'flex';
-  fbListenIdeeen();
-  fbListenRegistraties();
-  switchTab('admin');
-}
-
-function renderAdminRegistraties(regs) {
-  var el = document.getElementById('admin-registraties-lijst');
-  if (!el) return;
-  var gs = regs.slice().sort(function(a,b){return b.aangemeld-a.aangemeld;});
-  if (!gs.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen aanmeldingen.</div>'; return; }
-  var html = '';
-  for (var ri=0; ri<gs.length; ri++) {
-    var reg = gs[ri];
-    var s = reg.status || 'wachtend';
-    var kl = {wachtend:'#c47a2a',goedgekeurd:'#3d6b4f',afgewezen:'#c4473a',geblokkeerd:'#7a4db5'}[s]||'#ccc';
-    var lb = {wachtend:'Wachtend',goedgekeurd:'Actief',afgewezen:'Afgewezen',geblokkeerd:'Geblokkeerd'}[s]||s;
-    var sc = (s==='goedgekeurd'?'goedgekeurd':(s==='wachtend'?'nieuw':'afgewezen'));
-    var dt = new Date(reg.aangemeld).toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
-    html += '<div class="idee-card status-' + sc + '" style="margin-bottom:8px">';
-    html += '<div class="idee-header"><div>';
-    html += '<div style="font-weight:600;font-size:0.9rem">' + esc(reg.naam||'?') + ' <span style="font-size:0.7rem;color:var(--muted)">#' + (reg.volgnummer||'?') + '</span></div>';
-    html += '<div style="font-size:0.75rem;color:var(--muted)">' + esc(reg.email||'') + '</div>';
-    html += '<div style="font-size:0.72rem;font-family:monospace;color:var(--muted)">code: ' + esc(reg.code) + '</div></div>';
-    html += '<div style="text-align:right"><span style="font-size:0.68rem;padding:2px 7px;border-radius:8px;font-weight:600;background:' + kl + '20;color:' + kl + '">' + lb + '</span>';
-    html += '<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">' + dt + '</div></div></div>';
-    html += '<div class="idee-acties">';
-    if (s !== 'goedgekeurd') html += '<button class="idee-btn goedkeuren" data-c="' + esc(reg.code) + '" data-a="goedgekeurd">&#10003; Goedkeuren</button>';
-    if (s === 'goedgekeurd') html += '<button class="idee-btn behandeling" data-c="' + esc(reg.code) + '" data-a="geblokkeerd">Blokkeren</button>';
-    if (s === 'geblokkeerd') html += '<button class="idee-btn goedkeuren" data-c="' + esc(reg.code) + '" data-a="goedgekeurd">Deblokkeren</button>';
-    if (s !== 'afgewezen' && s !== 'goedgekeurd') html += '<button class="idee-btn afwijzen" data-c="' + esc(reg.code) + '" data-a="afgewezen">Afwijzen</button>';
-    html += '<button class="idee-btn verwijder" data-c="' + esc(reg.code) + '" data-del="1">&#128465;</button>';
-    html += '</div></div>';
-  }
-  el.innerHTML = html;
-  var btns = el.querySelectorAll('[data-a],[data-del]');
-  for (var bi=0; bi<btns.length; bi++) {
-    (function(b) {
-      b.onclick = function() {
-        var c = b.getAttribute('data-c'), a = b.getAttribute('data-a'), d = b.getAttribute('data-del');
-        if (d) verwijderRegistratie(c); else updateRegistratieStatus(c, a);
-      };
-    })(btns[bi]);
-  }
-}
-
-function renderAdminIdeeen(ideeen) {
-  var el = document.getElementById('admin-ideeen-lijst');
-  if (!el) return;
-  if (!ideeen.length) { el.innerHTML = '<div class="leeg-ideeen">Nog geen ideeen.</div>'; return; }
-  var html = '';
-  for (var ii=0; ii<ideeen.length; ii++) {
-    var id2 = ideeen[ii];
-    var s2 = id2.status || 'nieuw';
-    var dt2 = new Date(id2.timestamp).toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
-    html += '<div class="idee-card">';
-    html += '<div class="idee-header"><span class="idee-naam">&#128100; ' + esc(id2.naam||'?') + '</span>';
-    html += '<span class="idee-datum">' + dt2 + '</span></div>';
-    html += '<div class="idee-tekst">' + esc(id2.tekst) + '</div>';
-    html += '<div class="idee-acties">';
-    if (s2 !== 'goedgekeurd') html += '<button class="idee-btn goedkeuren" data-i="' + esc(id2.id) + '" data-s="goedgekeurd">&#10003;</button>';
-    html += '<button class="idee-btn behandeling" data-i="' + esc(id2.id) + '" data-s="behandeling">&#8635;</button>';
-    html += '<button class="idee-btn afwijzen" data-i="' + esc(id2.id) + '" data-s="afgewezen">&#10007;</button>';
-    html += '<button class="idee-btn verwijder" data-i="' + esc(id2.id) + '" data-del2="1">&#128465;</button>';
-    html += '</div></div>';
-  }
-  el.innerHTML = html;
-  var btns2 = el.querySelectorAll('[data-s],[data-del2]');
-  for (var bj=0; bj<btns2.length; bj++) {
-    (function(b2) {
-      b2.onclick = function() {
-        var id = b2.getAttribute('data-i'), st = b2.getAttribute('data-s'), dl = b2.getAttribute('data-del2');
-        if (dl) verwijderIdee(id); else updateIdeeStatus(id, st);
-      };
-    })(btns2[bj]);
-  }
-}
-
-function updateAdminStats() {
-  // Registraties worden live bijgehouden door fbListenRegistraties
-  // Laad alleen ideeen (onlyOnce is ok want die veranderen minder vaak)
-  window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
-    var data = snap.val() || {};
-    var ai = document.getElementById('admin-ideeen-count');
-    if (ai) ai.textContent = Object.keys(data).length;
-    renderAdminIdeeen(Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;}));
-  }, {onlyOnce: true});
-}
-
-async function updateRegistratieStatus(code, status) {
-  await window._set(window._ref(window._db, 'registraties/' + code + '/status'), status);
-  await window._set(window._ref(window._db, 'registraties/' + code + '/goedgekeurd'), status === 'goedgekeurd');
-}
-
-async function verwijderRegistratie(code) {
-  if (!confirm('Aanmelding van ' + code + ' verwijderen?')) return;
-  await window._remove(window._ref(window._db, 'registraties/' + code));
-}
-
-async function updateIdeeStatus(id, status) {
-  await window._set(window._ref(window._db, 'ideeen/' + id + '/status'), status);
-}
-
-async function verwijderIdee(id) {
-  if (!confirm('Idee verwijderen?')) return;
-  await window._remove(window._ref(window._db, 'ideeen/' + id));
-}
-
-function toonInloggen() {
-  document.getElementById('setup-keuze').style.display = 'none';
-  document.getElementById('setup-inloggen').style.display = 'block';
-  document.getElementById('setup-registreren').style.display = 'none';
-  document.getElementById('setup-wachten').style.display = 'none';
-}
-
-function toonRegistreren() {
-  document.getElementById('setup-keuze').style.display = 'none';
-  document.getElementById('setup-inloggen').style.display = 'none';
-  document.getElementById('setup-registreren').style.display = 'block';
-  document.getElementById('setup-wachten').style.display = 'none';
-}
-
-function toonKeuze() {
-  document.getElementById('setup-keuze').style.display = 'block';
-  document.getElementById('setup-inloggen').style.display = 'none';
-  document.getElementById('setup-registreren').style.display = 'none';
-  document.getElementById('setup-wachten').style.display = 'none';
 }
 
 function startAppMet(opgeslagen) {
@@ -2419,62 +2330,253 @@ function startAppMet(opgeslagen) {
   }
 }
 
-async function registreerGezin() {
-  var naam = document.getElementById('reg-naam').value.trim();
-  var email = document.getElementById('reg-email').value.trim();
-  var errEl = document.getElementById('reg-error');
-  errEl.style.display = 'none';
+function startCountdown(text) {
+  var secs = autoAddSeconds;
+  setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
+  countdownTimer = setInterval(function() {
+    secs--;
+    if (secs > 0) {
+      setMicStatus('✓ "' + text + '" — toevoegen in ' + secs + 's (tik 🎙️ om te annuleren)', 'success');
+    }
+  }, 1000);
+  autoAddTimer = setTimeout(function() {
+    clearInterval(countdownTimer);
+    addItem();
+    setMicStatus('✅ Toegevoegd!', 'success');
+    setTimeout(function(){ setMicStatus(''); }, 2000);
+  }, autoAddSeconds * 1000);
+}
 
-  if (!naam) { errEl.textContent = 'Vul je gezinsnaam in.'; errEl.style.display = 'block'; return; }
-  if (!email || !email.includes('@')) { errEl.textContent = 'Vul een geldig e-mailadres in.'; errEl.style.display = 'block'; return; }
+function startMetCode() {
+  var raw = document.getElementById('setup-code').value.trim();
+  var code = sanitizeCode(raw);
+  if (code.length < 3) { toonFout('Kies een code van minimaal 3 tekens.'); return; }
+  localStorage.setItem('gezinscode', code);
+  gezinsCode = code;
+  document.getElementById('setup-screen').style.display = 'none';
+  initApp();
+}
 
-  // Auto-genereer code vanuit naam
-  var code = sanitizeCode(naam);
+function stopMic(c){ clearAutoAdd(); isListening=false; document.getElementById('mic-btn').classList.remove('listening'); document.getElementById('mic-btn').textContent='🎙️'; if(c)setTimeout(function(){setMicStatus('');},3000); }
 
-  // Tel bestaande registraties
-  var allSnap = await new Promise(function(res) { window._onValue(window._ref(window._db, 'registraties'), res, {onlyOnce: true}); });
-  var bestaande = allSnap.val() || {};
-  var volgnummer = Object.keys(bestaande).length + 1;
+async function stuurIdee() {
+  var tekst = document.getElementById('idee-tekst').value.trim();
+  if (!tekst) return;
+  var naam = gezinsCode;
+  try {
+    var regSnap = await new Promise(function(resolve) {
+      window._onValue(window._ref(window._db, 'registraties/' + gezinsCode + '/naam'), function(snap) {
+        resolve(snap);
+      }, {onlyOnce: true});
+    });
+    naam = regSnap.val() || gezinsCode;
+  } catch(e) { naam = gezinsCode; }
+  var id = 'idee-' + Date.now();
+  await window._set(window._ref(window._db, 'ideeen/' + id), {
+    id: id, naam: naam, tekst: tekst, status: 'nieuw', timestamp: Date.now(), gezin: gezinsCode
+  });
+  document.getElementById('idee-tekst').value = '';
+  document.getElementById('idee-bevestiging').style.display = 'block';
+  setTimeout(function(){ document.getElementById('idee-bevestiging').style.display = 'none'; }, 3000);
+}
 
-  // Check of code OF naam al bestaat (case-insensitive)
-  var naamLower = naam.toLowerCase().trim();
-  var codeAlGebruikt = !!bestaande[code];
-  var naamAlGebruikt = false;
-  var bestaandeStatus = 'wachtend';
-  for (var bk in bestaande) {
-    if ((bestaande[bk].naam || '').toLowerCase().trim() === naamLower) {
-      naamAlGebruikt = true;
-      bestaandeStatus = bestaande[bk].status || 'wachtend';
-      break;
+function switchTab(tab) {
+  var tabs = ['boodschappen','menu','kookboek','prijzen','ideeen','admin'];
+  for (var ti = 0; ti < tabs.length; ti++) {
+    var t = tabs[ti];
+    var view = document.getElementById('view-' + t);
+    var btn  = document.getElementById('tab-'  + t);
+    if (view) view.style.display = (t === tab) ? 'block' : 'none';
+    if (t === tab && t === 'kookboek') { setTimeout(function(){ renderRecepten(); if(typeof inspInit==='function' && !window._inspStarted){ window._inspStarted=true; inspInit(); }},50); }
+    if (t === tab && t === 'menu') { setTimeout(function(){ renderMenu(); }, 50); }
+    if (btn)  btn.className = 'tab' + (t === tab ? ' active' : '');
+  }
+}
+
+function toggleCat(cat) {
+  if (cat === 'alle') {
+    actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+  } else {
+    var nieuw = { super: actieveCats.super, drogist: actieveCats.drogist, slijterij: actieveCats.slijterij, speciaal: actieveCats.speciaal };
+    nieuw[cat] = !actieveCats[cat];
+    var eenActief = false;
+    var ks = Object.keys(nieuw);
+    for (var ki=0; ki<ks.length; ki++) { if (nieuw[ks[ki]]) { eenActief = true; break; } }
+    if (eenActief) actieveCats = nieuw;
+    else actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+  }
+  updateCatChipUI();
+  var res = document.getElementById('prijs-resultaat');
+  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
+}
+
+function toggleDag(i) {
+  var body  = document.getElementById('dag-body-'  + i);
+  var arrow = document.getElementById('dag-arrow-' + i);
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  // Sluit alle andere dagen
+  for (var di = 0; di < DAGEN.length; di++) {
+    var ob = document.getElementById('dag-body-'  + di);
+    var oa = document.getElementById('dag-arrow-' + di);
+    if (ob) ob.style.display = 'none';
+    if (oa) oa.textContent = '▸';
+  }
+  if (!open) {
+    body.style.display = 'block';
+    if (arrow) arrow.textContent = '▾';
+    var inp = document.getElementById('dag-input-' + i);
+    if (inp) { setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 50); }
+  }
+}
+
+function toggleDone() {
+  doneVisible = !doneVisible;
+  document.getElementById('done-section').style.display = doneVisible ? 'block' : 'none';
+  document.getElementById('done-arrow').textContent = doneVisible ? '▼' : '▶';
+}
+
+function toggleIngCheck(receptId, idx) {
+  var el = document.getElementById('ingcheck-' + receptId + '-' + idx);
+  if (el) el.classList.toggle('checked');
+  var checked = el ? el.classList.contains('checked') : false;
+  if (el) el.textContent = checked ? '✓' : '';
+}
+
+async function toggleItem(id) {
+  for (var ti = 0; ti < items.length; ti++) {
+    if (items[ti].id === id) { items[ti].done = !items[ti].done; break; }
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
+}
+
+function toggleReceptDetail(id) {
+  var detail = document.getElementById('rr-detail-' + id);
+  var arrow  = document.getElementById('rr-arrow-' + id);
+  var card   = document.getElementById('recept-' + id);
+  if (!detail) return;
+  var open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▸' : '▾';
+  if (card)  card.style.borderColor = open ? 'var(--border)' : 'var(--green)';
+}
+
+function toggleReceptPicker(dagIdx) {
+  var picker = document.getElementById('recept-picker-' + dagIdx);
+  if (!picker) return;
+  var isOpen = picker.style.display === 'block';
+  for (var di = 0; di < DAGEN.length; di++) {
+    var p = document.getElementById('recept-picker-' + di);
+    if (p) p.style.display = 'none';
+  }
+  if (!isOpen) {
+    picker.style.display = 'block';
+    renderReceptPicker(dagIdx);
+  }
+}
+
+function toggleVerledenDagen() {
+  toonVerledenDagen = !toonVerledenDagen;
+  renderMenu();
+}
+
+function toonFout(msg) { var el = document.getElementById('setup-error'); el.textContent = msg; el.style.display = 'block'; }
+
+function toonInloggen() {
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-inloggen').style.display = 'block';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'none';
+}
+
+function toonKeuze() {
+  document.getElementById('setup-keuze').style.display = 'block';
+  document.getElementById('setup-inloggen').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'none';
+  document.getElementById('setup-wachten').style.display = 'none';
+}
+
+function toonRegistreren() {
+  document.getElementById('setup-keuze').style.display = 'none';
+  document.getElementById('setup-inloggen').style.display = 'none';
+  document.getElementById('setup-registreren').style.display = 'block';
+  document.getElementById('setup-wachten').style.display = 'none';
+}
+
+function toonSlimmeVoorstellenStil() {
+  if (!gezinsCode) return;
+  var hist = {};
+  try { hist = JSON.parse(localStorage.getItem('aankoop_hist_' + gezinsCode) || '{}'); } catch(e) { return; }
+  var nu = Date.now();
+  var dag = new Date().getDay();
+  var MINI_PRIJZEN = {'melk':1.09,'brood':2.09,'eieren':1.99,'boter':2.49,'kaas':3.49,'yoghurt':1.09,'pasta':0.99,'rijst':1.99,'tomaten':1.99,'bananen':1.49,'appels':1.99,'kipfilet':5.99,'gehakt':4.49};
+  var voorstellen = [];
+  for (var naam in hist) {
+    var data = hist[naam];
+    if (!data.laats || !data.laats.length) continue;
+    var laats = data.laats[data.laats.length-1];
+    var verstreken = nu - laats;
+    var interval = data.gem_interval || (7*24*60*60*1000);
+    if (verstreken > interval * 0.8) {
+      var alOp = false;
+      for (var ii=0; ii<items.length; ii++) { if (items[ii].name.toLowerCase() === naam && !items[ii].done) { alOp=true; break; } }
+      if (!alOp) voorstellen.push({naam:naam, prijs:MINI_PRIJZEN[naam]||null, score:verstreken/interval});
     }
   }
-  if (codeAlGebruikt || naamAlGebruikt) {
-    var statusTekst = bestaandeStatus === 'goedgekeurd' ? 'al actief' : 'al aangemeld';
-    errEl.textContent = 'De naam "' + naam + '" is ' + statusTekst + '. Kies een andere naam, bijv. "' + naam + ' Thuis" of "' + naam + ' 2".';
-    errEl.style.display = 'block';
-    return;
+  var dagelijks = ['melk','brood','eieren'];
+  if (dag >= 1 && dag <= 5) {
+    for (var di=0; di<dagelijks.length; di++) {
+      var dn = dagelijks[di];
+      var alOp2 = false; var alVoor = false;
+      for (var ii2=0; ii2<items.length; ii2++) { if (items[ii2].name.toLowerCase().indexOf(dn)>-1 && !items[ii2].done) { alOp2=true; break; } }
+      for (var vi=0; vi<voorstellen.length; vi++) { if (voorstellen[vi].naam.indexOf(dn)>-1) { alVoor=true; break; } }
+      if (!alOp2 && !alVoor) voorstellen.push({naam:dn, prijs:MINI_PRIJZEN[dn]||null, score:0.5});
+    }
   }
+  voorstellen.sort(function(a,b){return b.score-a.score;});
+  voorstellen = voorstellen.slice(0,5);
+  var box = document.getElementById('wow-box');
+  var chips = document.getElementById('wow-chips');
+  var sub = document.getElementById('wow-sub');
+  if (!box || !chips) return;
+  if (!voorstellen.length) { box.style.display='none'; return; }
+  box.style.display = 'block';
+  var html = '';
+  for (var vi2=0; vi2<voorstellen.length; vi2++) {
+    var v = voorstellen[vi2];
+    var prijsHtml = v.prijs ? ' <span style="font-size:0.68rem;opacity:0.8">v.a. €'+v.prijs.toFixed(2)+'</span>' : '';
+    var _vn = v.naam.split("'").join("&#39;");
+    html += '<button class="wow-chip" onclick="voegSuggestie(&quot;' + _vn + '&quot;")>＋ ' + esc(v.naam) + prijsHtml + '</button>';
+  }
+  chips.innerHTML = html;
+  if (sub) {
+    var heeftPatroon = false;
+    for (var pi=0; pi<voorstellen.length; pi++) { if (voorstellen[pi].score > 0.5) { heeftPatroon=true; break; } }
+    sub.textContent = heeftPatroon ? 'Tijd om dit weer in te slaan:' : 'Vergeet je dit niet?';
+  }
+}
 
-  // Wis eventuele eerdere gezinscode op dit apparaat zodat opnieuw registreren werkt
-  try { localStorage.removeItem('gezinscode'); } catch(e) {}
-  try { sessionStorage.removeItem('gezinscode'); } catch(e) {}
-  try { document.cookie = 'gezinscode=;max-age=0;path=/'; } catch(e) {}
+function updateAdminStats() {
+  // Registraties worden live bijgehouden door fbListenRegistraties
+  // Laad alleen ideeen (onlyOnce is ok want die veranderen minder vaak)
+  window._onValue(window._ref(window._db, 'ideeen'), function(snap) {
+    var data = snap.val() || {};
+    var ai = document.getElementById('admin-ideeen-count');
+    if (ai) ai.textContent = Object.keys(data).length;
+    renderAdminIdeeen(Object.values(data).sort(function(a,b){return b.timestamp-a.timestamp;}));
+  }, {onlyOnce: true});
+}
 
-  // Sla registratie op
-  await window._set(window._ref(window._db, 'registraties/' + code), {
-    code: code, naam: naam, email: email,
-    volgnummer: volgnummer,
-    status: 'wachtend',
-    aangemeld: Date.now(),
-    goedgekeurd: false
-  });
+async function updateIdeeStatus(id, status) {
+  await window._set(window._ref(window._db, 'ideeen/' + id + '/status'), status);
+}
 
-  // Update globale teller
-  await window._set(window._ref(window._db, 'meta/totaal_aanmeldingen'), volgnummer);
-
-  document.getElementById('setup-keuze').style.display = 'none';
-  document.getElementById('setup-registreren').style.display = 'none';
-  document.getElementById('setup-wachten').style.display = 'block';
+async function updateRegistratieStatus(code, status) {
+  await window._set(window._ref(window._db, 'registraties/' + code + '/status'), status);
+  await window._set(window._ref(window._db, 'registraties/' + code + '/goedgekeurd'), status === 'goedgekeurd');
 }
 
 async function vergelijkPrijzen() {
@@ -2637,21 +2739,102 @@ async function vergelijkPrijzen() {
   btn.innerHTML = '🔄 Opnieuw vergelijken';
 }
 
-function toggleCat(cat) {
-  if (cat === 'alle') {
-    actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
-  } else {
-    var nieuw = { super: actieveCats.super, drogist: actieveCats.drogist, slijterij: actieveCats.slijterij, speciaal: actieveCats.speciaal };
-    nieuw[cat] = !actieveCats[cat];
-    var eenActief = false;
-    var ks = Object.keys(nieuw);
-    for (var ki=0; ki<ks.length; ki++) { if (nieuw[ks[ki]]) { eenActief = true; break; } }
-    if (eenActief) actieveCats = nieuw;
-    else actieveCats = { super: true, drogist: true, slijterij: true, speciaal: true };
+async function verifieerFaceId(credIdB64) {
+  var challenge = new Uint8Array(32);
+  crypto.getRandomValues(challenge);
+
+  var credIdBytes = Uint8Array.from(atob(credIdB64), function(c){ return c.charCodeAt(0); });
+
+  await navigator.credentials.get({
+    publicKey: {
+      challenge,
+      allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  });
+
+  activeerBeheerder();
+}
+
+function verwerkFoto(event, i) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    // Verklein foto naar max 100x100px
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var size = 100;
+      canvas.width = size; canvas.height = size;
+      var ctx = canvas.getContext('2d');
+      var min = Math.min(img.width, img.height);
+      var sx = (img.width - min) / 2, sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      // Sla tijdelijk op
+      if (!personen[i]) return;
+      personen[i].foto = dataUrl;
+      // Update preview
+      var preview = document.getElementById('foto-preview-' + i);
+      if (preview) {
+        var imgEl = document.createElement('img');
+        imgEl.src = dataUrl;
+        preview.replaceWith(imgEl);
+        imgEl.id = 'foto-preview-' + i;
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function verwerkOverpassData(elementen, userLat, userLon) {
+  var winkels = [];
+  for (var i=0; i<elementen.length; i++) {
+    var el = elementen[i];
+    var elLat = el.lat || (el.center && el.center.lat);
+    var elLon = el.lon || (el.center && el.center.lon);
+    if (!elLat || !elLon) continue;
+    var naam = (el.tags && el.tags.name) ? el.tags.name : 'Onbekende winkel';
+    var straat = '';
+    if (el.tags) {
+      var s = el.tags['addr:street'] || '';
+      var h = el.tags['addr:housenumber'] || '';
+      var p = el.tags['addr:postcode'] || '';
+      var c = el.tags['addr:city'] || '';
+      if (s) straat = s + (h ? ' ' + h : '') + (p ? ', ' + p : '') + (c ? ' ' + c : '');
+    }
+    winkels.push({naam:naam, straat:straat, afstand:berekenAfstand(userLat,userLon,elLat,elLon), lat:elLat, lon:elLon});
   }
-  updateCatChipUI();
-  var res = document.getElementById('prijs-resultaat');
-  if (res) { res.innerHTML = ''; res.className = 'prijs-resultaat'; }
+  return winkels;
+}
+
+async function verwijderIdee(id) {
+  if (!confirm('Idee verwijderen?')) return;
+  await window._remove(window._ref(window._db, 'ideeen/' + id));
+}
+
+function verwijderIngredient(i) {
+  tempIngredienten.splice(i, 1);
+  renderIngredientenInvoer();
+}
+
+function verwijderPersoon(i) {
+  if (personen.length <= 1) return;
+  personen.splice(i, 1);
+  openPersonenInstellingen();
+}
+
+async function verwijderRecept(id) {
+  if (!confirm('Recept verwijderen?')) return;
+  await window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id));
+}
+
+async function verwijderRegistratie(code) {
+  if (!confirm('Aanmelding van ' + code + ' verwijderen?')) return;
+  await window._remove(window._ref(window._db, 'registraties/' + code));
 }
 
 function vindDichtstbijzijndeWinkel() {
@@ -2692,6 +2875,160 @@ function vindDichtstbijzijndeWinkel() {
   );
 }
 
+async function voegAlleIngredientenToe(receptId) {
+  var r = null;
+  for (var _ri = 0; _ri < recepten.length; _ri++) {
+    if (recepten[_ri].id === receptId) { r = recepten[_ri]; break; }
+  }
+  if (!r || !r.ingredienten || !r.ingredienten.length) return;
+  var nieuweItems = [];
+  for (var _ii = 0; _ii < r.ingredienten.length; _ii++) {
+    var _ing = r.ingredienten[_ii];
+    if (!_ing || !_ing.trim()) continue;
+    nieuweItems.push({
+      id: 'i-' + (Date.now() + Math.floor(Math.random() * 1000) + _ii),
+      name: _ing.trim(),
+      person: currentPerson,
+      done: false,
+      qty: 1,
+      cat: detectCat(_ing),
+      winkel: detectWinkel(_ing)
+    });
+  }
+  if (!nieuweItems.length) return;
+  for (var _ni = 0; _ni < nieuweItems.length; _ni++) {
+    items.unshift(nieuweItems[_ni]);
+  }
+  render();
+  setSyncStatus(true);
+  try {
+    for (var _fsi = 0; _fsi < nieuweItems.length; _fsi++) {
+      await window._set(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + nieuweItems[_fsi].id),
+        nieuweItems[_fsi]
+      );
+    }
+  } catch(e) { console.log('voegAlleIng fout:', e.message); }
+  setSyncStatus(false);
+  var btn = document.getElementById('ing-' + receptId);
+  if (btn) {
+    btn.innerHTML = '✅ ' + nieuweItems.length + ' ingrediënten toegevoegd!';
+    btn.style.background = '#5a8f6d';
+    setTimeout(function() {
+      btn.innerHTML = '🛒 Alle ingrediënten op boodschappenlijst';
+      btn.style.background = '';
+    }, 3000);
+  }
+  setTimeout(function(){ switchTab('boodschappen'); }, 1500);
+}
+
+function voegIngredientToe(waarde) {
+  tempIngredienten.push(waarde || '');
+  renderIngredientenInvoer();
+  setTimeout(function() {
+    var inputs = document.querySelectorAll('.ingredient-input');
+    if (inputs.length) inputs[inputs.length-1].focus();
+  }, 50);
+}
+
+function voegPersoonToe() {
+  if (personen.length >= 4) { alert('Maximum 4 personen.'); return; }
+  personen.push({naam: 'Persoon ' + (personen.length+1), kleur: KLEUREN[personen.length] || '#3d6b4f'});
+  openPersonenInstellingen();
+}
+
+async function voegSuggestie(naam) {
+  var newItem = { id: Date.now(), name: naam, person: currentPerson, done: false, qty: 1, cat: detectCat(naam), winkel: detectWinkel(naam) };
+  items.unshift(newItem);
+  render();
+  logAankoopHistorie(naam);
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
+  toonSlimmeVoorstellenStil();
+}
+
+function wijzigCode() {
+  if (!confirm('Wil je van gezinscode wisselen? Je huidige lijst blijft bewaard onder de oude code.')) return;
+  if (unsubItems) unsubItems(); if (unsubMenu) unsubMenu();
+  localStorage.removeItem('gezinscode');
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'block';
+  document.getElementById('setup-code').value = '';
+}
+
+function wisselWeek(offset) {
+  weekOffset = offset;
+  renderMenu();
+}
+
+async function wisselWinkel(id) {
+  for (var wi = 0; wi < items.length; wi++) {
+    if (items[wi].id === id) {
+      items[wi].winkel = (items[wi].winkel === 'kruidvat') ? 'ah' : 'kruidvat';
+      break;
+    }
+  }
+  render();
+  setSyncStatus(true);
+  try { await fbSave(items); } catch(e) {}
+  setSyncStatus(false);
+}
+
+function zoekAutocomplete(val) {
+  var dropdown = document.getElementById('autocomplete-dropdown');
+  if (!dropdown) return;
+  if (!val || val.length < 2) { sluitAutocomplete(); return; }
+  var n = val.toLowerCase().trim();
+  var resultaten = [];
+  for (var pi = 0; pi < PRODUCTEN_DB.length; pi++) {
+    var p = PRODUCTEN_DB[pi];
+    if (p.n.toLowerCase().indexOf(n) > -1) resultaten.push(p);
+    if (resultaten.length >= 8) break;
+  }
+  if (!resultaten.length) { sluitAutocomplete(); return; }
+  acSelectedIdx = -1;
+  var html = '';
+  for (var ri = 0; ri < resultaten.length; ri++) {
+    var r = resultaten[ri];
+    var vn = r.n.replace(/\\/g,'').replace(/'/g,'\u0027');
+    html += '<div class="ac-item" onclick="kiesProduct(\'' + vn + '\',\'' + r.c + '\')">';
+    html += '<span class="ac-naam">' + esc(r.n) + '</span>';
+    html += '<span class="ac-prijs">v.a. \u20ac' + r.p.toFixed(2) + '</span>';
+    html += '</div>';
+  }
+  dropdown.innerHTML = html;
+  dropdown.style.display = 'block';
+}
+
+async function zoekLivePrijs() {
+  var naam = document.getElementById('item-input').value.trim();
+  if (!naam || naam.length < 2) { alert('Typ eerst een artikel in het invoerveld.'); return; }
+  var btn = document.getElementById('live-prijs-btn');
+  var resultaat = document.getElementById('live-prijs-resultaat');
+  var inhoud = document.getElementById('live-prijs-inhoud');
+  btn.textContent = '...'; btn.disabled = true;
+  resultaat.style.display = 'block';
+  inhoud.innerHTML = 'Zoeken naar beste prijs voor <strong>' + esc(naam) + '</strong>...';
+  try {
+    var response = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artikel: naam })
+    });
+    var data = await response.json();
+    if (!response.ok) throw new Error('Worker fout');
+    var tekst = data.resultaat || '';
+    var regels = tekst.split('\n').filter(function(r) { return r.trim(); });
+    inhoud.innerHTML = regels.join('<br>') || 'Geen resultaten gevonden.';
+  } catch(e) {
+    inhoud.innerHTML = 'Zoeken mislukt. Controleer je verbinding.';
+  }
+  btn.textContent = 'prijs'; btn.disabled = false;
+}
+
+function zoekPrijs(naam){if(!naam)return null;var n=naam.toLowerCase().trim();for(var i=0;i<PRIJZEN_DB.length;i++){var pn=PRIJZEN_DB[i].n.toLowerCase();if(n===pn||pn.indexOf(n)>-1||n.indexOf(pn.split(' ')[0])>-1){var res={},wks=Object.keys(WINKELS_DEF);for(var w=0;w<wks.length;w++)res[wks[w]]=Math.round(PRIJZEN_DB[i].p*(WINKELS_DEF[wks[w]].f||1)*100)/100;return res;}}return null;}
+
 async function zoekWinkelsOpLocatie(lat,lon,inhoud,sub){
   if(sub)sub.textContent='Winkels bij jou in de buurt:';
   var base='https://www.google.com/maps/search/';
@@ -2724,439 +3061,15 @@ async function zoekWinkelsOpLocatie(lat,lon,inhoud,sub){
   }).catch(function(){var extra=document.getElementById('ovp-extra');if(extra)extra.innerHTML='';});
 }
 
-function verwerkOverpassData(elementen, userLat, userLon) {
-  var winkels = [];
-  for (var i=0; i<elementen.length; i++) {
-    var el = elementen[i];
-    var elLat = el.lat || (el.center && el.center.lat);
-    var elLon = el.lon || (el.center && el.center.lon);
-    if (!elLat || !elLon) continue;
-    var naam = (el.tags && el.tags.name) ? el.tags.name : 'Onbekende winkel';
-    var straat = '';
-    if (el.tags) {
-      var s = el.tags['addr:street'] || '';
-      var h = el.tags['addr:housenumber'] || '';
-      var p = el.tags['addr:postcode'] || '';
-      var c = el.tags['addr:city'] || '';
-      if (s) straat = s + (h ? ' ' + h : '') + (p ? ', ' + p : '') + (c ? ' ' + c : '');
-    }
-    winkels.push({naam:naam, straat:straat, afstand:berekenAfstand(userLat,userLon,elLat,elLon), lat:elLat, lon:elLon});
+// Reconnect Firebase bij terugkeren naar app (iOS Safari fix)
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && gezinsCode && window._goOnline && window._db) {
+    try { window._goOnline(window._db); } catch(e) {}
   }
-  return winkels;
-}
+});
 
-function filterOpKetens(winkels, ketens) {
-  var bekend = winkels.filter(function(w) { var n=w.naam.toLowerCase(); return ketens.some(function(k){return n.indexOf(k)>-1;}); });
-  var onbekend = winkels.filter(function(w) { var n=w.naam.toLowerCase(); return !ketens.some(function(k){return n.indexOf(k)>-1;}); });
-  return bekend.concat(onbekend);
-}
-
-function berekenAfstand(lat1, lon1, lat2, lon2) {
-  var R = 6371000;
-  var dLat = (lat2-lat1)*Math.PI/180;
-  var dLon = (lon2-lon1)*Math.PI/180;
-  var a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
-  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
-}
-
-function afstandLabel(m) {
-  if (m < 1000) return m + 'm';
-  return (m/1000).toFixed(1).replace('.',',') + 'km';
-}
-
-function renderWinkelCard(winkel, icon, bg, kleur) {
-  var adresTekst = winkel.straat || 'Adres onbekend';
-  var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + winkel.lat + ',' + winkel.lon;
-  return '<div class="vw-winkel-card">'
-    + '<div class="vw-winkel-logo" style="background:' + bg + ';color:' + kleur + '">' + icon + '</div>'
-    + '<div class="vw-winkel-info">'
-    + '<div class="vw-winkel-naam">' + esc(winkel.naam) + '</div>'
-    + '<div class="vw-winkel-adres">' + esc(adresTekst) + '</div>'
-    + '<div class="vw-winkel-afstand">&#128205; ' + afstandLabel(winkel.afstand) + ' verderop</div>'
-    + '</div>'
-    + '<button class="vw-nav-btn" onclick="window.open(' + "'" + mapsUrl + "'" + ',' + "'" + '_blank' + "'" + ')">&#128204; Navigeer</button>'
-    + '</div>';
-}
-
-function sluitVindWinkel() {
-  var modal = document.getElementById('vw-modal');
-  if (modal) modal.className = 'vw-modal';
-}
-
-function sluitVindWinkelBuiten(e) {
-  if (e.target.id === 'vw-modal') sluitVindWinkel();
-}
-
-function deelAppLink() {
-  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
-  if (navigator.share) {
-    navigator.share({ title: 'Boodschappen App', text: tekst });
-  } else {
-    navigator.clipboard.writeText(tekst).then(function() {
-      var el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
-    });
-  }
-}
-
-function kopieerAppLink() {
-  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  navigator.clipboard.writeText(link).then(function() {
-    var el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
-  }).catch(function() {
-    // Fallback
-    var ta = document.createElement('textarea');
-    ta.value = link; document.body.appendChild(ta);
-    ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta);
-    var el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
-  });
-}
-// ── Inspiratie Wizard ─────────────────────────────────────────────────────────
-var _inspData = { keuken:'', dieet:'', maaltijd:'diner', personen:4, stap:1 };
-
-function inspInit() {
-  _inspData = { keuken:'', dieet:'', maaltijd:'diner', personen:4, stap:1 };
-  inspToonStap(1);
-  inspUpdateProgress(1);
-}
-
-function inspUpdateProgress(stap) {
-  for (var i = 1; i <= 4; i++) {
-    var dot = document.getElementById('dot-' + i);
-    if (!dot) continue;
-    dot.className = 'insp-stap-dot' + (i < stap ? ' done' : i === stap ? ' active' : '');
-    if (i < 4) {
-      var prog = document.getElementById('prog-' + i);
-      if (prog) prog.style.width = i < stap ? '100%' : '0%';
-    }
-  }
-}
-
-function inspToonStap(stap) {
-  var el = document.getElementById('insp-stap-inhoud');
-  if (!el) return;
-  _inspData.stap = stap;
-  inspUpdateProgress(stap);
-
-  var vragen = [
-    { stap:1, titel:'Welke keuken heb je zin in?', opties:[
-      {v:'indonesisch',l:'🍛 Indonesisch'},{v:'aziatisch',l:'🍜 Aziatisch'},{v:'mexicaans',l:'🌮 Mexicaans'},
-      {v:'italiaans',l:'🍝 Italiaans'},{v:'mediterraan',l:'🫙 Mediterraan'},{v:'indiaas',l:'🍲 Indiaas'},
-      {v:'thais',l:'🌶️ Thais'},{v:'japans',l:'🍱 Japans'},{v:'grieks',l:'🫒 Grieks'},
-      {v:'spaans',l:'🥘 Spaans'},{v:'zuidamerikaans',l:'🥩 Zuid-Amerikaans'},{v:'turks',l:'🥙 Turks'},
-      {v:'marokkaans',l:'🫕 Marokkaans'},{v:'nederlands',l:'🧀 Nederlands'},{v:'vegetarisch',l:'🥦 Vegetarisch'},
-      {v:'verrassing',l:'🎲 Verras me!'}
-    ]},
-    { stap:2, titel:'Vlees, vis of vegetarisch?', opties:[
-      {v:'met vlees',l:'🥩 Met vlees'},{v:'vis of zeevruchten',l:'🐟 Vis / Zeevruchten'},
-      {v:'vegetarisch',l:'🥦 Vegetarisch'},{v:'veganistisch',l:'🌱 Veganistisch'},{v:'geen voorkeur',l:'✨ Geen voorkeur'}
-    ]},
-    { stap:3, titel:'Welk soort maaltijd?', opties:[
-      {v:'diner',l:'🍽️ Diner'},{v:'lunch',l:'🥗 Lunch'},{v:'ontbijt',l:'🥐 Ontbijt'},
-      {v:'snack',l:'🍿 Snack'},{v:'dessert',l:'🍰 Dessert'}
-    ]},
-    { stap:4, titel:'Voor hoeveel personen?', opties:[
-      {v:'1',l:'👤 1 persoon'},{v:'2',l:'👥 2 personen'},{v:'4',l:'👨‍👩‍👧‍👦 4 personen'},
-      {v:'6',l:'🎉 6 personen'},{v:'8',l:'🥳 8+ personen'}
-    ]}
-  ];
-
-  var q = vragen[stap - 1];
-  if (!q) return;
-
-  var huidige = ['',_inspData.keuken,_inspData.dieet,_inspData.maaltijd,String(_inspData.personen)][stap] || '';
-  var html = '<div style="font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:12px">' + q.titel + '</div>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
-  q.opties.forEach(function(o) {
-    var sel = o.v === huidige;
-    html += '<button class="insp-chip' + (sel ? ' selected' : '') + '" onclick="inspKeuze(' + stap + ',\'' + o.v.replace(/'/g, "\\'") + '\')">' + o.l + '</button>';
-  });
-  html += '</div>';
-
-  if (stap > 1) {
-    html += '<button onclick="inspToonStap(' + (stap-1) + ')" style="background:none;border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;color:var(--muted);cursor:pointer;margin-right:8px">← Terug</button>';
-  }
-
-  el.innerHTML = html;
-}
-
-function inspKeuze(stap, waarde) {
-  if (stap === 1) _inspData.keuken   = waarde;
-  if (stap === 2) _inspData.dieet    = waarde;
-  if (stap === 3) _inspData.maaltijd = waarde;
-  if (stap === 4) _inspData.personen = parseInt(waarde) || 4;
-
-  if (stap < 4) {
-    inspToonStap(stap + 1);
-  } else {
-    // Alle stappen klaar — zoek recepten
-    inspZoekRecepten();
-  }
-}
-
-async function inspZoekRecepten() {
-  var el = document.getElementById('insp-resultaten');
-  var si = document.getElementById('insp-stap-inhoud');
-  if (el) el.innerHTML = '';
-  if (si) si.innerHTML = '<div style="text-align:center;padding:24px 0;color:var(--muted)">'
-    + '<div style="font-size:2rem;margin-bottom:10px">🔍</div>'
-    + '<div style="font-weight:600;margin-bottom:4px">Recepten zoeken...</div>'
-    + '<div style="font-size:0.78rem">Even geduld, we doorzoeken duizenden recepten</div></div>';
-  inspUpdateProgress(4);
-  var dot4 = document.getElementById('dot-4');
-  if (dot4) dot4.className = 'insp-stap-dot active';
-
-  try {
-    var resp = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'inspiratie',
-        stap: 'resultaat',
-        keuken:   _inspData.keuken,
-        dieet:    _inspData.dieet,
-        maaltijd: _inspData.maaltijd,
-        personen: _inspData.personen
-      })
-    });
-    if (!resp.ok) throw new Error('Server ' + resp.status);
-    var data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    if (!data.recepten || !data.recepten.length) throw new Error('Geen recepten gevonden');
-    inspToonResultaten(data.recepten);
-  } catch(e) {
-    if (si) si.innerHTML = '';
-    if (el) el.innerHTML = '<div style="background:#faeae9;border-radius:12px;padding:14px;color:var(--red);font-size:0.85rem">'
-      + '❌ ' + e.message + '<br><br>'
-      + '<button onclick="inspZoekRecepten()" style="background:var(--green);color:white;border:none;border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Opnieuw proberen</button>'
-      + ' <button onclick="inspInit()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Begin opnieuw</button>'
-      + '</div>';
-  }
-}
-
-function inspToonResultaten(receptenLijst) {
-  var si = document.getElementById('insp-stap-inhoud');
-  var el = document.getElementById('insp-resultaten');
-  if (!el) return;
-  if (si) si.innerHTML = '';
-  var dot4 = document.getElementById('dot-4');
-  if (dot4) dot4.className = 'insp-stap-dot done';
-
-  var nBg = { Makkelijk:'#e8f5e9', Gemiddeld:'#fff3e0', Uitdagend:'#fce4ec' };
-  var nKl = { Makkelijk:'#2e7d32', Gemiddeld:'#e65100', Uitdagend:'#c62828' };
-
-  var header = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-    + '<div style="font-size:0.82rem;color:var(--muted)">' + receptenLijst.length + ' recepten'
-    + ((_inspData.keuken && _inspData.keuken !== 'verrassing') ? ' · <strong>' + _inspData.keuken + '</strong>' : '')
-    + ' · <strong>' + _inspData.personen + ' pers.</strong></div>'
-    + '<button onclick="inspInit()" style="font-size:0.75rem;background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:DM Sans,sans-serif;color:var(--muted)">↺ Opnieuw</button>'
-    + '</div>';
-
-  var dagNamen = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
-  var dagOpties = '<option value="">— Dag —</option>';
-  for (var di = 0; di < dagNamen.length; di++) {
-    dagOpties += '<option value="' + di + '">' + dagNamen[di] + '</option>';
-  }
-
-  var html = header;
-  for (var idx = 0; idx < receptenLijst.length; idx++) {
-    var r = receptenLijst[idx];
-    var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
-    html += '<div class="recept-card-insp" id="rci-' + idx + '">';
-
-    // Header (altijd zichtbaar)
-    html += '<div onclick="inspToggleRecept(' + idx + ')" style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">';
-    html += '<div style="flex:1">';
-    html += '<div style="font-family:\'Playfair Display\',serif;font-size:0.98rem;margin-bottom:5px">' + esc(r.naam||'') + '</div>';
-    html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px">';
-    if (r.tijd)   html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(--green-pale);color:var(--green)">⏱ ' + esc(r.tijd) + '</span>';
-    if (r.niveau) html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:' + (nBg[r.niveau]||'#f5f5f5') + ';color:' + (nKl[r.niveau]||'#666') + '">' + esc(r.niveau) + '</span>';
-    html += '</div>';
-    html += '<div style="font-size:0.81rem;color:var(--muted);line-height:1.5">' + esc(r.omschr||'') + '</div>';
-    html += '</div>';
-    html += '<div style="font-size:1.1rem;color:var(--muted);flex-shrink:0" id="rci-arrow-' + idx + '">▸</div>';
-    html += '</div>';
-
-    // Detail (ingeklapt)
-    html += '<div id="rci-detail-' + idx + '" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">';
-
-    // Ingrediënten
-    if (r.ingredienten && r.ingredienten.length) {
-      html += '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
-      html += '<div style="margin-bottom:12px">';
-      for (var ii = 0; ii < r.ingredienten.length; ii++) {
-        var ing = r.ingredienten[ii];
-        html += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span>'
-          + '<span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
-      }
-      html += '</div>';
-      html += '<button onclick="inspVoegAllesToe(' + idx + ',this)" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">🛒 Voeg ingrediënten toe aan boodschappenlijst</button>';
-    } else {
-      html += '<button onclick="inspHaalIngredienten(' + idx + ',\'' + esc(r.naam||'').replace(/'/g, "\\'") + '\')" style="width:100%;padding:10px;border:1.5px dashed var(--green);border-radius:10px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">📋 Laad ingrediënten (' + _inspData.personen + ' pers.)</button>';
-    }
-
-    // Dag koppelen + opslaan in rij
-    html += '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
-    html += '<select id="rci-dag-' + idx + '" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:DM Sans,sans-serif;font-size:0.82rem;background:white">' + dagOpties + '</select>';
-    html += '<button onclick="inspKoppelAanDag(' + idx + ')" style="padding:8px 14px;border:none;border-radius:8px;background:#5bb76e;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📅 Plan</button>';
-    html += '<button onclick="inspSlaReceptOp(' + idx + ',this)" style="padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">💾 Bewaar</button>';
-    html += '</div>';
-    html += '<div id="rci-status-' + idx + '" style="font-size:0.78rem;color:var(--green);margin-bottom:6px"></div>';
-
-    // YouTube
-    html += '<a href="' + esc(yt) + '" target="_blank" style="display:block;text-align:center;text-decoration:none;padding:9px;border-radius:10px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600">▶ Bekijk op YouTube</a>';
-
-    html += '</div></div>';
-  }
-
-  window._inspRecepten = receptenLijst;
-  el.innerHTML = html;
-}
-
-function inspToggleRecept(idx) {
-  var detail = document.getElementById('rci-detail-' + idx);
-  var arrow  = document.getElementById('rci-arrow-'  + idx);
-  var card   = document.getElementById('rci-' + idx);
-  if (!detail) return;
-  var open = detail.style.display !== 'none';
-  detail.style.display = open ? 'none' : 'block';
-  if (arrow) arrow.textContent = open ? '▸' : '▾';
-  if (card)  card.className = open ? 'recept-card-insp' : 'recept-card-insp open';
-}
-
-async function inspHaalIngredienten(idx, naam) {
-  var btn = document.querySelector('[data-idx="' + idx + '"]');
-  if (btn) { btn.textContent = '⏳ Laden...'; btn.disabled = true; }
-  try {
-    var resp = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type:'inspiratie', stap:'ingredienten', gerecht:naam, personen:_inspData.personen })
-    });
-    if (!resp.ok) throw new Error('Server ' + resp.status);
-    var data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    var r = data.recept;
-    if (!r || !r.ingredienten) throw new Error('Geen ingrediënten ontvangen');
-
-    // Update globaal recept
-    if (window._inspRecepten && window._inspRecepten[idx]) {
-      window._inspRecepten[idx].ingredienten = r.ingredienten;
-      if (r.stappen) window._inspRecepten[idx].stappen = r.stappen;
-    }
-
-    // Herrender het detail gedeelte
-    var detail = document.getElementById('rci-detail-' + idx);
-    if (!detail) return;
-
-    var ingHtml = '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
-    ingHtml += '<div style="margin-bottom:12px">';
-    r.ingredienten.forEach(function(ing) {
-      ingHtml += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span><span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
-    });
-    ingHtml += '</div>';
-    ingHtml += '<button onclick="inspVoegAllesToe(' + idx + ',this)" data-naam="' + esc(naam) + '" data-idx="' + idx + '" '
-      + 'style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-bottom:10px">'
-      + '🛒 Voeg alle ingrediënten toe aan boodschappenlijst</button>';
-
-    // Vervang de laden-knop door de ingrediëntenlijst
-    if (btn) btn.parentNode.replaceChild(document.createRange().createContextualFragment(ingHtml), btn);
-
-    // Voeg stappen toe indien ze er nog niet zijn
-    if (r.stappen && r.stappen.length) {
-      var stapHtml = '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px;margin-top:4px">👨‍🍳 Bereidingsstappen</div>';
-      r.stappen.forEach(function(stap, si) {
-        stapHtml += '<div style="display:flex;gap:10px;margin-bottom:8px;font-size:0.83rem">'
-          + '<div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:white;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (si+1) + '</div>'
-          + '<div style="color:var(--ink);line-height:1.5">' + esc(stap) + '</div></div>';
-      });
-      var yt = detail.querySelector('a[href*="youtube"]');
-      if (yt) yt.insertAdjacentHTML('beforebegin', stapHtml);
-    }
-  } catch(e) {
-    if (btn) { btn.textContent = '❌ Mislukt — tik opnieuw'; btn.disabled = false; }
-  }
-}
-
-function inspVoegAllesToe(idx, btn) {
-  var r = window._inspRecepten && window._inspRecepten[idx];
-  if (!r || !r.ingredienten || !r.ingredienten.length) return;
-  var toegevoegd = 0;
-  var promises = [];
-  r.ingredienten.forEach(function(ing) {
-    var naam = ing.naam;
-    if (!naam || naam.trim() === '') return;
-    var vollNaam = ing.hoeveelheid ? ing.hoeveelheid + ' ' + (ing.eenheid||'') + ' ' + naam : naam;
-    vollNaam = vollNaam.trim();
-    var id = 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2,5);
-    var item = { id:id, name:vollNaam, done:false, qty:1, person:currentPerson || '', winkel:'', timestamp:Date.now() };
-    items.push(item);
-    toegevoegd++;
-    promises.push(window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item));
-  });
-  Promise.all(promises).then(function() {
-    render();
-    var status = document.getElementById('rci-ing-status-' + idx);
-    if (status) status.innerHTML = '<div style="background:var(--green-pale);border-radius:8px;padding:8px 12px;font-size:0.82rem;color:var(--green);font-weight:600;text-align:center;margin-top:6px">✅ ' + toegevoegd + ' ingrediënten toegevoegd aan boodschappenlijst!</div>';
-    if (btn) { btn.textContent = '✅ Toegevoegd!'; btn.style.background = '#4caf50'; btn.disabled = true; }
-  }).catch(function(e) {
-    if (btn) { btn.textContent = '❌ Fout bij opslaan'; btn.disabled = false; }
-  });
-}
-
-async function inspKoppelAanDag(idx) {
-  var r = window._inspRecepten && window._inspRecepten[idx];
-  if (!r) return;
-  var sel = document.getElementById('rci-dag-' + idx);
-  if (!sel || sel.value === '') {
-    var status = document.getElementById('rci-status-' + idx);
-    if (status) status.innerHTML = '<span style="color:var(--red)">Kies eerst een dag</span>';
-    return;
-  }
-  var dagIdx = parseInt(sel.value);
-  var key = getDagKey(dagIdx);
-  menu[key] = r.naam;
-  var status = document.getElementById('rci-status-' + idx);
-  if (status) status.innerHTML = '📅 Gepland voor ' + ['ma','di','wo','do','vr','za','zo'][dagIdx] + '!';
-  try { await fbSaveMenu(menu); } catch(e) {}
-}
-
-async function inspSlaReceptOp(idx, btn) {
-  var r = window._inspRecepten && window._inspRecepten[idx];
-  if (!r) return;
-  var id = 'recept-' + Date.now();
-  var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
-  var ingLijst = [];
-  if (r.ingredienten) {
-    for (var ii = 0; ii < r.ingredienten.length; ii++) {
-      var ing = r.ingredienten[ii];
-      var ingStr = (ing.hoeveelheid ? ing.hoeveelheid + ' ' : '') + (ing.eenheid ? ing.eenheid + ' ' : '') + (ing.naam || '');
-      ingLijst.push(ingStr.trim());
-    }
-  }
-  var receptObj = {
-    id: id, naam: r.naam, youtube: yt,
-    categorie: _inspData.maaltijd || 'diner',
-    beschrijving: r.omschr || '',
-    personen: String(_inspData.personen || 4),
-    tijd: r.tijd || null,
-    ingredienten: ingLijst,
-    aangemaakt: Date.now()
-  };
-  try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
-    if (btn) { btn.textContent = '✅ Bewaard!'; btn.disabled = true; btn.style.background = '#e8f5e9'; }
-    var status = document.getElementById('rci-status-' + idx);
-    if (status) status.innerHTML = '✅ Opgeslagen in kookboek!';
-  } catch(e) {
-    if (btn) btn.textContent = '❌ Mislukt';
-  }
-}
 </script>
+
 
 <!-- Vind Winkel Modal -->
 <div class="vw-modal" id="vw-modal" onclick="sluitVindWinkelBuiten(event)">
