@@ -411,7 +411,7 @@
       <span id="sync-label">Verbonden</span>
     </div>
     <div class="gezin-badge" onclick="wijzigCode()" title="Gezinscode wijzigen">
-      🏠 <span id="gezin-naam"></span> ✎
+      🏠 <span id="gezin-naam" style="font-weight:700"></span> ✎
     </div>
   </header>
 
@@ -914,41 +914,26 @@ function fbDelete(id) {
 }
 
 function fbListen() {
-  // 1. Laad direct uit localStorage voor instant weergave
-  try {
-    var cached = JSON.parse(localStorage.getItem('cache_items_' + gezinsCode) || 'null');
-    if (cached && cached.length) { items = cached; render(); }
-  } catch(e) {}
-  try {
-    var cachedMenu = JSON.parse(localStorage.getItem('cache_menu_' + gezinsCode) || 'null');
-    if (cachedMenu) { menu = cachedMenu; renderMenu(); }
-  } catch(e) {}
+  // Sluit eventuele bestaande listeners
+  if (unsubItems) { try { unsubItems(); } catch(e) {} unsubItems = null; }
+  if (unsubMenu)  { try { unsubMenu();  } catch(e) {} unsubMenu  = null; }
 
-  // 2. Firebase listener — update als live data binnenkomt
+  // Luister naar boodschappen
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     var data = snap.val();
     if (data) {
       var vals = Object.values(data);
-      vals.sort(function(a,b){ return (b.id||0)-(a.id||0); });
+      vals.sort(function(a,b){ return (b.id||0) - (a.id||0); });
       items = vals;
-      try { localStorage.setItem('cache_items_' + gezinsCode, JSON.stringify(vals)); } catch(e) {}
     } else {
-      // Geen data van Firebase — vertrouw op cache, maak niet leeg
-      var hasCached = localStorage.getItem('cache_items_' + gezinsCode);
-      if (!hasCached) { items = []; }
+      items = [];
     }
     render();
   });
 
+  // Luister naar weekmenu
   unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
-    var data = snap.val();
-    if (data) {
-      menu = data;
-      try { localStorage.setItem('cache_menu_' + gezinsCode, JSON.stringify(data)); } catch(e) {}
-    } else {
-      var hasCachedMenu = localStorage.getItem('cache_menu_' + gezinsCode);
-      if (!hasCachedMenu) { menu = {}; }
-    }
+    menu = snap.val() || {};
     renderMenu();
   });
 }
@@ -972,22 +957,16 @@ function fbListenIdeeen() {
 }
 
 function fbListenRecepten() {
-  try {
-    var cached = JSON.parse(localStorage.getItem('cache_recepten_' + gezinsCode) || 'null');
-    if (cached && cached.length) { recepten = cached; renderRecepten(); }
-  } catch(e) {}
   window._onValue(
     window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten'),
     function(snap) {
       var data = snap.val();
       if (data && typeof data === 'object') {
         var vals = Object.values(data).filter(function(r){ return r && r.naam; });
-        vals.sort(function(a,b){ return (b.aangemaakt||0)-(a.aangemaakt||0); });
+        vals.sort(function(a,b){ return (b.aangemaakt||0) - (a.aangemaakt||0); });
         recepten = vals;
-        try { localStorage.setItem('cache_recepten_' + gezinsCode, JSON.stringify(vals)); } catch(e) {}
       } else {
-        var hasCached = localStorage.getItem('cache_recepten_' + gezinsCode);
-        if (!hasCached) { recepten = []; }
+        recepten = [];
       }
       renderRecepten();
     }
@@ -1011,18 +990,21 @@ function fbListenRegistraties() {
 }
 
 function fbSave(itemsLijst) {
-  try { localStorage.setItem('cache_items_' + gezinsCode, JSON.stringify(itemsLijst)); } catch(e) {}
+  if (!gezinsCode) return Promise.resolve();
   var obj = {};
   for (var si = 0; si < itemsLijst.length; si++) {
     obj[itemsLijst[si].id] = itemsLijst[si];
   }
-  return window._set(getRef('boodschappen'), obj);
+  return window._set(getRef('boodschappen'), obj)
+    .catch(function(e) {
+      console.log('Firebase fout:', e.message);
+      setSyncStatus(false, true);
+    });
 }
 
 async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
 
 async function fbSaveMenu(m) {
-  try { localStorage.setItem('cache_menu_' + gezinsCode, JSON.stringify(m || {})); } catch(e) {}
   return window._set(getRef('weekmenu'), m || {});
 }
 
@@ -1075,7 +1057,8 @@ function getYouTubeId(url) {
 function getYouTubeThumbnail(id){return id?'https://img.youtube.com/vi/'+id+'/mqdefault.jpg':null;}
 
 function initApp() {
-  document.getElementById('gezin-naam').textContent = gezinsCode;
+  var el = document.getElementById('gezin-naam');
+  if (el) el.textContent = gezinsCode;
   document.getElementById('main-app').style.display = 'block';
   isBeheerder = localStorage.getItem('beheerder') === '1' || gezinsCode === 'familie-de-jong';
   if (isBeheerder) {
@@ -2188,9 +2171,17 @@ function setPerson(p) {
 
 function setPersoon(naam){currentPerson=naam;renderPersonenKnoppen();}
 
-function setSyncStatus(saving) {
-  document.getElementById('sync-dot').className = 'dot' + (saving ? ' saving' : '');
-  document.getElementById('sync-label').textContent = saving ? 'Opslaan…' : 'Live verbonden 🔗';
+function setSyncStatus(saving, error) {
+  var dot = document.getElementById('sync-dot');
+  var lbl = document.getElementById('sync-label');
+  if (dot) {
+    if (error) dot.className = 'dot error';
+    else dot.className = 'dot' + (saving ? ' saving' : '');
+  }
+  if (lbl) {
+    if (error) lbl.textContent = '⚠️ Sync fout';
+    else lbl.textContent = saving ? 'Opslaan…' : 'Gesynchroniseerd';
+  }
 }
 
 function setupMic() {
@@ -3113,34 +3104,40 @@ async function zoekWinkelsOpLocatie(lat,lon,inhoud,sub){
 document.addEventListener('fb-ready', function() {
   document.getElementById('loading-screen').style.display = 'none';
 
-  // Check of er een ?code= in de URL zit (gedeelde directe link)
+  // ?code= in URL heeft ALTIJD prioriteit (directe gezinslink)
   var urlCode = '';
   try {
-    var searchStr = (window.location && window.location.search) || (typeof location !== 'undefined' && location.search) || '';
+    var searchStr = (window.location && window.location.search)
+      || (typeof location !== 'undefined' && location.search) || '';
     var params = new URLSearchParams(searchStr);
-    urlCode = params.get('code') || '';
+    urlCode = (params.get('code') || '').trim();
   } catch(e) {}
 
-  var opgeslagen = urlCode
-    || localStorage.getItem('gezinscode')
-    || sessionStorage.getItem('gezinscode');
-
-  // Probeer ook cookie
-  if (!opgeslagen) {
-    try {
-      var cookies = document.cookie.split(';');
-      for (var ci = 0; ci < cookies.length; ci++) {
-        var cv = cookies[ci].trim();
-        if (cv.indexOf('gezinscode=') === 0) {
-          opgeslagen = cv.substring('gezinscode='.length);
-          break;
+  var opgeslagen = '';
+  if (urlCode) {
+    // Directe link: gebruik deze code en sla op als standaard
+    opgeslagen = urlCode;
+    try { localStorage.setItem('gezinscode', urlCode); } catch(e) {}
+  } else {
+    // Geen URL-code: laad uit opslag
+    opgeslagen = localStorage.getItem('gezinscode')
+      || sessionStorage.getItem('gezinscode')
+      || '';
+    if (!opgeslagen) {
+      try {
+        var cookies = document.cookie.split(';');
+        for (var ci = 0; ci < cookies.length; ci++) {
+          var cv = cookies[ci].trim();
+          if (cv.indexOf('gezinscode=') === 0) {
+            opgeslagen = cv.substring('gezinscode='.length);
+            break;
+          }
         }
-      }
-    } catch(e) {}
+      } catch(e) {}
+    }
   }
 
   if (opgeslagen) {
-    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
     gezinsCode = opgeslagen;
     initApp();
   } else {
@@ -3154,9 +3151,10 @@ document.addEventListener('visibilitychange', function() {
     if (window._goOnline && window._db) {
       try { window._goOnline(window._db); } catch(e) {}
     }
+    // Herstart listeners na iOS achtergrond
     setTimeout(function() {
       if (gezinsCode) { fbListen(); }
-    }, 500);
+    }, 300);
   }
 });
 
