@@ -338,6 +338,9 @@
 .vw-loading{text-align:center;padding:24px;color:var(--muted);font-size:0.85rem}
 .vw-fout{text-align:center;padding:20px;color:var(--red);font-size:0.85rem}
 .vw-sluiten{width:100%;padding:10px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);cursor:pointer;margin-top:6px}
+
+  @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+  .ontdek-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
 </style>
 </head>
 <body>
@@ -589,6 +592,22 @@
     <div style="font-size:2.5rem;margin-bottom:8px">👨‍🍳</div>
     <div>Nog geen recepten — voeg er een toe!</div>
   </div>
+
+
+  <!-- ═══ ONTDEK SECTIE ═══ -->
+  <div style="margin-top:24px;border-top:2px solid var(--border);padding-top:20px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:1.4rem">🔍</span>
+      <div>
+        <div style="font-size:0.95rem;font-weight:700;color:var(--ink)">Recept ontdekken</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Laat AI je inspireren met nieuwe gerechten</div>
+      </div>
+    </div>
+    <div id="ontdek-inhoud" style="min-height:100px">
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:0.85rem">Laden…</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Recept formulier modal -->
@@ -1131,344 +1150,27 @@ function initApp() {
   setSyncStatus(false);
 }
 
-async function inspHaalIngredienten(idx, naam) {
-  var btn = document.querySelector('[data-idx="' + idx + '"]');
-  if (btn) { btn.textContent = '⏳ Laden...'; btn.disabled = true; }
-  try {
-    var resp = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type:'inspiratie', stap:'ingredienten', gerecht:naam, personen:_inspData.personen })
-    });
-    if (!resp.ok) throw new Error('Server ' + resp.status);
-    var data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    var r = data.recept;
-    if (!r || !r.ingredienten) throw new Error('Geen ingrediënten ontvangen');
 
-    // Update globaal recept
-    if (window._inspRecepten && window._inspRecepten[idx]) {
-      window._inspRecepten[idx].ingredienten = r.ingredienten;
-      if (r.stappen) window._inspRecepten[idx].stappen = r.stappen;
-    }
 
-    // Herrender het detail gedeelte
-    var detail = document.getElementById('rci-detail-' + idx);
-    if (!detail) return;
 
-    var ingHtml = '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
-    ingHtml += '<div style="margin-bottom:12px">';
-    r.ingredienten.forEach(function(ing) {
-      ingHtml += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span><span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
-    });
-    ingHtml += '</div>';
-    ingHtml += '<button onclick="inspVoegAllesToe(' + idx + ',this)" data-naam="' + esc(naam) + '" data-idx="' + idx + '" '
-      + 'style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-bottom:10px">'
-      + '🛒 Voeg alle ingrediënten toe aan boodschappenlijst</button>';
 
-    // Vervang de laden-knop door de ingrediëntenlijst
-    if (btn) btn.parentNode.replaceChild(document.createRange().createContextualFragment(ingHtml), btn);
 
-    // Voeg stappen toe indien ze er nog niet zijn
-    if (r.stappen && r.stappen.length) {
-      var stapHtml = '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px;margin-top:4px">👨‍🍳 Bereidingsstappen</div>';
-      r.stappen.forEach(function(stap, si) {
-        stapHtml += '<div style="display:flex;gap:10px;margin-bottom:8px;font-size:0.83rem">'
-          + '<div style="width:22px;height:22px;border-radius:50%;background:var(--green);color:white;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (si+1) + '</div>'
-          + '<div style="color:var(--ink);line-height:1.5">' + esc(stap) + '</div></div>';
-      });
-      var yt = detail.querySelector('a[href*="youtube"]');
-      if (yt) yt.insertAdjacentHTML('beforebegin', stapHtml);
-    }
-  } catch(e) {
-    if (btn) { btn.textContent = '❌ Mislukt — tik opnieuw'; btn.disabled = false; }
-  }
-}
 
-function inspInit() {
-  _inspData = { keuken:'', dieet:'', maaltijd:'diner', personen:4, stap:1 };
-  inspToonStap(1);
-  inspUpdateProgress(1);
-}
 
-function inspKeuze(stap, waarde) {
-  if (stap === 1) _inspData.keuken   = waarde;
-  if (stap === 2) _inspData.dieet    = waarde;
-  if (stap === 3) _inspData.maaltijd = waarde;
-  if (stap === 4) _inspData.personen = parseInt(waarde) || 4;
 
-  if (stap < 4) {
-    inspToonStap(stap + 1);
-  } else {
-    // Alle stappen klaar — zoek recepten
-    inspZoekRecepten();
-  }
-}
 
-async function inspKoppelAanDag(idx) {
-  var r = window._inspRecepten && window._inspRecepten[idx];
-  if (!r) return;
-  var sel = document.getElementById('rci-dag-' + idx);
-  if (!sel || sel.value === '') {
-    var status = document.getElementById('rci-status-' + idx);
-    if (status) status.innerHTML = '<span style="color:var(--red)">Kies eerst een dag</span>';
-    return;
-  }
-  var dagIdx = parseInt(sel.value);
-  var key = getDagKey(dagIdx);
-  menu[key] = r.naam;
-  var status = document.getElementById('rci-status-' + idx);
-  if (status) status.innerHTML = '📅 Gepland voor ' + ['ma','di','wo','do','vr','za','zo'][dagIdx] + '!';
-  try { await fbSaveMenu(menu); } catch(e) {}
-}
 
-async function inspSlaReceptOp(idx, btn) {
-  var r = window._inspRecepten && window._inspRecepten[idx];
-  if (!r) return;
-  var id = 'recept-' + Date.now();
-  var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
-  var ingLijst = [];
-  if (r.ingredienten) {
-    for (var ii = 0; ii < r.ingredienten.length; ii++) {
-      var ing = r.ingredienten[ii];
-      var ingStr = (ing.hoeveelheid ? ing.hoeveelheid + ' ' : '') + (ing.eenheid ? ing.eenheid + ' ' : '') + (ing.naam || '');
-      ingLijst.push(ingStr.trim());
-    }
-  }
-  var receptObj = {
-    id: id, naam: r.naam, youtube: yt,
-    categorie: _inspData.maaltijd || 'diner',
-    beschrijving: r.omschr || '',
-    personen: String(_inspData.personen || 4),
-    tijd: r.tijd || null,
-    ingredienten: ingLijst,
-    aangemaakt: Date.now()
-  };
-  try {
-    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
-    if (btn) { btn.textContent = '✅ Bewaard!'; btn.disabled = true; btn.style.background = '#e8f5e9'; }
-    var status = document.getElementById('rci-status-' + idx);
-    if (status) status.innerHTML = '✅ Opgeslagen in kookboek!';
-  } catch(e) {
-    if (btn) btn.textContent = '❌ Mislukt';
-  }
-}
 
-function inspToggleRecept(idx) {
-  var detail = document.getElementById('rci-detail-' + idx);
-  var arrow  = document.getElementById('rci-arrow-'  + idx);
-  var card   = document.getElementById('rci-' + idx);
-  if (!detail) return;
-  var open = detail.style.display !== 'none';
-  detail.style.display = open ? 'none' : 'block';
-  if (arrow) arrow.textContent = open ? '▸' : '▾';
-  if (card)  card.className = open ? 'recept-card-insp' : 'recept-card-insp open';
-}
 
-function inspToonResultaten(receptenLijst) {
-  var si = document.getElementById('insp-stap-inhoud');
-  var el = document.getElementById('insp-resultaten');
-  if (!el) return;
-  if (si) si.innerHTML = '';
-  var dot4 = document.getElementById('dot-4');
-  if (dot4) dot4.className = 'insp-stap-dot done';
 
-  var nBg = { Makkelijk:'#e8f5e9', Gemiddeld:'#fff3e0', Uitdagend:'#fce4ec' };
-  var nKl = { Makkelijk:'#2e7d32', Gemiddeld:'#e65100', Uitdagend:'#c62828' };
 
-  var header = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-    + '<div style="font-size:0.82rem;color:var(--muted)">' + receptenLijst.length + ' recepten'
-    + ((_inspData.keuken && _inspData.keuken !== 'verrassing') ? ' · <strong>' + _inspData.keuken + '</strong>' : '')
-    + ' · <strong>' + _inspData.personen + ' pers.</strong></div>'
-    + '<button onclick="inspInit()" style="font-size:0.75rem;background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:DM Sans,sans-serif;color:var(--muted)">↺ Opnieuw</button>'
-    + '</div>';
 
-  var dagNamen = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
-  var dagOpties = '<option value="">— Dag —</option>';
-  for (var di = 0; di < dagNamen.length; di++) {
-    dagOpties += '<option value="' + di + '">' + dagNamen[di] + '</option>';
-  }
 
-  var html = header;
-  for (var idx = 0; idx < receptenLijst.length; idx++) {
-    var r = receptenLijst[idx];
-    var yt = r.youtube_zoek || ('https://www.youtube.com/results?search_query=' + encodeURIComponent((r.naam||'') + ' recept'));
-    html += '<div class="recept-card-insp" id="rci-' + idx + '">';
 
-    // Header (altijd zichtbaar)
-    html += '<div onclick="inspToggleRecept(' + idx + ')" style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">';
-    html += '<div style="flex:1">';
-    html += '<div style="font-family:\'Playfair Display\',serif;font-size:0.98rem;margin-bottom:5px">' + esc(r.naam||'') + '</div>';
-    html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px">';
-    if (r.tijd)   html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:var(--green-pale);color:var(--green)">⏱ ' + esc(r.tijd) + '</span>';
-    if (r.niveau) html += '<span style="font-size:0.68rem;padding:3px 8px;border-radius:10px;background:' + (nBg[r.niveau]||'#f5f5f5') + ';color:' + (nKl[r.niveau]||'#666') + '">' + esc(r.niveau) + '</span>';
-    html += '</div>';
-    html += '<div style="font-size:0.81rem;color:var(--muted);line-height:1.5">' + esc(r.omschr||'') + '</div>';
-    html += '</div>';
-    html += '<div style="font-size:1.1rem;color:var(--muted);flex-shrink:0" id="rci-arrow-' + idx + '">▸</div>';
-    html += '</div>';
 
-    // Detail (ingeklapt)
-    html += '<div id="rci-detail-' + idx + '" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">';
 
-    // Ingrediënten
-    if (r.ingredienten && r.ingredienten.length) {
-      html += '<div style="font-weight:700;font-size:0.82rem;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);margin-bottom:8px">🛒 Ingrediënten voor ' + _inspData.personen + ' pers.</div>';
-      html += '<div style="margin-bottom:12px">';
-      for (var ii = 0; ii < r.ingredienten.length; ii++) {
-        var ing = r.ingredienten[ii];
-        html += '<div class="ing-item"><span>' + esc(ing.naam||'') + '</span>'
-          + '<span style="color:var(--muted)">' + esc(ing.hoeveelheid||'') + ' ' + esc(ing.eenheid||'') + '</span></div>';
-      }
-      html += '</div>';
-      html += '<button onclick="inspVoegAllesToe(' + idx + ',this)" style="width:100%;padding:10px;border:none;border-radius:10px;background:var(--green);color:white;font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">🛒 Voeg ingrediënten toe aan boodschappenlijst</button>';
-    } else {
-      html += '<button onclick="inspHaalIngredienten(' + idx + ',\'' + esc(r.naam||'').replace(/'/g, "\\'") + '\')" style="width:100%;padding:10px;border:1.5px dashed var(--green);border-radius:10px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px">📋 Laad ingrediënten (' + _inspData.personen + ' pers.)</button>';
-    }
 
-    // Dag koppelen + opslaan in rij
-    html += '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">';
-    html += '<select id="rci-dag-' + idx + '" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:DM Sans,sans-serif;font-size:0.82rem;background:white">' + dagOpties + '</select>';
-    html += '<button onclick="inspKoppelAanDag(' + idx + ')" style="padding:8px 14px;border:none;border-radius:8px;background:#5bb76e;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📅 Plan</button>';
-    html += '<button onclick="inspSlaReceptOp(' + idx + ',this)" style="padding:8px 14px;border:1.5px solid var(--green);border-radius:8px;background:var(--green-pale);color:var(--green);font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">💾 Bewaar</button>';
-    html += '</div>';
-    html += '<div id="rci-status-' + idx + '" style="font-size:0.78rem;color:var(--green);margin-bottom:6px"></div>';
 
-    // YouTube
-    html += '<a href="' + esc(yt) + '" target="_blank" style="display:block;text-align:center;text-decoration:none;padding:9px;border-radius:10px;background:#ff0000;color:white;font-family:DM Sans,sans-serif;font-size:0.82rem;font-weight:600">▶ Bekijk op YouTube</a>';
-
-    html += '</div></div>';
-  }
-
-  window._inspRecepten = receptenLijst;
-  el.innerHTML = html;
-}
-
-function inspToonStap(stap) {
-  var el = document.getElementById('insp-stap-inhoud');
-  if (!el) return;
-  _inspData.stap = stap;
-  inspUpdateProgress(stap);
-
-  var vragen = [
-    { stap:1, titel:'Welke keuken heb je zin in?', opties:[
-      {v:'indonesisch',l:'🍛 Indonesisch'},{v:'aziatisch',l:'🍜 Aziatisch'},{v:'mexicaans',l:'🌮 Mexicaans'},
-      {v:'italiaans',l:'🍝 Italiaans'},{v:'mediterraan',l:'🫙 Mediterraan'},{v:'indiaas',l:'🍲 Indiaas'},
-      {v:'thais',l:'🌶️ Thais'},{v:'japans',l:'🍱 Japans'},{v:'grieks',l:'🫒 Grieks'},
-      {v:'spaans',l:'🥘 Spaans'},{v:'zuidamerikaans',l:'🥩 Zuid-Amerikaans'},{v:'turks',l:'🥙 Turks'},
-      {v:'marokkaans',l:'🫕 Marokkaans'},{v:'nederlands',l:'🧀 Nederlands'},{v:'vegetarisch',l:'🥦 Vegetarisch'},
-      {v:'verrassing',l:'🎲 Verras me!'}
-    ]},
-    { stap:2, titel:'Vlees, vis of vegetarisch?', opties:[
-      {v:'met vlees',l:'🥩 Met vlees'},{v:'vis of zeevruchten',l:'🐟 Vis / Zeevruchten'},
-      {v:'vegetarisch',l:'🥦 Vegetarisch'},{v:'veganistisch',l:'🌱 Veganistisch'},{v:'geen voorkeur',l:'✨ Geen voorkeur'}
-    ]},
-    { stap:3, titel:'Welk soort maaltijd?', opties:[
-      {v:'diner',l:'🍽️ Diner'},{v:'lunch',l:'🥗 Lunch'},{v:'ontbijt',l:'🥐 Ontbijt'},
-      {v:'snack',l:'🍿 Snack'},{v:'dessert',l:'🍰 Dessert'}
-    ]},
-    { stap:4, titel:'Voor hoeveel personen?', opties:[
-      {v:'1',l:'👤 1 persoon'},{v:'2',l:'👥 2 personen'},{v:'4',l:'👨‍👩‍👧‍👦 4 personen'},
-      {v:'6',l:'🎉 6 personen'},{v:'8',l:'🥳 8+ personen'}
-    ]}
-  ];
-
-  var q = vragen[stap - 1];
-  if (!q) return;
-
-  var huidige = ['',_inspData.keuken,_inspData.dieet,_inspData.maaltijd,String(_inspData.personen)][stap] || '';
-  var html = '<div style="font-size:0.88rem;font-weight:700;color:var(--ink);margin-bottom:12px">' + q.titel + '</div>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
-  q.opties.forEach(function(o) {
-    var sel = o.v === huidige;
-    html += '<button class="insp-chip' + (sel ? ' selected' : '') + '" onclick="inspKeuze(' + stap + ',\'' + o.v.replace(/'/g, "\\'") + '\')">' + o.l + '</button>';
-  });
-  html += '</div>';
-
-  if (stap > 1) {
-    html += '<button onclick="inspToonStap(' + (stap-1) + ')" style="background:none;border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;color:var(--muted);cursor:pointer;margin-right:8px">← Terug</button>';
-  }
-
-  el.innerHTML = html;
-}
-
-function inspUpdateProgress(stap) {
-  for (var i = 1; i <= 4; i++) {
-    var dot = document.getElementById('dot-' + i);
-    if (!dot) continue;
-    dot.className = 'insp-stap-dot' + (i < stap ? ' done' : i === stap ? ' active' : '');
-    if (i < 4) {
-      var prog = document.getElementById('prog-' + i);
-      if (prog) prog.style.width = i < stap ? '100%' : '0%';
-    }
-  }
-}
-
-function inspVoegAllesToe(idx, btn) {
-  var r = window._inspRecepten && window._inspRecepten[idx];
-  if (!r || !r.ingredienten || !r.ingredienten.length) return;
-  var toegevoegd = 0;
-  var promises = [];
-  r.ingredienten.forEach(function(ing) {
-    var naam = ing.naam;
-    if (!naam || naam.trim() === '') return;
-    var vollNaam = ing.hoeveelheid ? ing.hoeveelheid + ' ' + (ing.eenheid||'') + ' ' + naam : naam;
-    vollNaam = vollNaam.trim();
-    var id = 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2,5);
-    var item = { id:id, name:vollNaam, done:false, qty:1, person:currentPerson || '', winkel:'', timestamp:Date.now() };
-    items.push(item);
-    toegevoegd++;
-    promises.push(window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id), item));
-  });
-  Promise.all(promises).then(function() {
-    render();
-    var status = document.getElementById('rci-ing-status-' + idx);
-    if (status) status.innerHTML = '<div style="background:var(--green-pale);border-radius:8px;padding:8px 12px;font-size:0.82rem;color:var(--green);font-weight:600;text-align:center;margin-top:6px">✅ ' + toegevoegd + ' ingrediënten toegevoegd aan boodschappenlijst!</div>';
-    if (btn) { btn.textContent = '✅ Toegevoegd!'; btn.style.background = '#4caf50'; btn.disabled = true; }
-  }).catch(function(e) {
-    if (btn) { btn.textContent = '❌ Fout bij opslaan'; btn.disabled = false; }
-  });
-}
-
-async function inspZoekRecepten() {
-  var el = document.getElementById('insp-resultaten');
-  var si = document.getElementById('insp-stap-inhoud');
-  if (el) el.innerHTML = '';
-  if (si) si.innerHTML = '<div style="text-align:center;padding:24px 0;color:var(--muted)">'
-    + '<div style="font-size:2rem;margin-bottom:10px">🔍</div>'
-    + '<div style="font-weight:600;margin-bottom:4px">Recepten zoeken...</div>'
-    + '<div style="font-size:0.78rem">Even geduld, we doorzoeken duizenden recepten</div></div>';
-  inspUpdateProgress(4);
-  var dot4 = document.getElementById('dot-4');
-  if (dot4) dot4.className = 'insp-stap-dot active';
-
-  try {
-    var resp = await fetch('https://boodschappen-prijs.jorg-103.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'inspiratie',
-        stap: 'resultaat',
-        keuken:   _inspData.keuken,
-        dieet:    _inspData.dieet,
-        maaltijd: _inspData.maaltijd,
-        personen: _inspData.personen
-      })
-    });
-    if (!resp.ok) throw new Error('Server ' + resp.status);
-    var data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    if (!data.recepten || !data.recepten.length) throw new Error('Geen recepten gevonden');
-    inspToonResultaten(data.recepten);
-  } catch(e) {
-    if (si) si.innerHTML = '';
-    if (el) el.innerHTML = '<div style="background:#faeae9;border-radius:12px;padding:14px;color:var(--red);font-size:0.85rem">'
-      + '❌ ' + e.message + '<br><br>'
-      + '<button onclick="inspZoekRecepten()" style="background:var(--green);color:white;border:none;border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Opnieuw proberen</button>'
-      + ' <button onclick="inspInit()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:DM Sans,sans-serif;font-size:0.82rem;cursor:pointer">Begin opnieuw</button>'
-      + '</div>';
-  }
-}
 
 function isAanbiedingArtikel(){return false;}
 
@@ -3357,6 +3059,401 @@ async function verwijderFirebaseItem(key) {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// ONTDEK - AI recepten zoeker
+// ═══════════════════════════════════════════════════════
+
+var _ontdekData = { keuken:'', maaltijd:'diner', personen:4, extra:'' };
+var _ontdekResultaten = [];
+var _ontdekSeed = 0;
+
+function ontdekInit() {
+  _ontdekData = { keuken:'', maaltijd:'diner', personen:4, extra:'' };
+  _ontdekResultaten = [];
+  ontdekRenderWizard();
+}
+
+function ontdekRenderWizard() {
+  var el = document.getElementById('ontdek-inhoud');
+  if (!el) return;
+
+  var keukens = [
+    {v:'italiaans',    l:'🍝', t:'Italiaans'},
+    {v:'aziatisch',    l:'🍜', t:'Aziatisch'},
+    {v:'indonesisch',  l:'🍛', t:'Indonesisch'},
+    {v:'mexicaans',    l:'🌮', t:'Mexicaans'},
+    {v:'mediterraan',  l:'🫒', t:'Mediterraan'},
+    {v:'spaans',       l:'🥘', t:'Spaans'},
+    {v:'hollands',     l:'🧆', t:'Hollands'},
+    {v:'midden-oosten',l:'🧆', t:'Midden-Oosten'},
+    {v:'japans',       l:'🍱', t:'Japans'},
+    {v:'indiaas',      l:'🍲', t:'Indiaas'},
+    {v:'grieks',       l:'🫕', t:'Grieks'},
+    {v:'Frans',        l:'🥐', t:'Frans'},
+    {v:'thais',        l:'🌶️', t:'Thais'},
+    {v:'amerikaans',   l:'🍔', t:'Amerikaans'},
+    {v:'zuidamerikaans',l:'🥩',t:'Zuid-Amerikaans'},
+    {v:'verrassing',   l:'🎲', t:'Verras me!'}
+  ];
+
+  var maaltijden = [
+    {v:'ontbijt', l:'🌅', t:'Ontbijt'},
+    {v:'lunch',   l:'🥗', t:'Lunch'},
+    {v:'diner',   l:'🍽️', t:'Diner'},
+    {v:'snack',   l:'🍿', t:'Snack'},
+    {v:'dessert', l:'🍰', t:'Dessert'}
+  ];
+
+  var personenOpties = [1,2,3,4,5,6,8];
+
+  var html = '<div style="padding:4px 0 16px">';
+
+  // Keuken
+  html += '<div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px">🌍 Welke keuken?</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px">';
+  for (var ki=0; ki<keukens.length; ki++) {
+    var k = keukens[ki];
+    var sel = _ontdekData.keuken === k.v;
+    html += '<button onclick="ontdekKies(\'keuken\',\'' + k.v + '\')" '
+      + 'style="padding:10px 4px;border-radius:12px;border:2px solid '
+      + (sel ? 'var(--green)' : 'var(--border)') + ';background:'
+      + (sel ? 'var(--green-pale)' : 'white') + ';cursor:pointer;font-size:0.75rem;'
+      + 'font-weight:' + (sel ? '700' : '500') + ';color:var(--ink);display:flex;'
+      + 'flex-direction:column;align-items:center;gap:3px;transition:all 0.15s">'
+      + '<span style="font-size:1.3rem">' + k.l + '</span>'
+      + '<span>' + k.t + '</span></button>';
+  }
+  html += '</div>';
+
+  // Maaltijd
+  html += '<div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px">🕐 Welk moment?</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">';
+  for (var mi=0; mi<maaltijden.length; mi++) {
+    var m2 = maaltijden[mi];
+    var msel = _ontdekData.maaltijd === m2.v;
+    html += '<button onclick="ontdekKies(\'maaltijd\',\'' + m2.v + '\')" '
+      + 'style="flex:1;min-width:60px;padding:10px 6px;border-radius:12px;border:2px solid '
+      + (msel ? 'var(--green)' : 'var(--border)') + ';background:'
+      + (msel ? 'var(--green-pale)' : 'white') + ';cursor:pointer;font-size:0.78rem;'
+      + 'font-weight:' + (msel ? '700' : '500') + ';color:var(--ink);display:flex;'
+      + 'flex-direction:column;align-items:center;gap:3px">'
+      + '<span style="font-size:1.1rem">' + m2.l + '</span>'
+      + m2.t + '</button>';
+  }
+  html += '</div>';
+
+  // Personen
+  html += '<div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px">👥 Aantal personen?</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">';
+  for (var pi=0; pi<personenOpties.length; pi++) {
+    var pv = personenOpties[pi];
+    var psel = _ontdekData.personen === pv;
+    html += '<button onclick="ontdekKies(\'personen\',' + pv + ')" '
+      + 'style="width:44px;height:44px;border-radius:50%;border:2px solid '
+      + (psel ? 'var(--green)' : 'var(--border)') + ';background:'
+      + (psel ? 'var(--green)' : 'white') + ';cursor:pointer;font-size:0.9rem;'
+      + 'font-weight:700;color:' + (psel ? 'white' : 'var(--ink)') + '">'
+      + pv + '</button>';
+  }
+  html += '</div>';
+
+  // Extra wensen
+  html += '<div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px">✨ Extra wensen? (optioneel)</div>';
+  html += '<input type="text" id="ontdek-extra" value="' + esc(_ontdekData.extra) + '" '
+    + 'placeholder="bijv. vegetarisch, snel, geen noten, goedkoop…" '
+    + 'style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;'
+    + 'font-family:\'DM Sans\',sans-serif;font-size:0.85rem;background:white;box-sizing:border-box;margin-bottom:20px" '
+    + 'oninput="_ontdekData.extra=this.value" />';
+
+  // Zoek knop
+  html += '<button onclick="ontdekZoek()" '
+    + 'style="width:100%;padding:15px;border:none;border-radius:14px;background:var(--green);'
+    + 'color:white;font-family:\'DM Sans\',sans-serif;font-size:1rem;font-weight:700;'
+    + 'cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">'
+    + '<span style="font-size:1.3rem">🔍</span>'
+    + '<span>Ontdek recepten</span></button>';
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function ontdekKies(veld, waarde) {
+  _ontdekData[veld] = waarde;
+  ontdekRenderWizard();
+}
+
+async function ontdekZoek() {
+  var el = document.getElementById('ontdek-inhoud');
+  if (!el) return;
+
+  var keuken  = _ontdekData.keuken || 'internationale';
+  var maaltijd = _ontdekData.maaltijd || 'diner';
+  var personen = _ontdekData.personen || 4;
+  var extra    = _ontdekData.extra || '';
+
+  // Roteer via seed zodat niet altijd dezelfde gerechten
+  _ontdekSeed = (_ontdekSeed + 1) % 10;
+
+  el.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+    + '<div style="font-size:2.5rem;margin-bottom:12px;animation:spin 1s linear infinite">🔍</div>'
+    + '<div style="font-weight:600;font-size:0.95rem;color:var(--ink)">Recepten zoeken…</div>'
+    + '<div style="font-size:0.8rem;color:var(--muted);margin-top:6px">Even geduld, we vinden de lekkerste gerechten!</div>'
+    + '</div>';
+
+  var prompt = 'Je bent een enthousiaste internationale chef-kok. Geef precies 20 gevarieerde en lekkere receptsuggesties voor '
+    + maaltijd + ' met ' + keuken + ' keuken voor ' + personen + ' persoon/personen.'
+    + (extra ? ' Extra wensen: ' + extra + '.' : '')
+    + ' Variatiesleutel: ' + _ontdekSeed + ' (gebruik dit om te rotaren en steeds andere recepten voor te stellen).'
+    + '\n\nGeef ALLEEN een JSON array terug, geen uitleg, geen markdown. Formaat:'
+    + '\n[{"naam":"Recept naam","beschrijving":"1 zin omschrijving max 12 woorden","bereidingstijd":"20 min",'
+    + '"moeite":"Makkelijk|Gemiddeld|Uitdagend","keuken":"keuken naam",'
+    + '"ingredienten":[{"naam":"ingredient","hoeveelheid":"200","eenheid":"g"}],'
+    + '"zoekterm":"YouTube zoekterm voor recept video"}]'
+    + '\nZorg voor echte, smakelijke namen. Varieer in bereidingstijd en moeite. Geef precies 20 items.';
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) throw new Error('API fout: ' + resp.status);
+    var data = await resp.json();
+    var tekst = (data.content && data.content[0] && data.content[0].text) || '';
+
+    // Parse JSON - verwijder eventuele markdown
+    tekst = tekst.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    var recepten_lijst = JSON.parse(tekst);
+
+    if (!Array.isArray(recepten_lijst) || !recepten_lijst.length) throw new Error('Geen resultaten');
+
+    _ontdekResultaten = recepten_lijst;
+    ontdekToonResultaten(keuken, maaltijd, personen);
+
+  } catch(e) {
+    // Fallback: toon handmatig geselecteerde gerechten
+    _ontdekResultaten = ontdekFallback(keuken, maaltijd, personen);
+    ontdekToonResultaten(keuken, maaltijd, personen);
+  }
+}
+
+function ontdekFallback(keuken, maaltijd, personen) {
+  // Uitgebreide database van gerechten per keuken/maaltijd
+  var db = {
+    italiaans: ['Spaghetti Carbonara','Risotto ai Funghi','Lasagne Bolognese','Pizza Margherita','Penne Arrabiata','Ossobuco','Saltimbocca alla Romana','Tiramisu','Panna Cotta','Ribollita','Pasta e Fagioli','Vitello Tonnato','Bruschetta al Pomodoro','Gnocchi al Pesto','Polenta con Ragù','Caponata','Arancini','Pasta Primavera','Focaccia','Stracciatella'],
+    aziatisch: ['Pad Thai','Ramen','Bibimbap','Dumplings','Baozi','Pho Bo','Nasi Goreng','Mie Goreng','Tom Kha Gai','Green Curry','Mapo Tofu','Kung Pao Kip','Beef Bulgogi','Sushi Rolls','Yakitori','Chow Mein','Wonton Soep','Edamame Bowl','Teriyaki Zalm','Tteokbokki'],
+    mexicaans: ['Tacos al Pastor','Enchiladas Verdes','Guacamole Burrito','Pozole Rojo','Chile Relleno','Quesadillas','Fajitas de Pollo','Tostadas','Sopa de Lima','Tamales','Ceviche Mexicano','Flautas','Chilaquiles','Mole Poblano','Huevos Rancheros','Torta','Molletes','Gorditas','Tlayuda','Salbutes'],
+    hollands: ['Stamppot Boerenkool','Erwtensoep','Hutspot','Bitterballen','Stroopwafel Pannekoek','Hachee','Zuurkool Spek','Wentelteefjes','Poffertjes','Broodpudding','Gevulde Paprika','Zeeuwse Mosselen','Haringssalade','Rijsttafel','Gebakken Paling','Bruine Bonensoep','Ossenstaartsoep','Rode Kool Appeltjes','Filet Americain','Garnalencocktail'],
+    verrassing: ['Butter Chicken','Shakshuka','Falafel Bowl','Pulled Pork Bao','Harira Soep','Coq au Vin','Moussaka','Paella','Jerk Chicken','Bobotie','Tagine Lam','Poke Bowl','Bánh Mì','Pierogi','Shawarma Bowl','Injera Schotel','Ceviche','Rendang','Jollof Rice','Gado Gado']
+  };
+  var lijst = db[keuken] || db['verrassing'];
+  // Shuffle met seed
+  var shuffled = lijst.slice();
+  var s = _ontdekSeed * 7;
+  for (var i=shuffled.length-1; i>0; i--) {
+    var j = (s + i*3) % (i+1);
+    var tmp=shuffled[i]; shuffled[i]=shuffled[j]; shuffled[j]=tmp;
+  }
+  return shuffled.slice(0,20).map(function(naam) {
+    return {
+      naam: naam,
+      beschrijving: 'Klassiek ' + keuken + ' gerecht voor ' + personen + ' personen',
+      bereidingstijd: (20 + Math.floor(Math.abs(naam.charCodeAt(0)-65)*2) % 40) + ' min',
+      moeite: ['Makkelijk','Gemiddeld','Uitdagend'][naam.length % 3],
+      keuken: keuken,
+      ingredienten: [],
+      zoekterm: naam + ' recept'
+    };
+  });
+}
+
+function ontdekToonResultaten(keuken, maaltijd, personen) {
+  var el = document.getElementById('ontdek-inhoud');
+  if (!el) return;
+
+  var nKleur  = { Makkelijk:'#e8f5e9', Gemiddeld:'#fff3e0', Uitdagend:'#fce4ec' };
+  var nColor  = { Makkelijk:'#2e7d32', Gemiddeld:'#e65100', Uitdagend:'#c62828' };
+
+  var html = '';
+
+  // Header + terug knop
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+  html += '<div>';
+  html += '<div style="font-size:0.95rem;font-weight:700;color:var(--ink)">20 recepten gevonden</div>';
+  html += '<div style="font-size:0.75rem;color:var(--muted)">' + keuken + ' · ' + maaltijd + ' · ' + personen + ' pers.</div>';
+  html += '</div>';
+  html += '<button onclick="ontdekInit()" style="padding:8px 14px;border:1.5px solid var(--green);border-radius:10px;background:white;color:var(--green);font-size:0.78rem;font-weight:700;cursor:pointer">↩ Nieuw zoeken</button>';
+  html += '</div>';
+
+  // Opnieuw zoeken knop (roteren)
+  html += '<button onclick="ontdekZoek()" style="width:100%;padding:10px;border:none;border-radius:12px;background:var(--green-pale);color:var(--green);font-size:0.82rem;font-weight:700;cursor:pointer;margin-bottom:16px">🔄 Andere recepten (roteer)</button>';
+
+  // Recepten lijst
+  for (var ri=0; ri<_ontdekResultaten.length; ri++) {
+    var r = _ontdekResultaten[ri];
+    var moeilijk  = r.moeite || 'Gemiddeld';
+    var bg        = nKleur[moeilijk] || '#f9f9f9';
+    var cl        = nColor[moeilijk] || '#333';
+    var ytUrl     = 'https://www.youtube.com/results?search_query=' + encodeURIComponent((r.zoekterm||r.naam) + ' recept');
+    var heeftIng  = r.ingredienten && r.ingredienten.length > 0;
+
+    html += '<div style="background:white;border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden">';
+
+    // Compacte header (altijd zichtbaar, klikbaar)
+    html += '<div onclick="ontdekToggle(' + ri + ')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">';
+
+    // Nummer badge
+    html += '<div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:white;'
+      + 'display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0">'
+      + (ri+1) + '</div>';
+
+    // Naam + tags
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.naam) + '</div>';
+    html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">';
+    html += '<span style="font-size:0.68rem;padding:2px 6px;border-radius:8px;background:' + bg + ';color:' + cl + ';font-weight:600">' + moeilijk + '</span>';
+    if (r.bereidingstijd) html += '<span style="font-size:0.68rem;padding:2px 6px;border-radius:8px;background:#e8f0fa;color:#1a56a0">⏱ ' + esc(r.bereidingstijd) + '</span>';
+    if (r.keuken) html += '<span style="font-size:0.68rem;padding:2px 6px;border-radius:8px;background:var(--warm);color:var(--muted)">' + esc(r.keuken) + '</span>';
+    html += '</div></div>';
+
+    // Pijltje
+    html += '<div id="ontdek-arrow-' + ri + '" style="font-size:0.9rem;color:var(--muted);flex-shrink:0">▸</div>';
+    html += '</div>'; // header
+
+    // Detail (ingeklapt)
+    html += '<div id="ontdek-detail-' + ri + '" style="display:none;border-top:1px solid var(--border)">';
+    html += '<div style="padding:12px 14px">';
+
+    // Beschrijving
+    if (r.beschrijving) {
+      html += '<div style="font-size:0.84rem;color:var(--muted);margin-bottom:12px;font-style:italic">' + esc(r.beschrijving) + '</div>';
+    }
+
+    // Ingrediënten
+    if (heeftIng) {
+      html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px">🧾 Ingrediënten (' + personen + ' pers.)</div>';
+      html += '<div style="background:var(--warm);border-radius:10px;padding:10px;margin-bottom:12px">';
+      for (var ii=0; ii<r.ingredienten.length; ii++) {
+        var ing = r.ingredienten[ii];
+        html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06);font-size:0.82rem">';
+        html += '<span>' + esc(ing.naam || ing) + '</span>';
+        if (ing.hoeveelheid) html += '<span style="color:var(--muted)">' + esc(ing.hoeveelheid) + (ing.eenheid?' '+esc(ing.eenheid):'') + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Actieknoppen
+    html += '<div style="display:flex;flex-direction:column;gap:8px">';
+
+    if (heeftIng) {
+      html += '<button onclick="ontdekVoegToe(' + ri + ',this)" '
+        + 'style="padding:12px;border:none;border-radius:12px;background:var(--green);color:white;'
+        + 'font-size:0.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">'
+        + '🛒 Ingrediënten op boodschappenlijst</button>';
+    }
+
+    html += '<button onclick="ontdekSlaOp(' + ri + ',this)" '
+      + 'style="padding:12px;border:1.5px solid var(--green);border-radius:12px;background:white;color:var(--green);'
+      + 'font-size:0.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">'
+      + '📖 Opslaan in kookboek</button>';
+
+    html += '<a href="' + esc(ytUrl) + '" target="_blank" '
+      + 'style="padding:12px;border:1.5px solid #ff0000;border-radius:12px;background:white;color:#cc0000;'
+      + 'font-size:0.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none">'
+      + '▶️ Zoek video op YouTube</a>';
+
+    html += '</div>'; // actieknoppen
+    html += '</div>'; // padding
+    html += '</div>'; // detail
+    html += '</div>'; // card
+  }
+
+  el.innerHTML = html;
+}
+
+function ontdekToggle(idx) {
+  var detail = document.getElementById('ontdek-detail-' + idx);
+  var arrow  = document.getElementById('ontdek-arrow-' + idx);
+  if (!detail) return;
+  var open = detail.style.display === 'block';
+  // Sluit alle anderen
+  for (var i=0; i<_ontdekResultaten.length; i++) {
+    var d = document.getElementById('ontdek-detail-' + i);
+    var a = document.getElementById('ontdek-arrow-' + i);
+    if (d) d.style.display = 'none';
+    if (a) a.textContent = '▸';
+  }
+  if (!open) {
+    detail.style.display = 'block';
+    if (arrow) arrow.textContent = '▾';
+  }
+}
+
+async function ontdekVoegToe(idx, btn) {
+  var r = _ontdekResultaten[idx];
+  if (!r || !r.ingredienten || !r.ingredienten.length) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Bezig…';
+  var count = 0;
+  for (var ii=0; ii<r.ingredienten.length; ii++) {
+    var ing = r.ingredienten[ii];
+    var naam = ing.naam || ing;
+    if (!naam || !naam.trim()) continue;
+    var vollNaam = (ing.hoeveelheid ? ing.hoeveelheid + ' ' + (ing.eenheid||'') + ' ' : '') + naam.trim();
+    var id = Date.now() + ii;
+    var cat    = typeof detectCat    === 'function' ? detectCat(naam)    : 'overig';
+    var winkel = typeof detectWinkel === 'function' ? detectWinkel(naam) : 'ah';
+    items.unshift({ id:id, name:vollNaam, person:currentPerson, done:false, qty:1, cat:cat, winkel:winkel });
+    count++;
+  }
+  if (count > 0) {
+    render();
+    try { await fbSave(items); } catch(e) {}
+    btn.textContent = '✅ ' + count + ' ingrediënten toegevoegd!';
+    btn.style.background = '#e8f5e9';
+    btn.style.color = 'var(--green)';
+  }
+}
+
+async function ontdekSlaOp(idx, btn) {
+  var r = _ontdekResultaten[idx];
+  if (!r) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Opslaan…';
+  var id  = 'recept-' + Date.now();
+  var ingLijst = [];
+  if (r.ingredienten) {
+    for (var ii=0; ii<r.ingredienten.length; ii++) {
+      var ing = r.ingredienten[ii];
+      var n   = ing.naam || ing;
+      if (n && n.trim()) ingLijst.push((ing.hoeveelheid ? ing.hoeveelheid + (ing.eenheid?' '+ing.eenheid:'') + ' ' : '') + n.trim());
+    }
+  }
+  var ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent((r.zoekterm||r.naam) + ' recept');
+  var receptObj = {
+    id: id, naam: r.naam, youtube: ytUrl, categorie: _ontdekData.maaltijd || 'diner',
+    beschrijving: r.beschrijving || '', personen: String(_ontdekData.personen || 4),
+    tijd: r.bereidingstijd || null, ingredienten: ingLijst, aangemaakt: Date.now()
+  };
+  try {
+    await window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + id), receptObj);
+    recepten = recepten.filter(function(x){ return x.id !== id; });
+    recepten.unshift(receptObj);
+    btn.textContent = '✅ Opgeslagen in kookboek!';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.background  = 'var(--green-pale)';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '❌ Fout: ' + e.message;
+  }
+}
 </script>
 
 
