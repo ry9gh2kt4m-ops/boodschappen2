@@ -924,15 +924,26 @@ function fbDelete(id) {
 }
 
 function fbListen() {
-  // Sluit eventuele bestaande listeners
   if (unsubItems) { try { unsubItems(); } catch(e) {} unsubItems = null; }
   if (unsubMenu)  { try { unsubMenu();  } catch(e) {} unsubMenu  = null; }
 
-  // Luister naar boodschappen
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     var data = snap.val();
     if (data) {
-      var vals = Object.values(data);
+      var vals = [];
+      var ks = Object.keys(data);
+      var hadTestItem = false;
+      for (var ki = 0; ki < ks.length; ki++) {
+        var key = ks[ki];
+        var item = data[key];
+        // Verwijder _test items en items zonder naam
+        if (key === '_test' || !item || !item.name) {
+          hadTestItem = true;
+          try { window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key)); } catch(e) {}
+          continue;
+        }
+        vals.push(item);
+      }
       vals.sort(function(a,b){ return (b.id||0) - (a.id||0); });
       items = vals;
     } else {
@@ -941,7 +952,6 @@ function fbListen() {
     render();
   });
 
-  // Luister naar weekmenu
   unsubMenu = window._onValue(getRef('weekmenu'), function(snap) {
     menu = snap.val() || {};
     renderMenu();
@@ -975,12 +985,40 @@ function fbListenRecepten() {
         var vals = Object.values(data).filter(function(r){ return r && r.naam; });
         vals.sort(function(a,b){ return (b.aangemaakt||0) - (a.aangemaakt||0); });
         recepten = vals;
+        renderRecepten();
       } else {
+        // Firebase leeg — probeer te herstellen uit localStorage cache
+        try {
+          var cached = JSON.parse(localStorage.getItem('cache_recepten_' + gezinsCode) || 'null');
+          if (cached && cached.length) {
+            recepten = cached;
+            renderRecepten();
+            // Herstel naar Firebase (waren eerder niet opgeslagen door PERMISSION_DENIED)
+            herstelReceptenNaarFirebase(cached);
+            return;
+          }
+        } catch(e) {}
         recepten = [];
+        renderRecepten();
       }
-      renderRecepten();
     }
   );
+}
+
+async function herstelReceptenNaarFirebase(receptenLijst) {
+  try {
+    for (var ri = 0; ri < receptenLijst.length; ri++) {
+      var r = receptenLijst[ri];
+      if (!r.id) continue;
+      await window._set(
+        window._ref(window._db, 'gezinnen/' + gezinsCode + '/recepten/' + r.id),
+        r
+      );
+    }
+    console.log('Recepten hersteld naar Firebase: ' + receptenLijst.length);
+  } catch(e) {
+    console.log('Herstel mislukt:', e.message);
+  }
 }
 
 function fbListenRegistraties() {
@@ -3172,7 +3210,8 @@ async function diagnoseFB() {
   el.innerHTML = '🔍 Testen…';
   el.style.color = '#b08000';
   try {
-    var testPad = window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/_test');
+    // Gebruik een apart testpad dat NIET in de boodschappenlijst zit
+    var testPad = window._ref(window._db, 'gezinnen/' + gezinsCode + '/_diagtest');
     await window._set(testPad, { ts: Date.now() });
     await window._remove(testPad);
     el.innerHTML = '✅ Firebase schrijven werkt!';
