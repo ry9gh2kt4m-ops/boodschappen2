@@ -563,7 +563,8 @@
     <div style="background:#f8f8f8;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px">
       <div style="font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:8px">🔧 Firebase diagnose</div>
       <button onclick="diagnoseFB()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#333;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;margin-bottom:6px">🔧 Test Firebase verbinding</button>
-      <button onclick="diagnoseData()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1a56a0;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">🔍 Toon ruwe data uit Firebase</button>
+      <button onclick="diagnoseData()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1a56a0;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;margin-bottom:6px">🔍 Toon ruwe data uit Firebase</button>
+      <button onclick="ruimBoodschappenOp()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#c4473a;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">🧹 Verwijder ongeldige boodschappen</button>
       <div id="fb-diagnose" style="margin-top:8px;font-size:0.82rem;min-height:20px"></div>
     </div>
     <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">👨‍👩‍👧 Gezinnenbeheer</div>
@@ -657,14 +658,7 @@
 </div>
 
 <!-- Personen modal -->
-<div class="modal-overlay" id="personen-modal" style="display:none" onclick="sluitPersonenModal(event)">
-  <div class="modal-card">
-    <div class="modal-title">👥 Personen instellen</div>
-    <div class="modal-sub">Voeg tot 4 personen toe. Namen zijn zichtbaar op alle apparaten.</div>
-    </div>
-  </div>
-
-<script>
+<div class="modal-overlay" id="per
 var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
 var _inspData = {stap:0, keuken:'alle', dieet:'alle', maaltijd:'diner', personen:4};
@@ -748,7 +742,7 @@ function btn(zoek,ico,bg,lbl){var url=base+encodeURIComponent(zoek)+'/@'+lat+','
 async function changeCat(id, cat) {
   var itemNaam = '';
   for (var ci = 0; ci < items.length; ci++) {
-    if (items[ci].id === id) { itemNaam = items[ci].name; items[ci].cat = cat; break; }
+    if (String(items[ci].id) === String(id)) { itemNaam = items[ci].name; items[ci].cat = cat; break; }
   }
   render();
   setSyncStatus(true);
@@ -759,7 +753,7 @@ async function changeCat(id, cat) {
 
 async function changeQty(id, delta) {
   for (var qi = 0; qi < items.length; qi++) {
-    if (items[qi].id === id) {
+    if (String(items[qi].id) === String(id)) {
       items[qi].qty = Math.max(1, (items[qi].qty || 1) + delta);
       break;
     }
@@ -846,7 +840,8 @@ function _toonKopieerBevestiging() {
 }
 
 async function deleteItem(id) {
-  items = items.filter(function(i){ return i.id !== id; });
+  var sid = String(id);
+  items = items.filter(function(i){ return String(i.id) !== sid; });
   render();
   setSyncStatus(true);
   try { await fbDelete(id); } catch(e) {}
@@ -934,7 +929,9 @@ function detectWinkel(naam) {
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function fbDelete(id) {
-  return window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id));
+  return window._remove(
+    window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + id)
+  );
 }
 
 function fbListen() {
@@ -943,25 +940,28 @@ function fbListen() {
 
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
     var data = snap.val();
-    if (data) {
-      var vals = [];
-      var ks = Object.keys(data);
-      for (var ki = 0; ki < ks.length; ki++) {
-        var key  = ks[ki];
-        var item = data[key];
-        // Sla ongeldige items over en verwijder ze uit Firebase
-        if (!item || !item.name || key === '_test' || key === '_diagtest') {
-          try { window._remove(window._ref(window._db,
-            'gezinnen/' + gezinsCode + '/boodschappen/' + key)); } catch(e) {}
-          continue;
-        }
-        vals.push(item);
+    if (!data) { items = []; render(); return; }
+
+    var vals = [];
+    var ks = Object.keys(data);
+    for (var ki = 0; ki < ks.length; ki++) {
+      var key  = ks[ki];
+      var item = data[key];
+      if (!item || !item.name) {
+        // Verwijder ongeldige items
+        try { window._remove(window._ref(window._db,
+          'gezinnen/' + gezinsCode + '/boodschappen/' + key)); } catch(e) {}
+        continue;
       }
-      vals.sort(function(a,b){ return (b.id||0) - (a.id||0); });
-      items = vals;
-    } else {
-      items = [];
+      // Zorg dat item.id altijd overeenkomt met de Firebase key
+      // zodat deleteItem het altijd kan vinden
+      item.id = key;
+      vals.push(item);
     }
+    vals.sort(function(a,b){
+      return Number(String(b.id).replace('i-','')) - Number(String(a.id).replace('i-',''));
+    });
+    items = vals;
     render();
   });
 
@@ -2557,8 +2557,12 @@ function toggleIngCheck(receptId, idx) {
 }
 
 async function toggleItem(id) {
+  var sid = String(id);
   for (var ti = 0; ti < items.length; ti++) {
-    if (items[ti].id === id) { items[ti].done = !items[ti].done; break; }
+    if (String(items[ti].id) === sid) {
+      items[ti].done = !items[ti].done;
+      break;
+    }
   }
   render();
   setSyncStatus(true);
@@ -3077,7 +3081,7 @@ function wisselWeek(offset) {
 
 async function wisselWinkel(id) {
   for (var wi = 0; wi < items.length; wi++) {
-    if (items[wi].id === id) {
+    if (String(items[wi].id) === String(id)) {
       items[wi].winkel = (items[wi].winkel === 'kruidvat') ? 'ah' : 'kruidvat';
       break;
     }
@@ -3306,6 +3310,40 @@ async function diagnoseData() {
       var heeftLink = !!(r && r.youtube && r.youtube.length > 5);
       html += '<div style="padding:3px 0;border-bottom:1px solid #eee;color:' + (heeftLink ? '#2d6a4f' : '#c4473a') + '">';
       html += (heeftLink ? '🔗' : '❌') + ' <b>' + (r && r.naam ? r.naam : '?') + '</b>';
+      html += ' | youtube: <code style="word-break:break-all">' + (r && r.youtube ? r.youtube : 'LEEG') + '</code>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '❌ Fout: ' + e.message;
+  }
+}
+async function ruimBoodschappenOp() {
+  var el = document.getElementById('fb-diagnose');
+  if (el) el.innerHTML = '🧹 Bezig…';
+  try {
+    var snap = await new Promise(function(res) {
+      var u = window._onValue(getRef('boodschappen'), function(s) { u(); res(s.val() || {}); });
+    });
+    var ks = Object.keys(snap);
+    var verwijderd = 0;
+    for (var i = 0; i < ks.length; i++) {
+      var item = snap[ks[i]];
+      // Verwijder items zonder naam OF waarvan id != key (inconsistent)
+      if (!item || !item.name || String(item.id) !== String(ks[i])) {
+        await window._remove(window._ref(window._db,
+          'gezinnen/' + gezinsCode + '/boodschappen/' + ks[i]));
+        verwijderd++;
+      }
+    }
+    if (el) el.innerHTML = '✅ ' + verwijderd + ' ongeldig(e) item(s) verwijderd.';
+  } catch(e) {
+    if (el) el.innerHTML = '❌ ' + e.message;
+  }
+}
+.naam : '?') + '</b>';
       html += ' | youtube: <code style="word-break:break-all">' + (r && r.youtube ? r.youtube : 'LEEG') + '</code>';
       html += '</div>';
     }
