@@ -779,14 +779,38 @@ async function clearDone() {
 }
 
 function deelAppLink() {
-  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  var tekst = '👋 Hé! Wat leuk dat je mijn boodschappen-app wilt gebruiken.\n\nZo begin je:\n1️⃣ Open de app via onderstaande link\n2️⃣ Tik op Nieuw gezin aanmelden\n3️⃣ Vul je gezinsnaam en e-mailadres in\n4️⃣ Je ontvangt toegang zodra ik je heb goedgekeurd\n\n📲 ' + link + '\n\nVragen? Stuur me een berichtje! 😊';
+  var baseUrl = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  var link = gezinsCode ? baseUrl + '?code=' + encodeURIComponent(gezinsCode) : baseUrl;
+  var tekst = '👋 Hé! Ik deel mijn boodschappen-app met je.\n\n'
+    + '📲 Klik op deze link om direct in te loggen:\n'
+    + link + '\n\n'
+    + 'Je ziet dan direct onze gedeelde boodschappenlijst! 🛒';
   if (navigator.share) {
-    navigator.share({ title: 'Boodschappen App', text: tekst });
+    navigator.share({ title: 'Boodschappen App', text: tekst, url: link })
+    .catch(function() {
+      navigator.clipboard.writeText(tekst);
+    });
   } else {
     navigator.clipboard.writeText(tekst).then(function() {
       var el = document.getElementById('kopier-bevestiging');
-      if (el) { el.textContent = '✅ Tekst gekopieerd!'; el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+      if (el) {
+        el.textContent = '✅ Link gekopieerd!';
+        el.style.display = 'block';
+        setTimeout(function(){ el.style.display = 'none'; }, 2500);
+      }
+    }).catch(function() {
+      var ta = document.createElement('textarea');
+      ta.value = tekst;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      var el = document.getElementById('kopier-bevestiging');
+      if (el) {
+        el.textContent = '✅ Link gekopieerd!';
+        el.style.display = 'block';
+        setTimeout(function(){ el.style.display = 'none'; }, 2500);
+      }
     });
   }
 }
@@ -1414,19 +1438,32 @@ async function kiesRecept(dagIdx, naam, receptId) {
 }
 
 function kopieerAppLink() {
-  var link = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
-  navigator.clipboard.writeText(link).then(function() {
-    var el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
-  }).catch(function() {
-    // Fallback
+  var baseUrl = 'https://ry9gh2kt4m-ops.github.io/boodschappen2/';
+  var link = gezinsCode ? baseUrl + '?code=' + encodeURIComponent(gezinsCode) : baseUrl;
+  var copyFn = function() {
     var ta = document.createElement('textarea');
-    ta.value = link; document.body.appendChild(ta);
-    ta.select(); document.execCommand('copy');
+    ta.value = link;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
     document.body.removeChild(ta);
     var el = document.getElementById('kopier-bevestiging');
-    if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
-  });
+    if (el) {
+      el.textContent = '✅ Link gekopieerd!';
+      el.style.display = 'block';
+      setTimeout(function(){ el.style.display = 'none'; }, 2500);
+    }
+  };
+  navigator.clipboard.writeText(link)
+    .then(function() {
+      var el = document.getElementById('kopier-bevestiging');
+      if (el) {
+        el.textContent = '✅ Link gekopieerd!';
+        el.style.display = 'block';
+        setTimeout(function(){ el.style.display = 'none'; }, 2500);
+      }
+    })
+    .catch(copyFn);
 }
 
 function laadPersonen() {
@@ -3062,6 +3099,47 @@ async function zoekWinkelsOpLocatie(lat,lon,inhoud,sub){
 }
 
 // Reconnect Firebase bij terugkeren naar app (iOS Safari fix)
+
+// ---- App opstarten ----
+document.addEventListener('fb-ready', function() {
+  document.getElementById('loading-screen').style.display = 'none';
+
+  // Check of er een ?code= in de URL zit (gedeelde directe link)
+  var urlCode = '';
+  try {
+    var searchStr = (window.location && window.location.search) || (typeof location !== 'undefined' && location.search) || '';
+    var params = new URLSearchParams(searchStr);
+    urlCode = params.get('code') || '';
+  } catch(e) {}
+
+  var opgeslagen = urlCode
+    || localStorage.getItem('gezinscode')
+    || sessionStorage.getItem('gezinscode');
+
+  // Probeer ook cookie
+  if (!opgeslagen) {
+    try {
+      var cookies = document.cookie.split(';');
+      for (var ci = 0; ci < cookies.length; ci++) {
+        var cv = cookies[ci].trim();
+        if (cv.indexOf('gezinscode=') === 0) {
+          opgeslagen = cv.substring('gezinscode='.length);
+          break;
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (opgeslagen) {
+    try { localStorage.setItem('gezinscode', opgeslagen); } catch(e) {}
+    gezinsCode = opgeslagen;
+    initApp();
+  } else {
+    document.getElementById('setup-screen').style.display = 'block';
+    toonKeuze();
+  }
+});
+
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible' && gezinsCode && window._goOnline && window._db) {
     try { window._goOnline(window._db); } catch(e) {}
