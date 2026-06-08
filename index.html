@@ -566,6 +566,18 @@
 <!-- Kookboek view -->
 <div id="view-kookboek" style="display:none">
 
+  <!-- Ontdek banner bovenaan -->
+  <div onclick="document.getElementById('ontdek-sectie').scrollIntoView({behavior:'smooth'})"
+    style="background:linear-gradient(135deg,var(--green),#005f3a);color:white;border-radius:14px;
+    padding:14px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">
+    <span style="font-size:1.8rem">🔍</span>
+    <div>
+      <div style="font-weight:700;font-size:0.9rem">Recept ontdekken</div>
+      <div style="font-size:0.75rem;opacity:0.85">AI-suggesties op maat — tik om te starten ↓</div>
+    </div>
+    <span style="margin-left:auto;font-size:1.2rem">↓</span>
+  </div>
+
   <!-- Zoekbalk -->
   <div class="input-card" style="margin-bottom:16px">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
@@ -595,7 +607,7 @@
 
 
   <!-- ═══ ONTDEK SECTIE ═══ -->
-  <div style="margin-top:24px;border-top:2px solid var(--border);padding-top:20px">
+  <div id="ontdek-sectie" style="margin-top:24px;border-top:2px solid var(--border);padding-top:20px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
       <span style="font-size:1.4rem">🔍</span>
       <div>
@@ -1148,6 +1160,10 @@ function initApp() {
   if (isBeheerder) fbListenRegistraties();
   setupMic();
   setSyncStatus(false);
+  // Start ontdek wizard alvast zodat hij klaarstaat
+  setTimeout(function() {
+    if (typeof ontdekInit === 'function') { ontdekInit(); }
+  }, 200);
 }
 
 
@@ -2230,13 +2246,22 @@ async function stuurIdee() {
 function switchTab(tab) {
   var tabs = ['boodschappen','menu','kookboek','prijzen','ideeen','admin'];
   for (var ti = 0; ti < tabs.length; ti++) {
-    var t = tabs[ti];
+    var t   = tabs[ti];
     var view = document.getElementById('view-' + t);
     var btn  = document.getElementById('tab-'  + t);
     if (view) view.style.display = (t === tab) ? 'block' : 'none';
-    if (t === tab && t === 'kookboek') { setTimeout(function(){ renderRecepten(); if(typeof inspInit==='function' && !window._inspStarted){ window._inspStarted=true; inspInit(); }},50); }
+    if (t === tab && t === 'kookboek') {
+      setTimeout(function() {
+        renderRecepten();
+        // Start ontdek wizard als die nog niet gestart is
+        if (typeof ontdekInit === 'function' && !window._ontdekGestart) {
+          window._ontdekGestart = true;
+          ontdekInit();
+        }
+      }, 50);
+    }
     if (t === tab && t === 'menu') { setTimeout(function(){ renderMenu(); }, 50); }
-    if (btn)  btn.className = 'tab' + (t === tab ? ' active' : '');
+    if (btn) btn.className = 'tab' + (t === tab ? ' active' : '');
   }
 }
 
