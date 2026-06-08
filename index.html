@@ -560,6 +560,11 @@
       <div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Vrienden of familie die zelf een account aanmaken</div>
       <button onclick="deelAppNieuwGezin()" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #f0c040;background:white;color:#856404;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel app (zonder code)</button>
     </div>
+    <div style="background:#f8f8f8;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:8px">🔧 Firebase diagnose</div>
+      <button onclick="diagnoseFB()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#333;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">Test Firebase verbinding</button>
+      <div id="fb-diagnose" style="margin-top:8px;font-size:0.82rem;min-height:20px"></div>
+    </div>
     <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">👨‍👩‍👧 Gezinnenbeheer</div>
     <div id="admin-registraties-lijst"></div>
     <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px;margin-top:20px">💡 Ingediende ideeën</div>
@@ -705,7 +710,7 @@ function activeerBeheerder() {
 async function addItem() {
   var name = document.getElementById('item-input').value.trim();
   if (!name) return;
-  var id = Date.now();
+  var id  = Date.now();
   var cat    = typeof detectCat    === 'function' ? detectCat(name)    : 'overig';
   var winkel = typeof detectWinkel === 'function' ? detectWinkel(name) : 'ah';
   var newItem = { id: id, name: name, person: currentPerson, done: false, qty: 1, cat: cat, winkel: winkel };
@@ -714,8 +719,13 @@ async function addItem() {
   document.getElementById('item-input').value = '';
   if (typeof slaGeleerdeCategorie === 'function') slaGeleerdeCategorie(name, cat);
   setSyncStatus(true);
-  try { await fbSave(items); } catch(e) { console.log('addItem fout:', e.message); }
-  setSyncStatus(false);
+  try {
+    await fbSave(items);
+    setSyncStatus(false);
+  } catch(e) {
+    console.log('addItem fout:', e.message);
+    setSyncStatus(false, true);  // toon fout
+  }
 }
 
 function afstandLabel(m) {
@@ -989,17 +999,14 @@ function fbListenRegistraties() {
   });
 }
 
-function fbSave(itemsLijst) {
-  if (!gezinsCode) return Promise.resolve();
+async function fbSave(itemsLijst) {
+  if (!gezinsCode) return;
   var obj = {};
   for (var si = 0; si < itemsLijst.length; si++) {
     obj[itemsLijst[si].id] = itemsLijst[si];
   }
-  return window._set(getRef('boodschappen'), obj)
-    .catch(function(e) {
-      console.log('Firebase fout:', e.message);
-      setSyncStatus(false, true);
-    });
+  // await zodat fouten naar de aanroeper gaan
+  await window._set(getRef('boodschappen'), obj);
 }
 
 async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
@@ -3158,6 +3165,25 @@ document.addEventListener('visibilitychange', function() {
   }
 });
 
+
+async function diagnoseFB() {
+  var el = document.getElementById('fb-diagnose');
+  if (!el) return;
+  el.innerHTML = '🔍 Testen…';
+  el.style.color = '#b08000';
+  try {
+    var testPad = window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/_test');
+    await window._set(testPad, { ts: Date.now() });
+    await window._remove(testPad);
+    el.innerHTML = '✅ Firebase schrijven werkt!';
+    el.style.color = 'var(--green)';
+  } catch(e) {
+    el.innerHTML = '❌ Firebase GEBLOKKEERD: ' + e.message;
+    el.style.color = 'var(--red)';
+    el.style.fontWeight = '700';
+    el.style.fontSize = '0.8rem';
+  }
+}
 </script>
 
 
