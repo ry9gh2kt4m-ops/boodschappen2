@@ -1,13 +1,3 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="data:image/png;base64,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">
-<link rel="apple-touch-icon" href="data:image/png;base64,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">
-<title>Onze Boodschappen</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, onValue, set, remove, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -411,7 +401,7 @@
       <span id="sync-label">Verbonden</span>
     </div>
     <div class="gezin-badge" onclick="wijzigCode()" title="Gezinscode wijzigen">
-      🏠 <span id="gezin-naam" style="font-weight:700"></span> ✎
+      🏠 <span id="gezin-naam"></span> ✎
     </div>
   </header>
 
@@ -546,26 +536,13 @@
       <div class="stat"><div class="stat-num" id="admin-totaal">-</div><div class="stat-label">Totaal aanmeldingen</div></div>
       <div class="stat"><div class="stat-num" id="admin-ideeen-count">-</div><div class="stat-label">Ingediende ideeën</div></div>
     </div>
-    <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:10px">
-      <div style="font-size:0.82rem;font-weight:700;color:var(--green);margin-bottom:3px">🏠 Eigen gezin uitnodigen</div>
-      <div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Partner of gezinslid — worden direct ingelogd</div>
+    <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:0.82rem;font-weight:600;color:var(--green);margin-bottom:8px">🔗 App delen</div>
       <div style="display:flex;gap:8px">
         <button onclick="kopieerAppLink()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--green);color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📋 Kopieer link</button>
-        <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via app</button>
+        <button onclick="deelAppLink()" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--green);background:white;color:var(--green);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel via WhatsApp</button>
       </div>
-      <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Gekopieerd!</div>
-    </div>
-    <div style="background:#fff8e1;border:1.5px solid #f0c040;border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:0.82rem;font-weight:700;color:#856404;margin-bottom:3px">👥 Nieuw gezin uitnodigen</div>
-      <div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">Vrienden of familie die zelf een account aanmaken</div>
-      <button onclick="deelAppNieuwGezin()" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #f0c040;background:white;color:#856404;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">📤 Deel app (zonder code)</button>
-    </div>
-    <div style="background:#f8f8f8;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px">
-      <div style="font-size:0.82rem;font-weight:700;color:var(--ink);margin-bottom:8px">🔧 Firebase diagnose</div>
-      <button onclick="diagnoseFB()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#333;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;margin-bottom:6px">🔧 Test Firebase verbinding</button>
-      <button onclick="diagnoseData()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1a56a0;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;margin-bottom:6px">🔍 Toon ruwe data uit Firebase</button>
-      <button onclick="ruimBoodschappenOp()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#c4473a;color:white;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer">🧹 Verwijder ongeldige boodschappen</button>
-      <div id="fb-diagnose" style="margin-top:8px;font-size:0.82rem;min-height:20px"></div>
+      <div id="kopier-bevestiging" style="display:none;text-align:center;color:var(--green);font-size:0.78rem;margin-top:6px">✅ Link gekopieerd!</div>
     </div>
     <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px;padding-left:4px">👨‍👩‍👧 Gezinnenbeheer</div>
     <div id="admin-registraties-lijst"></div>
@@ -658,7 +635,18 @@
 </div>
 
 <!-- Personen modal -->
-<div class="modal-overlay" id="per
+<div class="modal-overlay" id="personen-modal" style="display:none" onclick="sluitPersonenModal(event)">
+  <div class="modal-card">
+    <div class="modal-title">👥 Personen instellen</div>
+    <div class="modal-sub">Voeg tot 4 personen toe. Namen zijn zichtbaar op alle apparaten van jullie gezin.</div>
+    <div id="personen-invoer"></div>
+    <button class="btn-persoon-add" onclick="voegPersoonToe()">＋ Persoon toevoegen</button>
+    <button class="btn-persoon-save" onclick="slaPersonenOp()">Opslaan ✓</button>
+  </div>
+</div>
+
+<script>
+
 var KRUIDVAT_ITEMS = ['shampoo','conditioner','douchegel','zeep','deodorant','tandpasta','scheermesje','scheerschuim','bodylotion','zonnebrand','maandverband','tampons','luiers','babydoekjes','pleisters','paracetamol','ibuprofen','vitamines','wasmiddel','schoonmaakmiddel','allesreiniger','wasverzachter','soda','bleek','waterontharder','ontkalker','nagellak','parfum','haarverf','haargel'];
 var AH_ITEMS = ['appel','peer','banaan','sinaasappel','mango','avocado','aardbei','druif','blauwe bessen','tomaat','komkommer','paprika','ui','knoflook','wortel','broccoli','sla','spinazie','champignon','aardappel','melk','yoghurt','kaas','boter','eieren','brood','pasta','rijst','couscous','havermout','cruesli','muesli','cornflakes','granola','kip','gehakt','zalm','vis','sap','cola','water','bier','wijn','chips','koekjes','chocolade','soep','bouillon','olie','ketchup','mayonaise','pesto','jam','honing','pindakaas','toiletpapier','vaatwas'];
 var _inspData = {stap:0, keuken:'alle', dieet:'alle', maaltijd:'diner', personen:4};
@@ -3343,17 +3331,7 @@ async function ruimBoodschappenOp() {
     if (el) el.innerHTML = '❌ ' + e.message;
   }
 }
-.naam : '?') + '</b>';
-      html += ' | youtube: <code style="word-break:break-all">' + (r && r.youtube ? r.youtube : 'LEEG') + '</code>';
-      html += '</div>';
-    }
-
-    html += '</div>';
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = '❌ Fout: ' + e.message;
-  }
-}</script>
+</script>
 
 
 <!-- Vind Winkel Modal -->
