@@ -3308,29 +3308,7 @@ async function diagnoseData() {
     el.innerHTML = '❌ Fout: ' + e.message;
   }
 }
-async function ruimBoodschappenOp() {
-  var el = document.getElementById('fb-diagnose');
-  if (el) el.innerHTML = '🧹 Bezig…';
-  try {
-    var snap = await new Promise(function(res) {
-      var u = window._onValue(getRef('boodschappen'), function(s) { u(); res(s.val() || {}); });
-    });
-    var ks = Object.keys(snap);
-    var verwijderd = 0;
-    for (var i = 0; i < ks.length; i++) {
-      var item = snap[ks[i]];
-      // Verwijder items zonder naam OF waarvan id != key (inconsistent)
-      if (!item || !item.name || String(item.id) !== String(ks[i])) {
-        await window._remove(window._ref(window._db,
-          'gezinnen/' + gezinsCode + '/boodschappen/' + ks[i]));
-        verwijderd++;
-      }
-    }
-    if (el) el.innerHTML = '✅ ' + verwijderd + ' ongeldig(e) item(s) verwijderd.';
-  } catch(e) {
-    if (el) el.innerHTML = '❌ ' + e.message;
-  }
-}
+
 </script>
 
 
