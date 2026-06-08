@@ -888,7 +888,23 @@ function detectCat(naam) {
 
 function detectPlatform(url){return detectPlatformInfo(url);}
 
-function detectPlatformInfo(url){if(!url)return null;var m=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);if(m)return{type:'youtube',id:m[1],embedbaar:true,label:'YouTube',kleur:'#ff0000'};var u=url.toLowerCase();if(u.indexOf('tiktok')>-1)return{type:'tiktok',id:null,embedbaar:false,label:'TikTok',kleur:'#010101'};if(u.indexOf('instagram')>-1)return{type:'instagram',id:null,embedbaar:false,label:'Instagram',kleur:'#c13584'};if(u.indexOf('facebook')>-1)return{type:'facebook',id:null,embedbaar:false,label:'Facebook',kleur:'#1877f2'};if(u.indexOf('pinterest')>-1)return{type:'pinterest',id:null,embedbaar:false,label:'Pinterest',kleur:'#e60023'};return{type:'link',id:null,embedbaar:false,label:'Link',kleur:'#3d6b4f'};}
+function detectPlatformInfo(url) {
+  if (!url) return null;
+  var u = url.toLowerCase();
+  // YouTube (diverse URL-vormen)
+  var ytm = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (ytm) return { type:'youtube', id:ytm[1], embedbaar:true,  label:'YouTube',   kleur:'#ff0000' };
+  // Overige platforms
+  if (u.indexOf('tiktok.com') > -1)    return { type:'tiktok',    id:null, embedbaar:false, label:'TikTok',    kleur:'#010101' };
+  if (u.indexOf('instagram.com') > -1) return { type:'instagram', id:null, embedbaar:false, label:'Instagram', kleur:'#c13584' };
+  if (u.indexOf('facebook.com') > -1 || u.indexOf('fb.watch') > -1 || u.indexOf('fb.me') > -1)
+                                        return { type:'facebook',  id:null, embedbaar:false, label:'Facebook',  kleur:'#1877f2' };
+  if (u.indexOf('pinterest.') > -1)    return { type:'pinterest', id:null, embedbaar:false, label:'Pinterest', kleur:'#e60023' };
+  if (u.indexOf('vimeo.com') > -1)     return { type:'vimeo',     id:null, embedbaar:false, label:'Vimeo',     kleur:'#1ab7ea' };
+  if (u.indexOf('twitch.tv') > -1)     return { type:'twitch',    id:null, embedbaar:false, label:'Twitch',    kleur:'#9146ff' };
+  // Generieke link
+  return { type:'link', id:null, embedbaar:false, label:'Link', kleur:'#3d6b4f' };
+}
 
 function detectWinkel(naam) {
   var n = naam.toLowerCase().trim();
@@ -932,14 +948,13 @@ function fbListen() {
     if (data) {
       var vals = [];
       var ks = Object.keys(data);
-      var hadTestItem = false;
       for (var ki = 0; ki < ks.length; ki++) {
-        var key = ks[ki];
+        var key  = ks[ki];
         var item = data[key];
-        // Verwijder _test items en items zonder naam
-        if (key === '_test' || !item || !item.name) {
-          hadTestItem = true;
-          try { window._remove(window._ref(window._db, 'gezinnen/' + gezinsCode + '/boodschappen/' + key)); } catch(e) {}
+        // Sla ongeldige items over en verwijder ze uit Firebase
+        if (!item || !item.name || key === '_test' || key === '_diagtest') {
+          try { window._remove(window._ref(window._db,
+            'gezinnen/' + gezinsCode + '/boodschappen/' + key)); } catch(e) {}
           continue;
         }
         vals.push(item);
@@ -2054,13 +2069,13 @@ function renderReceptPicker(dagIdx) {
 function renderRecepten() {
   var zoekVal = document.getElementById('recept-zoek') ? document.getElementById('recept-zoek').value.toLowerCase() : '';
   var gefilterd = recepten.filter(function(r) {
-    var matchCat = receptCatFilter === 'alle' || r.categorie === receptCatFilter;
+    var matchCat  = receptCatFilter === 'alle' || r.categorie === receptCatFilter;
     var matchZoek = !zoekVal || r.naam.toLowerCase().indexOf(zoekVal) > -1 || (r.beschrijving||'').toLowerCase().indexOf(zoekVal) > -1;
     return matchCat && matchZoek;
   });
 
-  var el    = document.getElementById('recepten-lijst');
-  var leeg  = document.getElementById('recepten-leeg');
+  var el   = document.getElementById('recepten-lijst');
+  var leeg = document.getElementById('recepten-leeg');
   if (!el) return;
 
   if (!gefilterd.length) {
@@ -2070,65 +2085,83 @@ function renderRecepten() {
   }
   if (leeg) leeg.style.display = 'none';
 
-  var catLabel = { ontbijt:'🥐 Ontbijt', lunch:'🥗 Lunch', diner:'🍽️ Diner', snack:'🍿 Snack', dessert:'🍰 Dessert', overig:'📦 Overig' };
+  var catLabel = { ontbijt:'🥐', lunch:'🥗', diner:'🍽️', snack:'🍿', dessert:'🍰', overig:'📦' };
+
+  // Platform info: icoon, label, kleur, achtergrond
+  var platInfo = {
+    youtube:   { emoji:'▶️', label:'YouTube',   bg:'#ff0000', fg:'white' },
+    tiktok:    { emoji:'🎵', label:'TikTok',    bg:'#010101', fg:'white' },
+    instagram: { emoji:'📸', label:'Instagram', bg:'#c13584', fg:'white' },
+    facebook:  { emoji:'👍', label:'Facebook',  bg:'#1877f2', fg:'white' },
+    pinterest: { emoji:'📌', label:'Pinterest', bg:'#e60023', fg:'white' },
+    link:      { emoji:'🔗', label:'Link',      bg:'#3d6b4f', fg:'white' }
+  };
 
   var html = '';
   for (var ri = 0; ri < gefilterd.length; ri++) {
-    var r = gefilterd[ri];
-    var vidId   = r.youtube ? getYouTubeId(r.youtube) : null;
+    var r       = gefilterd[ri];
     var platform = r.youtube ? detectPlatformInfo(r.youtube) : null;
+    var vidId   = platform && platform.type === 'youtube' ? platform.id : null;
     var thumb   = vidId ? getYouTubeThumbnail(vidId) : null;
-    var platKleur = (platform && platform.kleur) ? platform.kleur : 'var(--green)';
-    var platLabel = (platform && platform.label) ? platform.label : '';
-    var platEmoji = platLabel ? platLabel.split(' ')[0] : '🔗';
     var heeftLink = !!(r.youtube && r.youtube.length > 5);
+    var pi      = platform ? (platInfo[platform.type] || platInfo['link']) : null;
 
     html += '<div class="recept-card" id="recept-' + r.id + '">';
 
-    // ── Compacte header (altijd zichtbaar) ──
-    html += '<div class="recept-header-row" onclick="toggleReceptDetail(\'' + r.id + '\')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">';
+    // ── Header (altijd zichtbaar, klikbaar) ──
+    html += '<div onclick="toggleReceptDetail(\'' + r.id + '\')" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">';
 
-    // Kleine thumbnail als die er is, anders platform-icoon
+    // Thumbnail of platform-badge
     if (thumb) {
-      html += '<div style="width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f0f0f0">'
-        + '<img src="' + esc(thumb) + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" /></div>';
-    } else if (heeftLink) {
-      html += '<div style="width:52px;height:52px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.5rem">' + platEmoji + '</div>';
+      html += '<div style="width:52px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;position:relative">'
+        + '<img src="' + esc(thumb) + '" style="width:100%;height:100%;object-fit:cover" loading="lazy"/>'
+        + '<div style="position:absolute;bottom:2px;right:2px;width:18px;height:18px;border-radius:4px;background:rgba(255,0,0,0.9);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:white;font-weight:700">▶</div>'
+        + '</div>';
+    } else if (heeftLink && pi) {
+      html += '<div style="width:52px;height:52px;border-radius:8px;background:' + pi.bg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem">' + pi.emoji + '</div>';
     } else {
-      html += '<div style="width:52px;height:52px;border-radius:8px;background:var(--green-pale);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.5rem">🍽️</div>';
+      html += '<div style="width:52px;height:52px;border-radius:8px;background:var(--green-pale);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem">🍽️</div>';
     }
 
-    // Naam + tags
+    // Naam + kleine badges
     html += '<div style="flex:1;min-width:0">';
     html += '<div style="font-family:\'Playfair Display\',serif;font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.naam) + '</div>';
-    html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">';
-    if (r.categorie) html += '<span class="recept-tag">' + (catLabel[r.categorie]||r.categorie) + '</span>';
-    if (r.personen)  html += '<span class="recept-tag" style="background:#fff3e0;color:#c47a2a">👥 ' + r.personen + ' pers.</span>';
+    html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">';
+    if (r.categorie) html += '<span class="recept-tag">' + (catLabel[r.categorie]||'📦') + ' ' + r.categorie + '</span>';
     if (r.tijd)      html += '<span class="recept-tag" style="background:#e8f0fa;color:#1a56a0">⏱ ' + esc(r.tijd) + '</span>';
-    if (heeftLink)   html += '<span class="recept-tag" style="background:#fce4ec;color:' + platKleur + '">' + platEmoji + ' ' + platLabel + '</span>';
+    if (heeftLink && pi) {
+      html += '<span class="recept-tag" style="background:' + pi.bg + ';color:' + pi.fg + ';font-size:0.65rem">'
+        + pi.emoji + ' ' + pi.label + '</span>';
+    }
     html += '</div></div>';
 
     // Pijltje
     html += '<div id="rr-arrow-' + r.id + '" style="font-size:1rem;color:var(--muted);flex-shrink:0">▸</div>';
-    html += '</div>'; // header-row
+    html += '</div>'; // header
 
     // ── Detail (ingeklapt) ──
     html += '<div id="rr-detail-' + r.id + '" style="display:none;border-top:1px solid var(--border)">';
 
-    // Video / link sectie
+    // Video sectie
     if (vidId) {
-      html += '<div id="rr-video-wrap-' + r.id + '" style="background:#000;position:relative">';
-      html += '<img src="' + esc(getYouTubeThumbnail(vidId)) + '" alt="' + esc(r.naam) + '" style="width:100%;height:180px;object-fit:cover;opacity:0.85;display:block" />';
-      html += '<div onclick="speelAf(\'' + r.id + '\',\'' + vidId + '\')" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer">';
-      html += '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,0,0,0.9);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:white">▶</div>';
+      // YouTube: thumbnail met play knop → inline embed
+      html += '<div id="rr-video-wrap-' + r.id + '" style="position:relative;background:#000;cursor:pointer" onclick="speelAf(\'' + r.id + '\',\'' + vidId + '\')">';
+      html += '<img src="' + esc(thumb) + '" style="width:100%;height:180px;object-fit:cover;opacity:0.8;display:block"/>';
+      html += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">';
+      html += '<div style="width:60px;height:60px;border-radius:50%;background:rgba(255,0,0,0.95);display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:white">▶</div>';
       html += '</div></div>';
       html += '<div id="video-' + r.id + '"></div>';
-    } else if (heeftLink) {
-      html += '<a href="' + esc(r.youtube) + '" target="_blank" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f9f9f9;text-decoration:none;border-bottom:1px solid var(--border)">';
-      html += '<div style="width:36px;height:36px;border-radius:8px;background:white;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.2rem">' + platEmoji + '</div>';
-      html += '<div><div style="font-size:0.85rem;font-weight:600;color:' + platKleur + '">' + platLabel + '</div>';
-      html += '<div style="font-size:0.75rem;color:var(--muted)">Tik om te openen →</div></div>';
-      html += '</a>';
+    } else if (heeftLink && pi) {
+      // Andere platforms: grote klikbare knop die window.open gebruikt
+      html += '<div style="padding:14px">';
+      html += '<button onclick="window.open(\'' + esc(r.youtube) + '\',\'_blank\')" '
+        + 'style="width:100%;padding:13px;border:none;border-radius:12px;background:' + pi.bg + ';color:' + pi.fg + ';'
+        + 'font-family:\'DM Sans\',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;'
+        + 'display:flex;align-items:center;justify-content:center;gap:8px">'
+        + '<span style="font-size:1.2rem">' + pi.emoji + '</span>'
+        + '<span>Bekijk op ' + pi.label + '</span>'
+        + '</button>';
+      html += '</div>';
     }
 
     // Body
@@ -2137,8 +2170,8 @@ function renderRecepten() {
 
     // Ingrediënten
     if (r.ingredienten && r.ingredienten.length) {
-      html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:6px;margin-top:8px">🧾 Ingrediënten</div>';
-      for (var ii=0; ii<r.ingredienten.length; ii++) {
+      html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin:8px 0 6px">🧾 Ingrediënten</div>';
+      for (var ii = 0; ii < r.ingredienten.length; ii++) {
         html += '<div class="ingredient-rij">'
           + '<div class="ingredient-check" id="ingcheck-' + r.id + '-' + ii + '" onclick="toggleIngCheck(\'' + r.id + '\',' + ii + ')"></div>'
           + '<span>' + esc(r.ingredienten[ii]) + '</span>'
@@ -2147,19 +2180,19 @@ function renderRecepten() {
       html += '<button class="btn-add-boodschappen" onclick="voegAlleIngredientenToe(\'' + r.id + '\')">🛒 Alle ingrediënten op boodschappenlijst</button>';
     }
 
-    // Acties
+    // Actieknoppen
     html += '<div class="recept-acties">';
     if (vidId) {
       html += '<button class="recept-btn" onclick="speelAf(\'' + r.id + '\',\'' + vidId + '\')">▶ Afspelen</button>';
-    } else if (heeftLink) {
-      html += '<a href="' + esc(r.youtube) + '" target="_blank" class="recept-btn" style="text-decoration:none">' + platEmoji + ' ' + platLabel + ' openen</a>';
+    } else if (heeftLink && pi) {
+      html += '<button class="recept-btn" onclick="window.open(\'' + esc(r.youtube) + '\',\'_blank\')">'
+        + pi.emoji + ' ' + pi.label + ' openen</button>';
     }
     html += '<button class="recept-btn edit" onclick="bewerkRecept(\'' + r.id + '\')">✏️ Bewerken</button>';
-    html += '<button class="recept-btn del" onclick="verwijderRecept(\'' + r.id + '\')">🗑 Verwijderen</button>';
-    html += '</div>'; // recept-acties
-    html += '</div>'; // recept-body
-    html += '</div>'; // rr-detail
-    html += '</div>'; // recept-card
+    html += '<button class="recept-btn del"  onclick="verwijderRecept(\'' + r.id + '\')">🗑 Verwijderen</button>';
+    html += '</div>';
+
+    html += '</div></div></div>'; // recept-body, rr-detail, recept-card
   }
 
   el.innerHTML = html;
