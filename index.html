@@ -873,7 +873,7 @@ async function deleteItem(id) {
   items = items.filter(function(i){ return String(i.id) !== sid; });
   render();
   setSyncStatus(true);
-  try { await fbDelete(id); } catch(e) {}
+  try { await fbSave(items); } catch(e) {}
   setSyncStatus(false);
 }
 
@@ -933,10 +933,10 @@ function detectWinkel(naam) {
   // Check geleerde winkel eerst
   var geleerdeKey = n.replace(/[^a-z0-9]/g, '_');
   if (geleerdeWinkels[geleerdeKey]) return geleerdeWinkels[geleerdeKey];
-  // Check op gedeeltelijke match
+  // Check op exacte of woordgrens-match (voorkom 'cruesli' → 'crueslichoc')
   for (var gk in geleerdeWinkels) {
     var woord = gk.replace(/_/g, ' ');
-    if (n.indexOf(woord) > -1 || (woord.indexOf(n) > -1 && n.length > 3)) {
+    if (n === woord || n.indexOf(woord + ' ') === 0 || n.indexOf(' ' + woord) > -1) {
       return geleerdeWinkels[gk];
     }
   }
@@ -968,6 +968,8 @@ function fbListen() {
   if (unsubMenu)  { try { unsubMenu();  } catch(e) {} unsubMenu  = null; }
 
   unsubItems = window._onValue(getRef('boodschappen'), function(snap) {
+    // Negeer de callback als we zelf net aan het opslaan zijn (voorkomt ghost items)
+    if (_savePending) return;
     var data = snap.val();
     if (!data) { items = []; render(); return; }
 
@@ -1079,14 +1081,21 @@ function fbListenRegistraties() {
   });
 }
 
+var _savePending = false;
+
 async function fbSave(itemsLijst) {
   if (!gezinsCode) return;
   var obj = {};
   for (var si = 0; si < itemsLijst.length; si++) {
     obj[itemsLijst[si].id] = itemsLijst[si];
   }
-  // await zodat fouten naar de aanroeper gaan
-  await window._set(getRef('boodschappen'), obj);
+  _savePending = true;
+  try {
+    await window._set(getRef('boodschappen'), obj);
+  } finally {
+    // Kleine vertraging zodat de onValue callback de eigen write negeert
+    setTimeout(function(){ _savePending = false; }, 500);
+  }
 }
 
 async function fbSaveItem(item){if(!item||!item.id)return;try{await window._set(window._ref(window._db,'gezinnen/'+gezinsCode+'/boodschappen/'+item.id),item);}catch(e){}}
