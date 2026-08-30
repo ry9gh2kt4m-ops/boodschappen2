@@ -881,12 +881,17 @@ function detectCat(naam) {
   var n = naam.toLowerCase().trim();
   var key = n.replace(/[^a-z0-9]/g, '_');
 
+  // Normaliseer afkortingen die door PRIJZEN_DB zijn opgeslagen
+  var CAT_NORM_DC = {kruid:'kruidenierswaren',koel:'koeling',diep:'diepvries'};
+  var GELDIGE_DC = {agf:1,vlees:1,koeling:1,kruidenierswaren:1,diepvries:1,drank:1,nonfood:1,overig:1};
+  function normCat(c) { return CAT_NORM_DC[c] || (GELDIGE_DC[c] ? c : 'overig'); }
+
   // Check geleerde categorieën
-  if (geleerdeCategorieen[key]) return geleerdeCategorieen[key];
+  if (geleerdeCategorieen[key]) return normCat(geleerdeCategorieen[key]);
   for (var gk in geleerdeCategorieen) {
     var woord = gk.replace(/_/g, ' ');
     if (woord.length > 2 && (n === woord || n.indexOf(woord + ' ') === 0 || n.indexOf(' ' + woord) > -1)) {
-      return geleerdeCategorieen[gk];
+      return normCat(geleerdeCategorieen[gk]);
     }
   }
 
@@ -1212,7 +1217,10 @@ function kiesProduct(naam, cat) {
   var inp = document.getElementById('item-input');
   if (inp) inp.value = naam;
   sluitAutocomplete();
-  if (cat) slaGeleerdeCategorie(naam, cat);
+  // Vertaal PRIJZEN_DB afkortingen naar volledige categorie keys
+  var CAT_MAP = {kruid:'kruidenierswaren',koel:'koeling',diep:'diepvries',vlees:'vlees',agf:'agf',drank:'drank',nonfood:'nonfood'};
+  var volleCat = (cat && CAT_MAP[cat]) ? CAT_MAP[cat] : cat;
+  if (volleCat) slaGeleerdeCategorie(naam, volleCat);
 }
 
 async function kiesRecept(dagIdx, naam, receptId) {
@@ -1458,9 +1466,9 @@ function render() {
   var filtered = currentFilter === 'alle' ? items : items.filter(function(i){ return i.person === currentFilter; });
   var todo = filtered.filter(function(i){ return !i.done; });
   var done = filtered.filter(function(i){ return i.done; });
-  document.getElementById('stat-total').textContent = items.length;
-  document.getElementById('stat-todo').textContent  = items.filter(function(i){ return !i.done; }).length;
-  document.getElementById('stat-done').textContent  = items.filter(function(i){ return i.done; }).length;
+  document.getElementById('stat-total').textContent = filtered.length;
+  document.getElementById('stat-todo').textContent  = todo.length;
+  document.getElementById('stat-done').textContent  = done.length;
   document.getElementById('done-count').textContent = done.length;
   renderList('todo-list', todo, false);
   renderList('done-list', done, true);
@@ -1639,10 +1647,15 @@ function renderList(id, list, isDone) {
   }
 
   // Groepeer items per categorie
+  // Normaliseer oude afkortingen en onbekende waarden naar geldige keys
+  var CAT_NORM = {kruid:'kruidenierswaren',koel:'koeling',diep:'diepvries'};
+  var GELDIGE_CATS = {agf:1,vlees:1,koeling:1,kruidenierswaren:1,diepvries:1,drank:1,nonfood:1,overig:1};
   var groepen = {};
   for (var ii = 0; ii < list.length; ii++) {
     var item = list[ii];
     var cat = item.cat || 'overig';
+    if (CAT_NORM[cat]) cat = CAT_NORM[cat];        // map afkorting
+    if (!GELDIGE_CATS[cat]) cat = 'overig';         // vang onbekende cats op
     if (!groepen[cat]) groepen[cat] = [];
     groepen[cat].push(item);
   }
