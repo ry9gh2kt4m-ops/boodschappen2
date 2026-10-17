@@ -633,7 +633,7 @@
     <label class="setup-label" style="margin-top:10px">Naam recept *</label>
     <input class="setup-input" id="recept-naam" type="text" placeholder="bijv. Pasta Carbonara" style="letter-spacing:0;margin-bottom:10px" />
 
-    <label class="setup-label">Link recept *</label>
+    <label class="setup-label">Link recept (optioneel)</label>
     <input class="setup-input" id="recept-youtube" type="url" placeholder="Plak een link van YouTube, TikTok, Pinterest…" style="letter-spacing:0;margin-bottom:6px" oninput="detectPlatform()" />
     <div id="platform-detect" style="font-size:0.72rem;margin-bottom:10px;min-height:18px"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
@@ -1373,6 +1373,7 @@ function openReceptForm(id) {
       tempIngredienten = r.ingredienten ? r.ingredienten.slice() : [];
     }
   }
+  renderIngredientenInvoer();
   document.getElementById('recept-modal').style.display = 'flex';
 }
 
@@ -1592,9 +1593,10 @@ function renderItem(item) {
   var bg = KLEUR_BG[p.kleur] || '#e8f0ea';
   var borderStyle = !item.done ? 'border-left:3px solid ' + p.kleur : '';
   var winkel = item.winkel || detectWinkel(item.name);
+  var _iid = String(item.id).replace(/'/g, "\\'");
   var winkelBadge = winkel === 'kruidvat'
-    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(' + item.id + ')">&#128138; Kruidvat</button>'
-    : '<button class="winkel-ah-badge" onclick="wisselWinkel(' + item.id + ')">&#128309; AH</button>';
+    ? '<button class="winkel-kv-badge" onclick="wisselWinkel(\'' + _iid + '\')">&#128138; Kruidvat</button>'
+    : '<button class="winkel-ah-badge" onclick="wisselWinkel(\'' + _iid + '\')">&#128309; AH</button>';
   var fotoHtml = p.foto
     ? '<img src="' + p.foto + '" style="width:14px;height:14px;border-radius:50%;object-fit:cover;margin-right:2px;vertical-align:middle" />'
     : '&#128100;';
@@ -1604,20 +1606,20 @@ function renderItem(item) {
     catOptions += '<option value="' + cc.key + '"' + ((item.cat||'kruidenierswaren')===cc.key?' selected':'') + '>' + cc.icon + ' ' + cc.label + '</option>';
   }
   var html = '<div class="item' + (item.done ? ' done' : '') + '" style="' + borderStyle + '">';
-  html += '<button class="check-btn" onclick="toggleItem(' + item.id + ')">' + (item.done ? '&#10003;' : '') + '</button>';
+  html += '<button class="check-btn" onclick="toggleItem(\'' + _iid + '\')">' + (item.done ? '&#10003;' : '') + '</button>';
   html += '<div class="item-main">';
   html += '<div class="item-name">' + esc(item.name) + '</div>';
   html += '<div style="margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
   html += winkelBadge;
   html += '<span class="item-person" style="background:' + bg + ';color:' + p.kleur + '">' + fotoHtml + ' ' + esc(p.naam) + '</span>';
-  html += '<select onchange="changeCat(' + item.id + ',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
+  html += '<select onchange="changeCat(\'' + _iid + '\',this.value)" style="font-size:0.65rem;border:none;background:transparent;color:var(--muted);cursor:pointer;max-width:80px">' + catOptions + '</select>';
   html += '</div></div>';
   html += '<div class="qty-controls">';
-  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',-1)">&#8722;</button>';
+  html += '<button class="qty-btn" onclick="changeQty(\'' + _iid + '\',-1)">&#8722;</button>';
   html += '<span class="qty-num">' + (item.qty || 1) + '</span>';
-  html += '<button class="qty-btn" onclick="changeQty(' + item.id + ',1)">+</button>';
+  html += '<button class="qty-btn" onclick="changeQty(\'' + _iid + '\',1)">+</button>';
   html += '</div>';
-  html += '<button class="delete-btn" onclick="deleteItem(' + item.id + ')">&#10005;</button>';
+  html += '<button class="delete-btn" onclick="deleteItem(\'' + _iid + '\')">&#10005;</button>';
   html += '</div>';
   return html;
 }
