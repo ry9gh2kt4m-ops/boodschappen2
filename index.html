@@ -1324,15 +1324,33 @@ function kopieerAppLink() {
 }
 
 function laadPersonen() {
+  // Eerst localStorage als snelle fallback
   var opgeslagen = localStorage.getItem('personen_' + gezinsCode);
   if (opgeslagen) {
     try { personen = JSON.parse(opgeslagen); } catch(e) { personen = []; }
   }
-  // Zet currentPerson op eerste persoon als het nog niet gezet is
   if (personen.length > 0 && (!currentPerson || currentPerson === 'Jij' || currentPerson === 'jij')) {
     currentPerson = personen[0].naam;
   }
   renderPersonenKnoppen();
+  // Dan Firebase laden en live houden (overschrijft localStorage als Firebase nieuwer is)
+  if (gezinsCode && window._onValue && window._ref && window._db) {
+    window._onValue(window._ref(window._db, 'gezinnen/' + gezinsCode + '/personen'), function(snap) {
+      var data = snap.val();
+      if (data && Array.isArray(data) && data.length > 0) {
+        personen = data;
+        localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
+        if (!currentPerson || currentPerson === 'Jij' || currentPerson === 'jij') {
+          currentPerson = personen[0].naam;
+        }
+        renderPersonenKnoppen();
+      } else if (!opgeslagen) {
+        // Nieuw gezin zonder personen in Firebase of localStorage: gebruik defaults
+        personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
+        renderPersonenKnoppen();
+      }
+    });
+  }
 }
 
 function logAankoopHistorie(naam) {
@@ -1412,8 +1430,8 @@ function openPersonenInstellingen() {
     html += '<span id="foto-preview-' + i + '">' + (p.foto ? '<img src="' + p.foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />' : '📷') + '</span>';
     html += '<input type="file" accept="image/*" onchange="verwerkFoto(event,' + i + ')" />';
     html += '</label>';
-    html += '<input class="persoon-input" value="' + esc(p.naam) + '" placeholder="Naam" oninput="updatePersoonNaam(' + i + ',this.value)" />';
-    html += '<input type="color" value="' + p.kleur + '" onchange="updatePersoonKleur(' + i + ',this.value)" style="width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0" />';
+    html += '<input id="persoon-input-' + i + '" class="persoon-input" value="' + esc(p.naam) + '" placeholder="Naam" oninput="updatePersoonNaam(' + i + ',this.value)" />';
+    html += '<input id="persoon-kleur-' + i + '" type="color" value="' + p.kleur + '" onchange="updatePersoonKleur(' + i + ',this.value)" style="width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0" />';
     html += '<button onclick="verwijderPersoon(' + i + ')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px">✕</button>';
     html += '</div>';
   }
@@ -2162,6 +2180,12 @@ function slaGeleerdeWinkelOp(naam,winkel){try{var k=naam.toLowerCase().replace(/
 
 function slaPersonenLocalOp() {
   localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
+  // Ook naar Firebase zodat alle apparaten en gezinsleden syncen
+  if (gezinsCode && window._set && window._ref && window._db) {
+    try {
+      window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/personen'), personen);
+    } catch(e) {}
+  }
 }
 
 function slaPersonenOp() {
