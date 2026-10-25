@@ -1341,8 +1341,16 @@ function laadPersonen() {
       var modal = document.getElementById('personen-modal');
       if (modal && modal.style.display !== 'none') return;
       var data = snap.val();
-      if (data && Array.isArray(data) && data.length > 0) {
-        personen = data;
+      // Firebase geeft een object terug ({0:{...},1:{...}}) — zet om naar array
+      var arr = [];
+      if (data && typeof data === 'object') {
+        var keys = Object.keys(data).sort(function(a,b){return Number(a)-Number(b);});
+        for (var _ki=0; _ki<keys.length; _ki++) {
+          if (data[keys[_ki]] && data[keys[_ki]].naam) arr.push(data[keys[_ki]]);
+        }
+      }
+      if (arr.length > 0) {
+        personen = arr;
         localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
         if (!currentPerson || currentPerson === 'Jij' || currentPerson === 'jij') {
           currentPerson = personen[0].naam;
@@ -2183,10 +2191,12 @@ function slaGeleerdeWinkelOp(naam,winkel){try{var k=naam.toLowerCase().replace(/
 
 function slaPersonenLocalOp() {
   localStorage.setItem('personen_' + gezinsCode, JSON.stringify(personen));
-  // Ook naar Firebase zodat alle apparaten en gezinsleden syncen
+  // Sla op als genummerd object (Firebase ondersteunt geen arrays)
   if (gezinsCode && window._set && window._ref && window._db) {
     try {
-      window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/personen'), personen);
+      var obj = {};
+      for (var _pi = 0; _pi < personen.length; _pi++) obj[_pi] = personen[_pi];
+      window._set(window._ref(window._db, 'gezinnen/' + gezinsCode + '/personen'), obj);
     } catch(e) {}
   }
 }
@@ -2195,12 +2205,16 @@ function slaPersonenOp() {
   var nieuwePersonen = [];
   for (var i = 0; i < personen.length; i++) {
     var p = personen[i];
+    // Lees altijd direct uit DOM — updatePersoonNaam werkt via oninput
+    // maar op sommige mobiele browsers triggert oninput niet altijd
     var naamEl  = document.getElementById('persoon-input-' + i);
     var kleurEl = document.getElementById('persoon-kleur-' + i);
     var naam  = naamEl  ? naamEl.value.trim()  : p.naam;
     var kleur = kleurEl ? kleurEl.value        : p.kleur;
+    if (!naam) naam = p.naam; // gebruik bestaande naam als input leeg is
     if (naam) nieuwePersonen.push({ naam: naam, kleur: kleur, foto: p.foto || null });
   }
+  if (nieuwePersonen.length === 0) { alert('Voeg minimaal één persoon toe.'); return; }
   personen = nieuwePersonen;
   slaPersonenLocalOp();
   renderPersonenKnoppen();
@@ -2261,6 +2275,14 @@ function sluitAutocomplete() {
 
 function sluitLivePrijs() {
   document.getElementById('live-prijs-resultaat').style.display = 'none';
+}
+
+function updatePersoonNaam(i, val) {
+  if (personen[i] !== undefined) personen[i].naam = val;
+}
+
+function updatePersoonKleur(i, val) {
+  if (personen[i] !== undefined) personen[i].kleur = val;
 }
 
 function sluitPersonenModal(e) {
