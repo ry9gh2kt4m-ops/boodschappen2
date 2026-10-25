@@ -1336,6 +1336,10 @@ function laadPersonen() {
   // Dan Firebase laden en live houden (overschrijft localStorage als Firebase nieuwer is)
   if (gezinsCode && window._onValue && window._ref && window._db) {
     window._onValue(window._ref(window._db, 'gezinnen/' + gezinsCode + '/personen'), function(snap) {
+      // Niet updaten als de modal open is — voorkomt dat een Firebase echo
+      // halverwege bewerken de waarden overschrijft
+      var modal = document.getElementById('personen-modal');
+      if (modal && modal.style.display !== 'none') return;
       var data = snap.val();
       if (data && Array.isArray(data) && data.length > 0) {
         personen = data;
@@ -1345,7 +1349,6 @@ function laadPersonen() {
         }
         renderPersonenKnoppen();
       } else if (!opgeslagen) {
-        // Nieuw gezin zonder personen in Firebase of localStorage: gebruik defaults
         personen = [{naam:'Jij', kleur:'#3d6b4f', foto:null}, {naam:'Partner', kleur:'#c4678a', foto:null}];
         renderPersonenKnoppen();
       }
@@ -2824,6 +2827,7 @@ function verwijderIngredient(i) {
 
 function verwijderPersoon(i) {
   if (personen.length <= 1) return;
+  _leesPersonenUitDOM(); // bewaar huidige waarden voor de rest
   personen.splice(i, 1);
   openPersonenInstellingen();
 }
@@ -2932,10 +2936,28 @@ function voegIngredientToe(waarde) {
   }, 50);
 }
 
+function _leesPersonenUitDOM() {
+  // Lees de huidige DOM-waarden en sla ze op in personen array
+  for (var i = 0; i < personen.length; i++) {
+    var naamEl  = document.getElementById('persoon-input-' + i);
+    var kleurEl = document.getElementById('persoon-kleur-' + i);
+    if (naamEl)  personen[i].naam  = naamEl.value.trim()  || personen[i].naam;
+    if (kleurEl) personen[i].kleur = kleurEl.value;
+  }
+}
+
 function voegPersoonToe() {
-  if (personen.length >= 4) { alert('Maximum 4 personen.'); return; }
-  personen.push({naam: 'Persoon ' + (personen.length+1), kleur: KLEUREN[personen.length] || '#3d6b4f'});
+  if (personen.length >= 8) { alert('Maximum 8 personen.'); return; }
+  _leesPersonenUitDOM(); // bewaar wat al is ingetypt
+  var _kl = ['#3d6b4f','#c4678a','#1a56a0','#c47a2a','#7a4db5','#c4473a'];
+  personen.push({naam: '', kleur: _kl[personen.length % _kl.length], foto: null});
   openPersonenInstellingen();
+  // Zet focus op het nieuwe invoerveld
+  var nieuwIdx = personen.length - 1;
+  setTimeout(function() {
+    var el = document.getElementById('persoon-input-' + nieuwIdx);
+    if (el) el.focus();
+  }, 50);
 }
 
 async function voegSuggestie(naam) {
